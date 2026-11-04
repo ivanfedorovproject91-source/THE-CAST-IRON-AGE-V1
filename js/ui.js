@@ -75,12 +75,12 @@
     return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + (nick ? ' «' + nick + '»' : '') + '</div><div class="tb-sub">' + G.jobTitle() + ' · ' + G.status() + '</div></div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + ' · ' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
   }
   function navHTML() {
-    const T = [['shift', '⚙️', 'Смена'], ['city', '🏙️', 'Город'], ['people', '👥', 'Люди'], ['phone', '📱', 'Телефон'], ['file', '📋', 'Дело']];
+    const T = [['shift', '⚙️', 'Смена'], ['city', '🏙️', 'Город'], ['people', '👥', 'Люди'], ['phone', '📱', 'Телефон'], ['rating', '🏆', 'Рейтинг'], ['file', '📋', 'Дело']];
     return T.map(t => '<button class="' + (UI.tab === t[0] ? 'on' : '') + '" onclick="G.ui.setTab(\'' + t[0] + '\')"><b>' + t[1] + '</b>' + t[2] + '</button>').join('');
   }
   UI.setTab = function (t) { UI.tab = t; if (t !== 'city') UI.place = null; UI.render(); };
   function gameScreen() {
-    switch (UI.tab) { case 'city': return cityTab(); case 'people': return peopleTab(); case 'phone': return phoneTab(); case 'file': return fileTab(); default: return shiftTab(); }
+    switch (UI.tab) { case 'city': return cityTab(); case 'people': return peopleTab(); case 'phone': return phoneTab(); case 'file': return fileTab(); case 'rating': return ratingTab(); default: return shiftTab(); }
   }
 
   // ---------- Вкладка СМЕНА
@@ -181,6 +181,30 @@
     G.modal({ title: '📓 Журнал', wide: true, text: '<div style="max-height:55vh;overflow:auto">' + s.log.slice(0, 40).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('') + '</div>', opts: [{ t: 'Закрыть', fn: () => {} }] });
   };
 
+  // ---------- Общий рейтинг
+  function ratingTab() {
+    const LB = G.lb, s = G.s;
+    const by = LB.by;
+    const subs = [['oj', 'Очки жизни'], ['shifts', 'Смены'], ['rank', 'Должность']];
+    let h = '<div class="card"><h3>🏆 Общий рейтинг</h3><div class="note">Лучшие работники «Чугунного века» со всех устройств. Рекорды сохраняются между забегами.</div></div>';
+    h += '<div class="sub">' + subs.map(x => '<button class="' + (by === x[0] ? 'on' : '') + '" onclick="G.ui.setBy(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
+    if (!LB.configured()) return h + '<div class="card note">Рейтинг временно недоступен.</div>';
+    if (s.flags.dbg) h += '<div class="card note">⚠ Ты пользовался отладкой — твои результаты в рейтинг не отправляются.</div>';
+    if (G.settings.lbOn === false) h += '<div class="card note">Ты скрыт из рейтинга (настройка в «Деле»).</div>';
+    const c = LB.cache[by];
+    if (!c || Date.now() - c.t > 60000) LB.load(by);
+    if (!c) return h + '<div class="card note">' + (LB.err ? 'Не удалось загрузить рейтинг (' + esc(LB.err) + '). <button class="chip" onclick="G.ui.reloadLb()">Повторить</button>' : 'Загрузка…') + '</div>';
+    const d = c.data, val = r => by === 'oj' ? r.oj : by === 'shifts' ? r.shifts + ' см.' : D.RANKS[Math.min(10, r.rank)] || '—';
+    if (d.me) h += '<div class="card"><b>Твоё место: №' + d.me.pos + '</b> из ' + d.total + '<div class="note">' + esc(d.me.name) + ' · ' + (by === 'oj' ? 'рекорд ' + d.me.oj + ' оч.' : by === 'shifts' ? d.me.shifts + ' смен' : D.RANKS[Math.min(10, d.me.rank)]) + '</div></div>';
+    else h += '<div class="card note">Всего игроков: ' + d.total + '. ' + (LB.cache[by] ? 'Тебя в таблице пока нет — доработай смену до конца.' : '') + '</div>';
+    const medals = ['🥇', '🥈', '🥉'];
+    h += '<div style="padding:6px 10px 0">' + d.rows.map(r => '<div class="lbrow ' + (r.me ? 'me' : '') + '"><b>' + (medals[r.pos - 1] || '#' + r.pos) + '</b><div><span class="nm">' + esc(r.name) + '</span><small>' + esc(r.job || '—') + ' · ' + r.shifts + ' смен' + (r.end ? ' · ' + (D.ENDINGS[r.end] ? D.ENDINGS[r.end].e : '') : '') + '</small></div><em>' + esc(String(val(r))) + '</em></div>').join('') + '</div>';
+    h += '<div class="btns"><button class="btn" onclick="G.ui.reloadLb()">↻ Обновить</button></div>';
+    return h;
+  }
+  UI.setBy = function (b) { G.lb.by = b; UI.render(); };
+  UI.reloadLb = function () { G.lb.load(G.lb.by, true); G.lb.err = null; UI.render(); };
+
   // ---------- Дело (досье)
   function fileTab() {
     const s = G.s, st = s.st, c = s.car;
@@ -213,11 +237,12 @@
     h += '<div class="card"><h3>Показатели</h3><div class="bars" style="grid-template-columns:1fr">' + [['❤ Здоровье', st.health], ['⚡ Энергия', st.energy], ['🙂 Настроение', st.mood], ['🍲 Сытость', st.satiety], ['🧼 Опрятность', st.neat], ['👔 Начальство', st.boss, 'blue'], ['🤝 Коллеги', st.coll, 'blue'], ['😎 Крутизна', st.cool, 'blue'], ['⚖ Совесть', st.cons, 'blue'], ['📘 Знания', st.know, 'blue'], ['☣ Токсичность', st.tox, '', 1], ['🥃 Тяга', st.craving, '', 1], ['🍾 Привычка', st.habit, '', 1], ['🍺 Опьянение', st.drunk, 'rust', 1]].map(x => bar(x[0], x[1], x[2], x[3])).join('') + '</div></div>';
     const ach = Object.keys(s.ach);
     h += '<div class="card"><h3>Достижения (' + ach.length + ')</h3><div class="note">' + (ach.length ? ach.join(', ') : 'Пока нет.') + '</div></div>';
-    h += '<div class="card"><h3>Настройки</h3><button class="btn" onclick="G.ui.toggle(\'haptic\')">Вибрация: ' + (G.settings.haptic ? 'вкл' : 'выкл') + '</button><button class="btn" onclick="G.ui.toggle(\'tips\')">Подсказки: ' + (G.settings.tips ? 'вкл' : 'выкл') + '</button><button class="btn red" onclick="G.ui.confirmNew()">Начать заново</button><button class="btn" onclick="G.ui.help()">Как играть</button></div>';
+    h += '<div class="card"><h3>Настройки</h3><button class="btn" onclick="G.ui.toggle(\'haptic\')">Вибрация: ' + (G.settings.haptic ? 'вкл' : 'выкл') + '</button><button class="btn" onclick="G.ui.toggle(\'tips\')">Подсказки: ' + (G.settings.tips ? 'вкл' : 'выкл') + '</button>' + (G.lb.configured() ? '<button class="btn" onclick="G.ui.toggleLb()">Показывать меня в рейтинге: ' + (G.settings.lbOn === false ? 'нет' : 'да') + '</button>' : '') + '<button class="btn red" onclick="G.ui.confirmNew()">Начать заново</button><button class="btn" onclick="G.ui.help()">Как играть</button></div>';
     return h;
   }
   UI.setSub = function (x) { UI.sub = x; UI.render(); };
   UI.toggle = function (k) { G.settings[k] = !G.settings[k]; G.save(); UI.keepScroll = true; UI.render(); };
+  UI.toggleLb = function () { G.settings.lbOn = G.settings.lbOn === false ? true : false; G.save(); G.lb.submit(true); UI.keepScroll = true; UI.render(); };
   UI.confirmNew = function () { G.modal({ title: 'Начать заново?', text: 'Текущее сохранение будет стёрто.', cls: 'bad', opts: [{ t: 'Да, стереть', fn: () => { G.wipe(); UI.mode = 'title'; UI.render(); } }, { t: 'Отмена', fn: () => {} }] }); };
   UI.help = function () {
     G.modal({ title: 'Как играть', text: '<b>Цель</b> — выжить на заводе «Чугунный век» как можно дольше и подняться по карьере (или сбежать).<br><br>• День — это слоты по часам. Смена с 8:00, обед в 12:00.<br>• «РАБОТАТЬ» — мини-игра: жми, когда маркер в зелёной зоне. Это даёт баллы мастерства.<br>• Следи за здоровьем, настроением и сытостью. Опьянение, тяга, токсичность портят качество.<br>• Не попадайся начальству: выговоры (3 — увольнение), блокнотик Труханова, бинокль директора.<br>• Среда — проверка охраны труда. Аванс и зарплата — по пятницам.<br>• Вечером и в выходные — вкладка «Город»: магазин, баня, подработки, романтика.<br>• Люди запоминают, как ты с ними обошёлся.<br><br><i>Автосохранение — каждый ход.</i>', opts: [{ t: 'Понятно', fn: () => {} }] });
@@ -309,7 +334,7 @@
     if (UI.taps >= 7) { UI.taps = 0; UI.debug(); }
   };
   UI.debug = function () {
-    const s = G.s;
+    const s = G.s; s.flags.dbg = 1;
     G.modal({ title: '🛠 Отладка', wide: true, opts: [
       { t: '+10 000 ₽', fn: () => G.addMoney(10000) },
       { t: '+500 000 ₽', fn: () => G.addMoney(500000) },

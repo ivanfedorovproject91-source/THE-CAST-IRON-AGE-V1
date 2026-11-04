@@ -156,3 +156,11 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .log { font-size: 13px; padding: 3px 10px; border-bottom: 1px dotted #2a2622; } .log small { color: var(--dim); margin-right: 6px; } .log.bad { color: #f0a090; } .log.good { color: #a8d8a0; } .log.warn { color: #e8b080; } .log.tip { color: #a8c8e0; }
 .kv { display: flex; justify-content: space-between; font-size: 14px; padding: 3px 0; border-bottom: 1px dotted #2a2622; } .kv span:first-child { color: var(--dim); }
 .req { font-size: 13.5px; padding: 2px 0; } .req.ok { color: #a8d8a0; } .req.no { color: #f0a090; }
+
+/* ---------- Рейтинг ---------- */
+.lbrow { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--steam); padding: 8px 10px; margin-top: 6px; border-radius: 3px; }
+.lbrow > b { width: 40px; font-family: var(--f-head); font-size: 16px; text-align: center; flex: none; }
+.lbrow > div { flex: 1; min-width: 0; } .lbrow .nm { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lbrow small { color: var(--dim); font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lbrow em { font-style: normal; font-family: var(--f-head); color: var(--haz); font-size: 15px; flex: none; }
+.lbrow.me { border-left-color: var(--haz); background: #2a2517; }

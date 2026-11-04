@@ -7,7 +7,7 @@
   G.clamp = C;
   G.SAVE_KEY = 'chugunny_vek_save_v1';
   G.REC_KEY = 'chugunny_vek_records_v1';
-  G.SAVE_VERSION = 1;
+  G.SAVE_VERSION = 1; // версия СХЕМЫ сохранения; обновления игры не требуют её менять — работает автослияние (G.migrate)
   G.s = null;
   G.settings = { sound: true, haptic: true, tips: true, auto: false };
 
@@ -35,7 +35,7 @@
   G.rub = n => Math.round(n).toLocaleString('ru-RU').replace(/\u00a0/g, ' ') + ' ₽';
 
   // ---------- Состояние
-  G.newState = function (name, av, edu) {
+  G.baseState = function (name, av, edu) {
     const e = D.EDU.find(x => x.id === edu) || D.EDU[0];
     const s = {
       ver: G.SAVE_VERSION, rs: (Date.now() ^ 0x5bd1e995) & 0x7fffffff, name: name || 'Заводчанин', av: av || {}, edu: e.id,
@@ -53,10 +53,10 @@
       blog: { on: false, subs: 0, anon: true, revealed: false },
       eventHist: [], nextEv: 0
     };
-    G.s = s;
     s.day = G.freshDay();
     return s;
   };
+  G.newState = function (name, av, edu) { const s = G.baseState(name, av, edu); G.s = s; return s; };
   G.freshDay = () => ({ ops: 0, qsum: 0, viol: 0, breaks: 0, milk: false, peak: 0, drank: false, done: {}, risky: null, slots: 0, inspect: false, prepped: false, cleaned: 0, stole: 0, helped: 0, pays: 0 });
 
   // ---------- Время
@@ -314,6 +314,7 @@
       localStorage.setItem(G.REC_KEY, JSON.stringify(r));
     } catch (e) {}
     G.buzz('error');
+    if (G.lb) G.lb.submit(true);
     G.save();
     if (G.ui && G.ui.render) G.ui.render();
   };
@@ -494,6 +495,7 @@
   G.finishShift = function () {
     const s = G.s;
     G.checkEnd();
+    if (G.lb) G.lb.submit();
     if (s.end) return;
     if (s.car.job && s.car.probShifts >= 20 && s.car.rank === 0 && G.career) G.career.probationEnd();
     if (s.car.lowE > 10 && s.st.health < 30 && G.week() > 60 && G.chance(5)) { s.flags.overwork = 1; s.st.health = 0; G.checkEnd(); }
@@ -648,6 +650,7 @@
     const s = G.s; if (s.phase !== 'work') return;
     const j = G.job(), n = G.slotsLeft();
     let totalOps = 0;
+    const aw = s.flags.autoW && s.flags.autoW.w === G.week() ? s.flags.autoW : (s.flags.autoW = { w: G.week(), n: 0 }); aw.n++;
     for (let i = 0; i < n && s.phase === 'work'; i++) {
       const q = G.quality() * (0.5 + G.rnd() * 0.35);
       s.day.ops++; s.day.qsum += q; s.stats.ops++; totalOps++;
@@ -655,6 +658,7 @@
       G.addMoney(Math.round((20 + s.car.rank * 5) * q / 100 * (s.car.rank === 0 ? 0.5 : 1)));
       s.st.bm += 1.2 * q / 100;
       G.advance(1); const hr = Math.floor(s.t.hour);
+      if (G.career && G.career.hook) G.career.hook();
       if (G.chance(12)) { const inc = G.pick([{ x: 'Станок закашлялся — переделка.', f: { mood: -2, wear: 3 } }, { x: 'Мастер ворчал полчаса.', f: { boss: -1, mood: -2 } }, { x: 'Порезал палец. Заклеил.', f: { health: -2 } }, { x: 'Подслушал сплетню в курилке.', f: { mood: 2 } }, { x: 'Нашёл рубль на полу.', f: { money: 1, mood: 1 } }]); G.fx(inc.f); G.log('(автосмена) ' + inc.x); }
       if (G.chance(4)) G.caught({ risk: 40, fine: [100, 300], what: 'Задремал у станка' });
       if (hr === 12 && !s.day.lunched) { s.day.lunched = true; G.fx({ satiety: 15 }); G.advance(1); }
@@ -674,10 +678,19 @@
     try {
       const raw = localStorage.getItem(G.SAVE_KEY); if (!raw) return false;
       const d = JSON.parse(raw);
-      if (!d.s || d.s.ver !== G.SAVE_VERSION) return false;
-      G.s = d.s; Object.assign(G.settings, d.settings || {});
+      if (!d.s || !d.s.st || !d.s.t) return false;
+      G.s = G.migrate(d.s); Object.assign(G.settings, d.settings || {});
       return true;
     } catch (e) { return false; }
+  };
+  // Дозаполняет сохранение полями, которых в нём ещё нет (после обновления игры). Ничего не стирает.
+  G.migrate = function (old) {
+    const base = G.baseState(old.name, old.av, old.edu);
+    const merge = (dst, src) => { Object.keys(src).forEach(k => { if (dst[k] === undefined) dst[k] = JSON.parse(JSON.stringify(src[k])); else if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k] && typeof dst[k] === 'object' && !Array.isArray(dst[k])) merge(dst[k], src[k]); }); };
+    merge(old, base);
+    if (!old.day || !old.day.done) old.day = Object.assign(G.freshDay(), old.day || {});
+    old.gameVer = (G.CONFIG && G.CONFIG.VERSION) || old.gameVer;
+    return old;
   };
   G.wipe = function () { try { localStorage.removeItem(G.SAVE_KEY); } catch (e) {} G.s = null; G.mq.length = 0; G.cur = null; G.busy = false; };
   G.records = function () { try { return JSON.parse(localStorage.getItem(G.REC_KEY) || '{}'); } catch (e) { return {}; } };

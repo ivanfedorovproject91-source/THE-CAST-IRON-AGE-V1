@@ -55,7 +55,7 @@
     if (G.chance(s.machine.wear / 14)) G.machineIncident();
     G.spend(1);
   };
-  A('auto', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Автосмена (рутина)', i: '⏩', menu: true, noEvent: true, req: s => G.slotsLeft() < 2 ? 'Смена почти кончилась' : (s.instr.perv == null ? 'Нужен первичный инструктаж' : null),
+  A('auto', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Автосмена (рутина)', i: '⏩', menu: true, noEvent: true, req: s => { const cap = G.CONFIG.AUTO_PER_WEEK, aw = s.flags.autoW && s.flags.autoW.w === G.week() ? s.flags.autoW.n : 0; return G.slotsLeft() < 2 ? 'Смена почти кончилась' : (s.instr.perv == null ? 'Нужен первичный инструктаж' : (cap > 0 && aw >= cap ? 'Лимит автосмен на неделю: ' + cap : null)); },
     fn: s => { G.modal({ title: 'Автосмена', text: 'Отработаешь остаток смены «на автомате»: усреднённый результат, повышенный риск, события пропускаются.', opts: [{ t: 'Поехали', fn: () => G.autoShift() }, { t: 'Отмена', fn: () => {} }] }); return 'custom'; } });
   A('check_dwg', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Проверить чертёж', i: '📐', h: 1, once: 'day',
     req: s => s.dwg.none ? 'Чертежа нет' : s.dwg.checked ? 'Уже проверен' : null,
@@ -134,7 +134,7 @@
   S('bank', 'c_bank', 'Банк', 'Поговорить с менеджером', '🏦', 0, {}, '', { menu: true, fn: () => { G.bankMenu(); return 'custom'; } });
   S('lombard', 'c_lombard', 'Ломбард', 'Заложить вещь (40%)', '🦷', 0, {}, '', { menu: true, fn: () => { G.lombardMenu(); return 'custom'; } });
   S('mall', 'c_mall', 'ТЦ', 'Электроника и часы', '🛍️', 0, {}, '', { menu: true, fn: () => { G.statusMenu(['phone', 'watch', 'laptop', 'clothes'], 'ТЦ «Золотой Чугун»'); return 'custom'; } });
-  S('auto', 'c_auto', 'Автосалон', 'Посмотреть машины', '🚗', 0, {}, '', { menu: true, fn: () => { G.statusMenu(['car'], 'Автосалон «Лада и К»'); return 'custom'; } });
+  S('autosalon', 'c_auto', 'Автосалон', 'Посмотреть машины', '🚗', 0, {}, '', { menu: true, fn: () => { G.statusMenu(['car'], 'Автосалон «Лада и К»'); return 'custom'; } });
   S('gigs', 'c_jobs', 'Подработки', 'Выбрать подработку', '📌', 0, {}, '', { menu: true, fn: () => { G.gigMenu(); return 'custom'; } });
   S('fishing', 'c_nature', 'Природа', 'Рыбалка с Палычем (4 ч)', '🎣', 4, { mood: 20, energy: -4, rel: { palych: 5 }, coll: 2 }, 'Тишина, поплавок, Палыч с термосом.', { fn: s => { if (G.chance(25)) { G.toast('Поймал сапог. Зато свой!'); } else if (G.chance(50)) { G.give('bread', 1); G.toast('Поймал рыбу! Сытный ужин.'); } } });
   S('dacha', 'c_nature', 'Природа', 'Огород у бабы Нюры', '🥔', 3, { satiety: 25, health: 2, energy: -10, mood: 2, rel: { nyura: 4 } }, 'Картошка и ломота в пояснице.');
