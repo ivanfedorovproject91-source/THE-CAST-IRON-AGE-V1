@@ -1,0 +1,325 @@
+/* ===== Интерфейс: экраны, вкладки, модальные окна, тосты ===== */
+(function () {
+  'use strict';
+  const G = (window.G = window.G || {});
+  const D = G.D, K = G.career;
+  const UI = (G.ui = { tab: 'shift', sub: 'file', place: null, mode: 'title', draft: null, step: 0, cleanup: null, taps: 0 });
+  const $ = id => document.getElementById(id);
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const IMG = { gate: 'assets/bg_gate.jpg', checkpoint: 'assets/bg_checkpoint.jpg' };
+
+  const LOCS = {
+    shop: { n: 'Цех', i: '🏭', d: 'Гул станков, масло, запах горячего металла.' },
+    admin: { n: 'Заводоуправление', i: '🏢', d: 'Коридоры с линолеумом, двери с табличками.' },
+    otk: { n: 'ОТК', i: '🔍', d: 'Чистый стол, штангенциркуль, строгий взгляд.' },
+    yard: { n: 'Двор / курилка', i: '🚬', d: 'Лавочка, урна, вид на трубы.' },
+    med: { n: 'Медпункт', i: '⚕️', d: 'Зелёнка, бинты и запах хлорки.' },
+    locker: { n: 'Раздевалка', i: '🚪', d: 'Ряды шкафчиков и мокрый пол.' },
+    canteen: { n: 'Столовая', i: '🍲', d: 'Запах борща и гул голосов.' }
+  };
+
+  // ---------- Вспомогательное
+  function bar(label, v, kind, inv) {
+    v = Math.max(0, Math.min(100, v));
+    let c = kind || '';
+    if (!kind) { if (inv) c = v > 60 ? 'bad' : v > 30 ? 'warn' : ''; else c = v < 25 ? 'bad' : v < 45 ? 'warn' : ''; }
+    return '<div class="bar ' + c + '"><i style="width:' + v + '%"></i><span><b>' + label + '</b><em style="font-style:normal">' + Math.round(v) + '</em></span></div>';
+  }
+  function groupActs(list) {
+    const g = {}, order = [];
+    list.forEach(a => { const k = a.g || 'Разное'; if (!g[k]) { g[k] = []; order.push(k); } g[k].push(a); });
+    return order.map(k => '<div class="grp">' + k + '</div><div class="btns">' + g[k].map(actBtn).join('') + '</div>').join('');
+  }
+  function actBtn(a) {
+    const s = G.s, why = G.avail(a);
+    let tag = '';
+    if (a.h && !a.menu) tag = s.phase === 'lunch' ? '1 оч.' : a.h + ' ч';
+    if (a.cost && a.n.indexOf('₽') < 0) tag += (tag ? ' · ' : '') + G.rub(a.cost);
+    const rk = a.risk ? '<span class="tag rk">⚠ ' + G.catchChance(a.risk) + '%</span>' : '';
+    return '<button class="btn ' + (a.risk ? 'red' : '') + '" ' + (why ? 'disabled' : '') + ' onclick="G.ui.act(\'' + a.id + '\')">' + (a.i || '') + ' ' + a.n + rk + (tag ? '<span class="tag">' + tag + '</span>' : '') + (why ? '<small>' + why + '</small>' : '') + '</button>';
+  }
+  function visibleActs(filter) {
+    return Object.values(G.ACT).filter(a => filter(a)).filter(a => { const w = G.avail(a); return w !== 'Сейчас недоступно' && w !== 'Не здесь'; });
+  }
+  UI.act = id => G.runAction(id);
+  function people(loc) {
+    const ids = G.peopleAt(loc);
+    ids.forEach(id => { G.R(id).met = true; });
+    if (!ids.length) return '';
+    return '<div class="ppl">' + ids.map(id => '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + D.NPC[id].name.split(' ')[0] + '</button>').join('') + '</div>';
+  }
+
+  // ---------- Рендер
+  UI.render = function () {
+    const el = $('screen'), s = G.s;
+    const top = $('top'), nav = $('nav');
+    const keep = el.scrollTop;
+    let html = '', game = false;
+    if (s && s.end) html = ending();
+    else if (s && s.phase !== 'new') { game = true; html = gameScreen(); }
+    else if (s && s.phase === 'new') html = '<div class="title-scr" style="background-image:url(' + IMG.checkpoint + ')"><div class="logo"><small>Отдел кадров</small><h1>Оформление…</h1></div></div>';
+    else if (UI.mode === 'create') html = create();
+    else html = title();
+    top.classList.toggle('hide', !game); nav.classList.toggle('hide', !game);
+    if (game) { top.innerHTML = topbar(); nav.innerHTML = navHTML(); }
+    el.innerHTML = html;
+    if (UI.keepScroll) el.scrollTop = keep; else el.scrollTop = 0;
+    UI.keepScroll = false;
+  };
+
+  function topbar() {
+    const s = G.s, st = s.st;
+    const nick = G.nickLabel();
+    const bars = bar('❤ Здоровье', st.health) + bar('⚡ Энергия', st.energy) + bar('🙂 Настроение', st.mood) + bar('🍲 Сытость', st.satiety)
+      + (st.drunk > 2 ? bar('🍺 Опьянение', st.drunk, 'rust', 1) : '') + (s.hang > 0 ? bar('🤕 Похмелье', s.hang * 50, 'bad') : '') + (st.craving >= 40 ? bar('🥃 Тяга', st.craving, '', 1) : '');
+    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + (nick ? ' «' + nick + '»' : '') + '</div><div class="tb-sub">' + G.jobTitle() + ' · ' + G.status() + '</div></div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + ' · ' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
+  }
+  function navHTML() {
+    const T = [['shift', '⚙️', 'Смена'], ['city', '🏙️', 'Город'], ['people', '👥', 'Люди'], ['phone', '📱', 'Телефон'], ['file', '📋', 'Дело']];
+    return T.map(t => '<button class="' + (UI.tab === t[0] ? 'on' : '') + '" onclick="G.ui.setTab(\'' + t[0] + '\')"><b>' + t[1] + '</b>' + t[2] + '</button>').join('');
+  }
+  UI.setTab = function (t) { UI.tab = t; if (t !== 'city') UI.place = null; UI.render(); };
+  function gameScreen() {
+    switch (UI.tab) { case 'city': return cityTab(); case 'people': return peopleTab(); case 'phone': return phoneTab(); case 'file': return fileTab(); default: return shiftTab(); }
+  }
+
+  // ---------- Вкладка СМЕНА
+  function scene(bg, title, desc, cls) {
+    return '<div class="scene ' + (cls || '') + '" style="' + (bg ? 'background-position:center 38%;background-image:url(' + bg + ')' : 'background:linear-gradient(135deg,#2a2622,#14110f)') + '"><div class="sc-t"><h2>' + title + '</h2><p>' + desc + '</p></div></div>';
+  }
+  function shiftTab() {
+    const s = G.s, ph = s.phase;
+    const wd = G.WDF[G.weekday()];
+    let h = '';
+    if (ph === 'morning') {
+      const sick = s.car.sickUntil >= s.t.day;
+      h += scene(IMG.gate, 'Утро. ' + wd, G.dateStr() + ', ' + G.season() + '. ' + (sick ? 'Ты на больничном/в отпуске.' : G.weekday() === 2 ? 'Среда — день проверки охраны труда!' : 'Впереди смена с 8:00.'), 'smoke');
+      if (s.hang) h += '<div class="card"><b>🤕 Похмелье.</b> <span class="note">Рассол, молоко или плотный завтрак помогут.</span></div>';
+      if (G.weekday() === 2) h += '<div class="card note">⚠ Сегодня проверяющая Надежда Николаевна. Нужны чистота, форма и трезвость. Дядя Лёша принюхается на проходной.</div>';
+      if (s.flags.povtDue) h += '<div class="card note">⚠ Просрочен повторный инструктаж — зайди к Пелагее Фёдоровне.</div>';
+      h += groupActs(visibleActs(a => (a.ph || []).indexOf('morning') >= 0));
+      h += '<div class="cta"><button class="btn big hazard" onclick="G.career.goToWork()">' + (sick ? 'ЭТО ВЫХОДНОЙ ПО БОЛЬНИЧНОМУ' : 'ИДТИ НА РАБОТУ →') + '</button></div>';
+      return h;
+    }
+    if (ph === 'locker') {
+      h += scene(IMG.checkpoint, 'Проходная и раздевалка', 'Турникет щёлкнул. Влажный пол отражает лампы.');
+      h += people('locker');
+      h += groupActs(visibleActs(a => (a.ph || []).indexOf('locker') >= 0));
+      if (s.flags.loot && s.flags.loot.length) h += '<div class="card note">Ты уже принёс с собой «добычу» на смену?</div>';
+      h += '<div class="cta"><button class="btn big hazard" onclick="G.career.toWorkplace()">К РАБОЧЕМУ МЕСТУ →</button></div>';
+      return h;
+    }
+    if (ph === 'work' || ph === 'lunch') {
+      const L = LOCS[s.loc] || LOCS.shop;
+      const chips = ['shop', 'admin', 'otk', 'yard', 'med', 'locker'].concat(ph === 'lunch' ? ['canteen'] : []);
+      h += scene(s.loc === 'yard' ? IMG.gate : s.loc === 'locker' ? IMG.checkpoint : null, L.i + ' ' + L.n, L.d + ' ' + (ph === 'lunch' ? 'Обеденный перерыв.' : 'Слотов до конца смены: ' + G.slotsLeft() + '.'), s.loc === 'yard' ? 'smoke' : 'sm');
+      h += '<div class="chips">' + chips.map(c => '<button class="chip ' + (s.loc === c ? 'on' : '') + '" onclick="G.ui.go(\'' + c + '\')">' + LOCS[c].i + ' ' + LOCS[c].n + '</button>').join('') + '</div>';
+      h += people(s.loc);
+      if (ph === 'lunch') h += '<div class="card note">Обед: осталось действий — <b>' + s.lunchAP + '</b>. Можно поесть, выпить молока, поболтать.</div>';
+      const acts = visibleActs(a => a.loc === s.loc && ((a.ph || ['work']).indexOf('work') >= 0));
+      h += groupActs(acts);
+      if (s.dwg.none) h += '<div class="card note">⚠ Чертежа нет — Ебланов в запое. Работать нечем.</div>';
+      if (ph === 'lunch') h += '<div class="cta"><button class="btn big hazard" onclick="G.endLunch()">ЗАКОНЧИТЬ ОБЕД →</button></div>';
+      return h;
+    }
+    // вечер / выходной
+    const free = G.shiftEnd ? 26 - s.t.hour : 0;
+    h += scene(IMG.gate, ph === 'weekend' ? wd + ' — выходной' : 'Вечер после смены', G.dateStr() + ', ' + G.hourStr() + '. Свободных часов до глубокой ночи: ' + Math.max(0, free) + '. Город — во вкладке «Город».', 'smoke');
+    h += people('home');
+    if (s.car.sickUntil >= s.t.day) h += '<div class="card note">Ты на больничном/в отпуске до ' + G.dateStrOf(s.car.sickUntil) + '.</div>';
+    h += groupActs(visibleActs(a => a.loc === 'home' && (a.ph || []).indexOf('free') >= 0));
+    return h;
+  }
+  UI.go = function (loc) { G.s.loc = loc; UI.keepScroll = true; UI.render(); };
+
+  // ---------- Город
+  function cityTab() {
+    const s = G.s;
+    if (!G.isFree()) return scene(IMG.gate, 'Город закрыт до вечера', 'После смены или в выходной можно пойти в магазин, баню, рюмочную, на подработку.', 'sm') + '<div class="card note">Сейчас ты на заводе. ' + (s.phase === 'morning' ? 'Иди на работу.' : '') + '</div>';
+    let h = '';
+    if (UI.place) {
+      const p = D.PLACES.find(x => x.id === UI.place);
+      s.loc = p.id;
+      const ppl = D.NPC_ORDER.filter(id => D.NPC[id].at && D.NPC[id].at.city && D.NPC[id].at.loc === p.id);
+      h += '<div class="card"><button class="chip" onclick="G.ui.openPlace(null)">← Все места</button><h3 style="margin-top:8px">' + p.i + ' ' + p.n + '</h3><div class="note">' + p.d + '. Сейчас ' + G.hourStr() + ' (ночь — после 23:00).</div></div>';
+      if (ppl.length) h += '<div class="ppl">' + ppl.map(id => { G.R(id).met = true; return '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + D.NPC[id].name.split(' ')[0] + '</button>'; }).join('') + '</div>';
+      h += groupActs(visibleActs(a => a.loc === p.id && (a.ph || []).indexOf('free') >= 0));
+      return h;
+    }
+    h += '<div class="card"><h3>Куда пойдёшь?</h3><div class="note">Каждое место — часы вечера. Сейчас ' + G.hourStr() + ' (доступно до 02:00).</div></div><div class="grid2">';
+    h += D.PLACES.filter(p => p.id !== 'home').map(p => '<button class="tile" onclick="G.ui.openPlace(\'' + p.id + '\')"><b>' + p.i + '</b>' + p.n + '<small>' + p.d + '</small></button>').join('');
+    return h + '</div>';
+  }
+  UI.openPlace = function (id) { UI.place = id; if (id) G.s.loc = id; UI.render(); };
+
+  // ---------- Люди
+  function peopleTab() {
+    const s = G.s;
+    const ids = D.NPC_ORDER.filter(id => s.rel[id] && s.rel[id].met);
+    let h = '<div class="card"><h3>Знакомые</h3><div class="note">Тапни, чтобы поговорить (если человек рядом) или позвонить.</div></div>';
+    if (!ids.length) h += '<div class="card note">Пока никого не знаешь. Выйди на смену — познакомишься.</div>';
+    ids.forEach(id => {
+      const n = D.NPC[id], r = s.rel[id], l = r.l;
+      const loc = G.npcLoc(id);
+      h += '<button class="pcard" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + '<div class="pi"><b>' + n.name + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small><div class="mini-bar ' + (l < 0 ? 'neg' : '') + '"><i style="width:' + Math.min(100, Math.abs(l)) + '%"></i></div></div></button>';
+    });
+    return h;
+  }
+
+  // ---------- Телефон
+  function phoneTab() {
+    const s = G.s;
+    const tiles = [['📲', 'Контакты и звонки', 'G.phoneMenu()'], ['🏦', 'Банк', 'G.bankMenu()'], ['🎥', 'Блог «ЧугунTV»', 'G.blogMenu()'], ['🛍️', 'Магазин онлайн', 'G.shopMenu()'], ['🎒', 'Рюкзак', 'G.useMenu()'], ['📓', 'Журнал событий', 'G.ui.openLog()']];
+    let h = '<div class="card"><h3>Телефон</h3><div class="note">Заряд 80%. Долг: ' + G.rub(s.debt) + (s.loans.length ? ' · кредитов: ' + s.loans.length : '') + '.</div></div><div class="grid2">';
+    h += tiles.map(t => '<button class="tile" onclick="' + t[2] + '"><b>' + t[0] + '</b>' + t[1] + '</button>').join('') + '</div>';
+    const callable = D.NPC_ORDER.filter(id => s.rel[id] && s.rel[id].met && (s.rel[id].l >= 10 || s.rel[id].stage >= 1));
+    if (callable.length) h += '<div class="grp">Позвонить</div><div class="btns">' + callable.map(id => '<button class="btn blue" onclick="G.callNpc(\'' + id + '\')">📞 ' + D.NPC[id].name + '</button>').join('') + '</div>';
+    return h;
+  }
+  UI.openLog = function () {
+    const s = G.s;
+    G.modal({ title: '📓 Журнал', wide: true, text: '<div style="max-height:55vh;overflow:auto">' + s.log.slice(0, 40).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('') + '</div>', opts: [{ t: 'Закрыть', fn: () => {} }] });
+  };
+
+  // ---------- Дело (досье)
+  function fileTab() {
+    const s = G.s, st = s.st, c = s.car;
+    const subs = [['file', 'Досье'], ['career', 'Карьера'], ['bag', 'Рюкзак'], ['log', 'Журнал']];
+    let h = '<div class="sub">' + subs.map(x => '<button class="' + (UI.sub === x[0] ? 'on' : '') + '" onclick="G.ui.setSub(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
+    if (UI.sub === 'career') {
+      h += '<div class="card"><h3>' + G.jobTitle() + '</h3>';
+      h += '<div class="kv"><span>Оклад (≈/мес)</span><span>' + G.rub(G.monthlyPay()) + '</span></div><div class="kv"><span>Смен отработано</span><span>' + c.shifts + '</span></div><div class="kv"><span>Баллы мастерства</span><span>' + Math.floor(st.bm) + '</span></div><div class="kv"><span>Выговоры</span><span>' + c.rep + ' / 3</span></div><div class="kv"><span>Записи в блокнотике</span><span>' + G.noteCount() + '</span></div><div class="kv"><span>Риск увольнения</span><span>' + G.fireRisk() + '%</span></div><div class="kv"><span>Профсоюз</span><span>' + (c.union ? 'да' : 'нет') + '</span></div></div>';
+      if (c.rank === 0) h += '<div class="card"><h3>Испытательный срок</h3><div class="note">Отработано ' + c.probShifts + ' / 20 смен. Пройди инструктажи, не пей, не воруй.</div></div>';
+      else if (c.rank < 9) {
+        const L = K.reqLines(c.rank + 1);
+        h += '<div class="card"><h3>До «' + D.RANKS[c.rank + 1] + '»</h3>' + L.map(x => '<div class="req ' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✅ ' : '❌ ') + x.t + '</div>').join('') + '<div class="note" style="margin-top:6px">Заявление подаётся у Татищевой (кадры) за взнос.</div></div>';
+      }
+      h += '<div class="card"><h3>Корочки</h3><div class="note">' + (c.certs.length ? c.certs.map(x => D.COURSES[x] ? D.COURSES[x].name : x).join('; ') : 'нет') + '</div><button class="btn" onclick="G.coursesMenu()">🎓 Курсы</button></div>';
+      h += '<div class="card"><h3>Инструктажи</h3><div class="note">Вводный: ' + (s.instr.vvod != null ? '✅' : '❌') + ' · Первичный: ' + (s.instr.perv != null ? '✅' : '❌') + ' · Повторный: ' + (s.instr.povt != null ? 'нед.' + s.instr.povt : s.flags.povtDue ? '⚠ просрочен' : '—') + '</div></div>';
+      return h;
+    }
+    if (UI.sub === 'bag') {
+      h += '<div class="card"><h3>Деньги</h3><div class="kv"><span>Наличные</span><span>' + G.rub(s.money) + '</span></div><div class="kv"><span>Долги</span><span>' + G.rub(s.debt) + '</span></div>' + s.loans.map(l => '<div class="kv"><span>' + ({ bank: 'Кредит', micro: 'Микрозайм', mortgage: 'Ипотека' }[l.type]) + '</span><span>' + G.rub(l.left) + '</span></div>').join('') + '</div>';
+      const ids = Object.keys(s.inv);
+      h += '<div class="card"><h3>Рюкзак</h3>' + (ids.length ? ids.map(id => '<div class="kv"><span>' + (D.ITEMS[id] ? D.ITEMS[id].e + ' ' + D.ITEMS[id].n : id) + '</span><span>×' + s.inv[id] + '</span></div>').join('') : '<div class="note">Пусто.</div>') + '<button class="btn" onclick="G.useMenu()">Использовать вещь</button></div>';
+      const own = Object.keys(s.own);
+      h += '<div class="card"><h3>Статус</h3>' + (own.length ? own.map(k => '<div class="kv"><span>' + D.STATUS[k].e + ' ' + D.STATUS[k].n + '</span><span>✔</span></div>').join('') : '<div class="note">Ни часов, ни машины. Один паспорт.</div>') + '</div>';
+      if (s.flags.loot && s.flags.loot.length) h += '<div class="card"><h3>Добыча</h3>' + s.flags.loot.map(x => '<div class="kv"><span>' + x.n + '</span><span>≈' + G.rub(x.v) + '</span></div>').join('') + '</div>';
+      return h;
+    }
+    if (UI.sub === 'log') return h + s.log.slice(0, 60).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('');
+    // досье
+    h += '<div class="card" style="display:flex;gap:12px;align-items:center"><div class="prev" style="margin:0;flex:none;width:96px;height:96px">' + G.playerFace() + '</div><div><b style="font-family:var(--f-head);font-size:17px">' + esc(s.name) + '</b><div class="note">' + G.status() + '</div><div class="note">Очки жизни: <b style="color:var(--haz)">' + G.ojScore() + '</b></div>' + (s.nicks.length ? '<div class="note">Клички: ' + s.nicks.map(n => '«' + D.NICKS[n].n + '»').join(', ') + '</div>' : '') + '</div></div>';
+    h += '<div class="card"><h3>Показатели</h3><div class="bars" style="grid-template-columns:1fr">' + [['❤ Здоровье', st.health], ['⚡ Энергия', st.energy], ['🙂 Настроение', st.mood], ['🍲 Сытость', st.satiety], ['🧼 Опрятность', st.neat], ['👔 Начальство', st.boss, 'blue'], ['🤝 Коллеги', st.coll, 'blue'], ['😎 Крутизна', st.cool, 'blue'], ['⚖ Совесть', st.cons, 'blue'], ['📘 Знания', st.know, 'blue'], ['☣ Токсичность', st.tox, '', 1], ['🥃 Тяга', st.craving, '', 1], ['🍾 Привычка', st.habit, '', 1], ['🍺 Опьянение', st.drunk, 'rust', 1]].map(x => bar(x[0], x[1], x[2], x[3])).join('') + '</div></div>';
+    const ach = Object.keys(s.ach);
+    h += '<div class="card"><h3>Достижения (' + ach.length + ')</h3><div class="note">' + (ach.length ? ach.join(', ') : 'Пока нет.') + '</div></div>';
+    h += '<div class="card"><h3>Настройки</h3><button class="btn" onclick="G.ui.toggle(\'haptic\')">Вибрация: ' + (G.settings.haptic ? 'вкл' : 'выкл') + '</button><button class="btn" onclick="G.ui.toggle(\'tips\')">Подсказки: ' + (G.settings.tips ? 'вкл' : 'выкл') + '</button><button class="btn red" onclick="G.ui.confirmNew()">Начать заново</button><button class="btn" onclick="G.ui.help()">Как играть</button></div>';
+    return h;
+  }
+  UI.setSub = function (x) { UI.sub = x; UI.render(); };
+  UI.toggle = function (k) { G.settings[k] = !G.settings[k]; G.save(); UI.keepScroll = true; UI.render(); };
+  UI.confirmNew = function () { G.modal({ title: 'Начать заново?', text: 'Текущее сохранение будет стёрто.', cls: 'bad', opts: [{ t: 'Да, стереть', fn: () => { G.wipe(); UI.mode = 'title'; UI.render(); } }, { t: 'Отмена', fn: () => {} }] }); };
+  UI.help = function () {
+    G.modal({ title: 'Как играть', text: '<b>Цель</b> — выжить на заводе «Чугунный век» как можно дольше и подняться по карьере (или сбежать).<br><br>• День — это слоты по часам. Смена с 8:00, обед в 12:00.<br>• «РАБОТАТЬ» — мини-игра: жми, когда маркер в зелёной зоне. Это даёт баллы мастерства.<br>• Следи за здоровьем, настроением и сытостью. Опьянение, тяга, токсичность портят качество.<br>• Не попадайся начальству: выговоры (3 — увольнение), блокнотик Труханова, бинокль директора.<br>• Среда — проверка охраны труда. Аванс и зарплата — по пятницам.<br>• Вечером и в выходные — вкладка «Город»: магазин, баня, подработки, романтика.<br>• Люди запоминают, как ты с ними обошёлся.<br><br><i>Автосохранение — каждый ход.</i>', opts: [{ t: 'Понятно', fn: () => {} }] });
+  };
+
+  // ---------- Титул
+  function title() {
+    const rec = G.records();
+    return '<div class="title-scr" style="background-image:url(' + IMG.gate + ')"><div class="logo"><small>Едрёносталь · Россия · XXI век</small><h1>ЧУГУННЫЙ<br>ВЕК</h1><p>Симулятор выживания на заводе, где дым густой, а начальство — гуще.</p></div><div class="stripe"></div><div class="btns">'
+      + (G.hasSave() ? '<button class="btn big hazard" onclick="G.ui.continueGame()">ПРОДОЛЖИТЬ</button>' : '')
+      + '<button class="btn big ' + (G.hasSave() ? '' : 'hazard') + '" onclick="G.ui.newGame()">НОВАЯ СМЕНА</button>'
+      + '<button class="btn" onclick="G.ui.help()">Как играть</button>'
+      + (rec.runs ? '<div class="note" style="text-align:center;margin-top:10px">Забегов: ' + rec.runs + ' · Рекорд очков жизни: ' + (rec.best || 0) + '</div>' : '') + '</div></div>';
+  }
+  UI.continueGame = function () {
+    if (!G.s && !G.load()) { UI.newGame(); return; }
+    UI.tab = 'shift'; UI.render();
+  };
+  UI.newGame = function () {
+    if (G.hasSave() && !UI.confirmed) { G.modal({ title: 'Новая игра', text: 'Сохранение будет перезаписано при начале новой смены.', opts: [{ t: 'Начать', fn: () => { UI.confirmed = true; UI.newGame(); UI.confirmed = false; } }, { t: 'Отмена', fn: () => {} }] }); return; }
+    G.s = null;
+    let nm = '';
+    try { const u = window.Telegram.WebApp.initDataUnsafe.user; if (u && u.first_name) nm = u.first_name; } catch (e) {}
+    UI.draft = { name: nm, av: G.defaultAv(), edu: 'chpu' }; UI.step = 0; UI.mode = 'create'; UI.render();
+  };
+
+  // ---------- Создание героя
+  function create() {
+    const d = UI.draft, O = G.AV_OPTS;
+    if (UI.step === 0) {
+      const sw = (key, labels) => '<div class="sw">' + O[key].map((v, i) => '<button class="' + (d.av[key] === v ? 'on' : '') + (key === 'skin' || key === 'hc' || key === 'cloth' ? ' col' : '') + '" ' + (key === 'skin' || key === 'hc' || key === 'cloth' ? 'style="background:' + v + '"' : '') + ' onclick="G.ui.setAv(\'' + key + '\',\'' + v + '\')">' + (labels ? labels[i] : '') + '</button>').join('') + '</div>';
+      const fld = (t, h) => '<div class="field"><label>' + t + '</label>' + h + '</div>';
+      return '<div class="scene sm" style="background-image:url(' + IMG.checkpoint + ')"><div class="sc-t"><h2>Новый работник</h2><p>Расскажи, кто ты</p></div></div>'
+        + '<div class="prev">' + G.avatar(Object.assign({ eyes: 'norm', nose: 'small', mouth: 'smile', extra: [] }, d.av)) + '</div>'
+        + fld('Имя', '<input id="nm" maxlength="18" value="' + esc(d.name) + '" placeholder="Как тебя зовут?" oninput="G.ui.draft.name=this.value">')
+        + fld('Кожа', sw('skin')) + fld('Причёска', sw('hair', ['Корот.', 'Зачёс', 'Кудри', 'Ёжик', 'Шипы', 'Длин.', 'Лысый', 'Лохм.'])) + fld('Цвет волос', sw('hc'))
+        + fld('Форма лица', sw('shape', ['Круг', 'Овал', 'Квадрат', 'Длинное'])) + fld('Усы', sw('stache', ['Нет', 'Щётка', 'Тонкие', 'Моржовые'])) + fld('Борода', sw('beard', ['Нет', 'Щетина', 'Борода'])) + fld('Очки', sw('glasses', ['Нет', 'Круглые', 'Квадратные'])) + fld('Куртка', sw('cloth'))
+        + '<div class="cta"><button class="btn big hazard" onclick="G.ui.toEdu()">ДАЛЕЕ: ОБРАЗОВАНИЕ →</button></div>';
+    }
+    return '<div class="scene sm" style="background-image:url(' + IMG.checkpoint + ')"><div class="sc-t"><h2>Образование</h2><p>Это определит стартовые вакансии и немного знаний</p></div></div><div class="btns">'
+      + D.EDU.map(e => '<button class="edu" onclick="G.ui.pickEdu(\'' + e.id + '\')"><b>' + e.name + '</b><small>' + e.school + ' · знания +' + e.know + (e.certs.length ? ' · корочка: ' + e.certs.map(c => D.COURSES[c].name).join(', ') : '') + '</small></button>').join('')
+      + '<button class="btn" style="margin-top:14px" onclick="G.ui.step=0;G.ui.render()">← Назад</button></div>';
+  }
+  UI.setAv = function (k, v) { UI.draft.av[k] = v; UI.keepScroll = true; UI.render(); };
+  UI.toEdu = function () { if (!UI.draft.name.trim()) UI.draft.name = 'Заводчанин'; UI.step = 1; UI.render(); };
+  UI.pickEdu = function (id) {
+    const d = UI.draft;
+    G.newState(d.name.trim() || 'Заводчанин', d.av, id);
+    UI.mode = 'game'; UI.tab = 'shift';
+    G.career.start(); G.pump();
+  };
+
+  // ---------- Концовка
+  function ending() {
+    const s = G.s, e = D.ENDINGS[s.end.id] || { e: '❓', t: 'КОНЕЦ', x: 'История закончилась.' };
+    const rec = G.records();
+    return '<div class="end-scr"><div class="em">' + e.e + '</div><h1>' + e.t + '</h1><p>' + e.x + '</p><div class="stripe"></div><div class="stat-list">'
+      + '<div><span>Смен отработано</span><b>' + s.car.shifts + '</b></div><div><span>Должность</span><b>' + G.rankName() + '</b></div><div><span>Прожито дней</span><b>' + s.t.day + '</b></div><div><span>Деньги</span><b>' + G.rub(s.money) + '</b></div><div><span>Операций</span><b>' + s.stats.ops + '</b></div><div><span>Клички</span><b>' + (s.nicks.map(n => D.NICKS[n].n).join(', ') || '—') + '</b></div><div><span>Очки жизни</span><b style="color:var(--haz)">' + G.ojScore() + '</b></div><div><span>Рекорд</span><b>' + (rec.best || 0) + '</b></div></div>'
+      + '<button class="btn big hazard" onclick="G.ui.restart()">НАЧАТЬ СНОВА</button></div>';
+  }
+  UI.restart = function () { G.wipe(); UI.mode = 'title'; UI.render(); };
+
+  // ---------- Модальные окна и тосты
+  UI.showModal = function (sp) {
+    const root = $('modal-root'); root.classList.add('on');
+    let h = '<div class="modal ' + (sp.cls || '') + '">';
+    if (sp.bg && IMG[sp.bg]) h += '<div class="m-bg" style="background-image:url(' + IMG[sp.bg] + ')"></div>';
+    if (sp.type === 'mini') { root.innerHTML = h + '<div id="mg-host"></div></div>'; UI.cleanup = G.runMini($('mg-host'), sp); return; }
+    h += '<div class="m-head">' + (sp.face && D.NPC[sp.face] ? G.faceHTML(sp.face, 'lg') : '') + '<div class="m-title">' + sp.title + '</div></div>';
+    if (sp.text) h += '<div class="m-text">' + G.fmt(sp.text) + '</div>';
+    h += '<div class="m-opts">' + (sp.opts || []).map((o, i) => '<button class="btn ' + (o.cls || '') + '" ' + (o.dis ? 'disabled' : '') + ' onclick="G.choose(' + i + ')">' + o.t + (o.dis ? '<span class="why">' + o.dis + '</span>' : '') + '</button>').join('') + '</div></div>';
+    root.innerHTML = h;
+    const m = root.firstChild; if (m) m.scrollTop = 0;
+  };
+  UI.hideModal = function () {
+    const root = $('modal-root'); root.classList.remove('on'); root.innerHTML = '';
+    if (UI.cleanup) { try { UI.cleanup(); } catch (e) {} UI.cleanup = null; }
+  };
+  UI.toast = function (text, cls) {
+    const box = $('toasts'); if (!box) return;
+    const d = document.createElement('div'); d.className = 'toast ' + (cls || ''); d.innerHTML = text; box.appendChild(d);
+    while (box.children.length > 3) box.removeChild(box.firstChild);
+    setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 3800);
+  };
+
+  // ---------- Отладка (7 тапов по портрету)
+  UI.dbgTap = function () {
+    UI.taps++; clearTimeout(UI.tapT); UI.tapT = setTimeout(() => { UI.taps = 0; }, 1500);
+    if (UI.taps >= 7) { UI.taps = 0; UI.debug(); }
+  };
+  UI.debug = function () {
+    const s = G.s;
+    G.modal({ title: '🛠 Отладка', wide: true, opts: [
+      { t: '+10 000 ₽', fn: () => G.addMoney(10000) },
+      { t: '+500 000 ₽', fn: () => G.addMoney(500000) },
+      { t: 'Здоровье/энергия/настроение 100', fn: () => { ['health', 'energy', 'mood', 'satiety'].forEach(k => { s.st[k] = 100; }); } },
+      { t: '+Ранг', fn: () => { s.car.rank = Math.min(9, s.car.rank + 1); s.car.job = s.car.job || 'podsob'; } },
+      { t: '+50 смен', fn: () => { s.car.shifts += 50; s.st.bm += 500; s.st.know = 100; s.st.boss = 80; s.st.coll = 80; } },
+      { t: 'Пропустить до вечера', fn: () => { if (s.phase === 'work' || s.phase === 'lunch') { s.t.hour = G.shiftEnd(); s.phase = 'work'; G.endShift(); } } },
+      { t: 'Все корочки', fn: () => { Object.keys(D.COURSES).forEach(c => { if (s.car.certs.indexOf(c) < 0) s.car.certs.push(c); }); } },
+      { t: 'Все знакомые', fn: () => { D.NPC_ORDER.forEach(id => { G.R(id).met = true; }); } },
+      { t: 'Закрыть', fn: () => {} }
+    ] });
+  };
+})();
