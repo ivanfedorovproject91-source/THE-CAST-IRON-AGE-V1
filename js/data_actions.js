@@ -63,7 +63,7 @@
   A('oil', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Смазать станок', i: '🛢️', h: 1, fx: { wear: -25, know: 2, energy: -3, neat: -3 }, txt: 'Станок скрипит, но дышит.' });
   A('study_ws', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Читать инструкции', i: '📖', h: 1, fx: { know: 6, energy: -3, mood: -1 }, txt: 'Прочитал инструкцию. Выяснил, что всё делал неправильно.' });
   A('help', { ph: ['work'], loc: 'shop', g: 'Коллеги и приколюхи', n: 'Помочь Серёге', i: '🤝', h: 1, fx: { coll: 4, energy: -5, rel: { seryoga: 3 }, cons: 1 }, txt: 'Подсобил напарнику. Неплохо.' });
-  A('snitch', { ph: ['work'], loc: 'shop', g: 'Начальство и бумаги', n: 'Доложить мастеру (настучать)', i: '🐀', h: 1, noTrainee: true, fx: { boss: 5, coll: -8, cons: -6, snitch: 1 }, txt: 'Настучал Степанычу на коллегу. Мастер доволен.', fn: () => { if (G.chance(30)) G.addNick('stukach'); } });
+  A('snitch', { ph: ['work'], loc: 'shop', g: 'Начальство и бумаги', n: 'Пообщаться с мастером', i: '🗣️', h: 1, menu: true, noTrainee: true, fn: () => { G.masterTalk(); return 'custom'; } });
   A('smoke_shop', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Перекур у станка', i: '🚬', h: 1, cost: 20, fx: { mood: 4, energy: 3, health: -1 }, risk: 30, fine: [100, 300], tag: 'risky', what: 'Курение не в курилке', txt: 'Затянулся. Дым смешался с цеховым.' });
   A('tea', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Чай в каптёрке', i: '🫖', h: 1, lunch: true, fx: { mood: 3, energy: 3 }, risk: 8, fine: [50, 150], what: 'Чаепитие в рабочее время', txt: 'Тёплый чай и тишина.' });
   A('milk', { ph: ['work'], loc: 'shop', anywhere: true, g: 'Перерыв и здоровье', n: 'Выпить заводское молоко', i: '🥛', menu: true, lunch: true, once: 'day', fx: { tox: -8, health: 2, cure: 1 }, txt: 'Заводское молоко. Белое и подозрительное.',
@@ -92,7 +92,7 @@
 
   // ===== УТРО / РАЗДЕВАЛКА =====
   A('coffee_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Кофе по дороге (50 ₽)', i: '☕', cost: 50, menu: true, once: 'day', fx: { energy: 6, mask: 20 }, txt: 'Кофе из автомата у ворот.' });
-  A('wash_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Умыться и почистить зубы', i: '🪥', menu: true, once: 'day', fx: { neat: 10, mask: 15, mood: 1 }, txt: 'Прохладная вода и вкус мяты.' });
+  A('wash_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Умыться и почистить зубы', i: '🪥', menu: true, once: 'day', req: s => s.flags.teethDay === s.t.day ? 'Сегодня уже чистил(а)' : null, fx: { neat: 10, mask: 15, mood: 1 }, txt: 'Прохладная вода и вкус мяты.', fn: s => { s.flags.teethDay = s.t.day; } });
   A('use_m', { ph: ['morning', 'locker'], loc: 'home', anywhere: true, g: 'Утро', n: 'Рюкзак: рассол, жвачка, лекарства', i: '🎒', menu: true, fn: () => { G.useMenu(); return 'custom'; } });
   A('sick_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Купить больничный (2 000 ₽)', i: '🩹', menu: true, noTrainee: true, req: s => s.money < 2000 ? 'Нет денег' : null, fn: () => { G.buySick(); return 'custom'; } });
   A('stay_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Не идти на работу (прогул)', i: '🛏️', menu: true, noEvent: true, fn: s => {
@@ -102,8 +102,9 @@
   // ===== ДОМ (loc home) =====
   A('sleep', { ph: ['free'], loc: 'home', g: 'Дом', n: 'ЛЕЧЬ СПАТЬ', i: '🛌', menu: true, noEvent: true, fn: () => { G.sleep(); G.pump(); return 'custom'; } });
   S('rest', 'home', 'Дом', 'Отдохнуть дома (2 ч)', '🛋️', 2, { energy: 10, mood: 2 }, 'Лежишь, смотришь в потолок. Тихо.');
-  S('cook', 'home', 'Дом', 'Сварить макароны (40 ₽)', '🍝', 1, { satiety: 28, mood: 1, energy: -2, money: -40 }, 'Макароны с кетчупом. Классика общаги.');
-  S('shower', 'home', 'Дом', 'Помыться и постирать (50 ₽)', '🚿', 1, { neat: 45, mood: 2, money: -50, tox: -2 }, 'Спецовка стирается, ты — тоже.');
+  S('cook', 'home', 'Дом', 'Сварить макароны', '🍝', 1, { satiety: 28, mood: 1, energy: -2 }, 'Макароны с кетчупом. Классика общаги.');
+  S('teeth_h', 'home', 'Дом', 'Почистить зубы и умыться', '🪥', 0, { neat: 10, mask: 15, mood: 1 }, 'Прохладная вода и вкус мяты.', { menu: true, req: s => s.flags.teethDay === s.t.day ? 'Сегодня уже чистил(а)' : null, fn: s => { s.flags.teethDay = s.t.day; } });
+  S('shower', 'home', 'Дом', 'Помыться и постирать', '🚿', 1, { neat: 45, mood: 2, tox: -2 }, 'Спецовка стирается, ты — тоже.', { fn: s => { s.flags.washDay = s.t.day; } });
   S('study_h', 'home', 'Дом', 'Учить матчасть (2 ч)', '📚', 2, { know: 10, energy: -6, mood: -2 }, 'Учебник и холодный чай.');
   S('use_h', 'home', 'Дом', 'Рюкзак: использовать вещь', '🎒', 0, {}, '', { menu: true, fn: () => { G.useMenu(); return 'custom'; } });
   S('drink_h', 'home', 'Дом', 'Напиться дома', '🍾', 2, {}, '', { req: s => (G.has('vodka') || G.has('beer')) ? null : 'Нужна выпивка (магазин)', fn: s => { const id = G.has('vodka') ? 'vodka' : 'beer'; const n = id === 'vodka' ? 2 : 3; for (let i = 0; i < n && G.has(id); i++) G.useItem(id); G.fx({ mood: 4 }); }, tag: 'x' });
@@ -115,8 +116,8 @@
 
   // ===== ГОРОД =====
   S('shop_menu', 'c_shop', 'Магазин', 'Зайти в магазин', '🛒', 0, {}, '', { menu: true, fn: () => { G.shopMenu(); return 'custom'; } });
-  S('rest_eat', 'c_rest', 'Ресторан', 'Поужинать (1 500 ₽)', '🍷', 3, { satiety: 45, mood: 20, money: -1500 }, 'Мясо, салат и скатерть. Живут же люди!', { req: s => s.money < 1500 ? 'Нет денег' : null });
-  S('cafe_eat', 'c_cafe', 'Кафе', 'Посидеть в «Вкус очка» (300 ₽)', '🍔', 1, { satiety: 32, mood: 6, money: -300 }, 'Бургер и картошка. Рядом кто-то из знакомых.');
+  S('rest_eat', 'c_rest', 'Ресторан', 'Поужинать в ресторане (5 000 ₽)', '🍷', 3, { satiety: 45, mood: 20, money: -5000 }, 'Мясо, салат и скатерть. Живут же люди!', { req: s => s.money < 5000 ? 'Нет денег' : null });
+  S('cafe_eat', 'c_cafe', 'Кафе', 'Посидеть в «Вкус очка» (1 000 ₽)', '🍔', 1, { satiety: 32, mood: 6, money: -1000 }, 'Бургер и картошка. Рядом кто-то из знакомых.', { req: s => s.money < 1000 ? 'Нет денег' : null });
   S('kino', 'c_kino', 'Кино', 'Сходить на фильм (350 ₽)', '🎬', 2, { mood: 13, energy: 2, money: -350 }, 'Фильм про богатых. Смешной.');
   S('gym_buy', 'c_gym', 'Спортзал', 'Абонемент на месяц (8 000 ₽)', '🎫', 0, {}, 'Абонемент оплачен до ' + '…', { menu: true, req: s => s.money < 8000 ? 'Нет денег' : null, fn: s => { G.addMoney(-8000); s.flags.gym = G.week() + 4; G.toast('Абонемент до недели №' + (s.flags.gym + 1) + '. Вика улыбается.'); G.relAdd('vika', 3); }, txt: '' });
   S('gym_train', 'c_gym', 'Спортзал', 'Тренировка (2 ч)', '🏋️', 2, { energy: -15, health: 3, cool: 1, mood: 4, neat: -8 }, 'Железо — лучшее лекарство.', { req: s => (s.flags.gym || -1) < G.week() ? 'Нужен абонемент' : null });
@@ -128,7 +129,7 @@
   S('market_sell', 'c_market', 'Барахолка', 'Продать краденое (60%)', '💰', 1, {}, '', { menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? null : 'Нечего продавать', fn: s => { let v = 0; s.flags.loot.forEach(x => v += x.v); G.addMoney(Math.round(v * 0.6)); G.toast('Продал на барахолке за ' + G.rub(v * 0.6) + '. Продавцы не спрашивали откуда.'); s.flags.loot = []; G.fx({ cons: -2 }); }, txt: '' });
   S('market_buy', 'c_market', 'Барахолка', 'Купить дешёвую одежду (700 ₽)', '👕', 1, { neat: 10, mood: 2 }, 'Купил свитер. Пахнет чужой бабушкой.', { cost: 700, fn: s => { G.give('spare', 1); } });
   S('garage', 'c_garage', 'Гаражи', 'Посидеть с мужиками', '🔧', 2, { coll: 3, mood: 5, rel: { vityok: 2 } }, 'Чай, запчасти, разговор про всё.');
-  S('bath', 'c_bath', 'Баня', 'Сходить в баню (400 ₽)', '♨️', 3, { health: 10, neat: 45, mood: 6, tox: -10, money: -400 }, 'Пар, веник, пиво. Жизнь удалась.', { req: s => s.money < 400 ? 'Нет денег' : null });
+  S('bath', 'c_bath', 'Баня', 'Сходить в баню (500 ₽)', '♨️', 3, { health: 10, neat: 45, mood: 6, tox: -10, money: -500 }, 'Пар, веник, пиво. Жизнь удалась.', { req: s => s.money < 500 ? 'Нет денег' : null, fn: s => { s.flags.washDay = s.t.day; } });
   S('hosp', 'c_hosp', 'Больница', 'Подлечиться (1 500 ₽)', '💉', 2, { health: 15, tox: -10, money: -1500 }, 'Врач выписал таблетки и посмотрел с жалостью.', { req: s => s.money < 1500 ? 'Нет денег' : null });
   S('coding', 'c_hosp', 'Больница', 'Закодироваться (15 000 ₽)', '🚫', 4, { money: -15000, craving: -100, habit: -40, energy: -10 }, 'Тебя закодировали. Врач предупредил про срыв.', { req: s => s.money < 15000 ? 'Нет денег' : null, fn: s => { s.flags.coded = G.week() + G.ri(3, 6); } });
   S('bank', 'c_bank', 'Банк', 'Поговорить с менеджером', '🏦', 0, {}, '', { menu: true, fn: () => { G.bankMenu(); return 'custom'; } });
@@ -151,8 +152,62 @@
   // ---------- Меню: еда
   G.eatMenu = function () {
     const s = G.s, p = G.R('lyudka').stage >= 4 ? 1.2 : 1;
-    const rec = () => G.modal({ title: 'Столовая', face: 'lyudka', wide: true, text: 'Деньги: <b>' + G.rub(s.money) + '</b> · Сытость: ' + Math.round(s.st.satiety) + '<br><i>Людка гремит черпаком.</i>', opts: D.MENU.map(m => ({ t: m.n + ' — ' + G.rub(m.p), dis: s.money < m.p ? 'Нет денег' : null, fn: () => { G.addMoney(-m.p); const f = {}; for (const k in m.fx) f[k] = m.fx[k] * (k === 'satiety' ? p : 1); G.fx(f); if (m.mask) s.mask += m.mask; if (m.fx.satiety >= 15) G.fx({ cure: 1 }); G.toast(m.n + ': ' + Object.keys(f).map(k => D.STAT_RU[k] + ' +' + Math.round(f[k])).join(', ')); if (G.R('tatyana').l >= 20 && G.chance(30)) { G.toast('В хлебе записка от Татьяны: «Приятного».', 'good'); G.relAdd('tatyana', 2); } rec(); } })).concat([{ t: 'Хватит', fn: () => G.spend(1) }]) });
+    const lim = G.CONFIG.CANTEEN_LIMIT || 0, left = () => lim - (s.day.canteen || 0);
+    const rec = () => G.modal({ title: 'Столовая', face: 'lyudka', wide: true, text: 'Деньги: <b>' + G.rub(s.money) + '</b> · Сытость: ' + Math.round(s.st.satiety) + (lim ? ' · Порций до конца дня: <b>' + Math.max(0, left()) + '</b>' : '') + '<br><i>Людка гремит черпаком.</i>', opts: D.MENU.map(m => ({ t: m.n + ' — ' + G.rub(m.p), dis: s.money < m.p ? 'Нет денег' : (lim && left() <= 0) ? 'Лимит порций на сегодня' : null, fn: () => { s.day.canteen = (s.day.canteen || 0) + 1; G.addMoney(-m.p); const f = {}; for (const k in m.fx) f[k] = m.fx[k] * (k === 'satiety' ? p : 1); G.fx(f); if (m.mask) s.mask += m.mask; if (m.fx.satiety >= 15) G.fx({ cure: 1 }); G.toast(m.n + ': ' + Object.keys(f).map(k => D.STAT_RU[k] + ' +' + Math.round(f[k])).join(', ')); if (G.R('tatyana').l >= 20 && G.chance(30)) { G.toast('В хлебе записка от Татьяны: «Приятного».', 'good'); G.relAdd('tatyana', 2); } rec(); } })).concat([{ t: 'Хватит', fn: () => G.spend(1) }]) });
     rec();
+  };
+
+  // ---------- Разговор с мастером (бывшее «Доложить мастеру»)
+  const masterId = () => (D.NPC_ORDER || []).find(id => D.NPC[id] && /Степаныч/.test(D.NPC[id].name)) || null;
+  G.masterTalk = function () {
+    const s = G.s, mid = masterId(), f = s.flags;
+    const mf = o => mid ? Object.assign({ face: mid }, o) : o;
+    const rel = v => { if (mid) G.relAdd(mid, v); };
+    const initN = () => { if (f.initWeek !== G.week()) { f.initWeek = G.week(); f.initN = 0; } return f.initN; };
+    // «Инициатива наказуема»: шанс похвалы падает с каждой инициативой за неделю и с выговорами
+    const initiative = o => {
+      const n = initN();
+      const p = C(o.base + s.st.know / 4 + s.st.boss / 8 - n * 14 - s.car.rep * 8, 10, 80);
+      f.initN = n + 1;
+      if (G.chance(p)) {
+        f.initOk = (f.initOk || 0) + 1; rel(3);
+        G.fx(Object.assign({ bm: 3 }, o.okFx)); if (o.onOk) o.onOk();
+        G.toast(G.pick(o.ok), 'good');
+        G.spend(1);
+      } else {
+        f.initBad = (f.initBad || 0) + 1; rel(-3);
+        G.fx(Object.assign({ bm: -1 }, o.badFx));
+        G.toast(G.pick(o.bad), 'bad');
+        if (s.st.boss < 30 && G.chance(15)) { G.fx({ rep: 1 }); G.toast('Мастер оформил это как самовольство. Выговор.', 'bad'); }
+        G.spend(2);
+      }
+    };
+    const work = () => G.modal(mf({ title: 'Рабочие моменты', text: 'Что предложишь мастеру? Инициатива — дело хорошее. Иногда даже хвалят. <small>(Чем чаще лезешь с идеями за неделю, тем меньше шанс на похвалу.)</small>', opts: [
+      { t: '🔧 Улучшить станок', fn: () => initiative({ base: 40,
+        okFx: { boss: 6, know: 2, mood: 2, coll: 1, wear: -12 },
+        badFx: { boss: -4, mood: -5, energy: -8, coll: -1, wear: 2 },
+        ok: ['Степаныч покрутил ручку, крякнул: «Ну… в целом толково». Станок стал бегать ровнее.', 'Мастер хлопнул по плечу: «Вот бы все так!» Станок работает тише.'],
+        bad: ['Степаныч побагровел: «Тебе больше всех надо?» — и заставил перебирать узел вручную.', 'Предложение «улучшить» закончилось переделкой за тебя же. Мастер вздыхает громче станка.'] }) },
+      { t: '📐 Предложить поправку по чертежам', fn: () => initiative({ base: 35,
+        okFx: { boss: 5, know: 3, mood: 1 },
+        badFx: { boss: -3, mood: -4, energy: -5 },
+        onOk: () => { if (s.dwg.bad && !s.dwg.fixed) { s.dwg.fixed = true; G.toast('Мастер согласовал правку. Чертёж теперь читаемый.', 'good'); } },
+        ok: ['Мастер посмотрел чертёж и неожиданно согласился. Редкий день.', '«Хм, и правда косяк. Молодец, что заметил», — буркнул Степаныч.'],
+        bad: ['«Чертёж утверждал главный инженер. Ты что, умнее главного инженера?» — спросил мастер.', 'Мастер велел «не умничать» и дал лишних полчаса бумажной работы.'] }) },
+      { t: '🦺 Пожаловаться на условия труда', fn: () => initiative({ base: 25,
+        okFx: { coll: 5, mood: 3, cons: 2, boss: -1 },
+        badFx: { boss: -7, mood: -4, coll: -1 },
+        ok: ['Мастер что-то записал «для начальства». Коллеги за глаза благодарят.', 'Степаныч вздохнул: «Передам». Цех зауважал тебя тихо, но искренне.'],
+        bad: ['«Жаловаться — это не по-нашему», — нахмурился Степаныч. Теперь ты на заметке.', 'Мастер молча посмотрел так, что захотелось уволиться самому.'] }) },
+      { t: 'Передумал', fn: () => { G.spend(1); } }
+    ] }));
+    const chats = ['Степаныч полчаса рассказывал, как в девяносто пятом станок «сам работал».', 'Мастер пожаловался на начальство. Ты кивал в нужных местах.', 'Узнал, что премия «в этом квартале точно будет». Он говорит это каждый квартал.', 'Степаныч показал фото рассады. Рассада, надо признать, хорошая.'];
+    G.modal(mf({ title: 'Мастер', text: 'Степаныч оторвался от журнала: «Чего тебе?»', opts: [
+      { t: '🛠 Рабочие моменты: что улучшить', fn: work },
+      { t: '☕ Просто поболтать', fn: () => { G.fx({ mood: 2, boss: G.chance(25) ? 1 : 0 }); rel(2); G.toast(G.pick(chats.concat(G.MASTER_CHATS || []))); G.spend(1); } },
+      { t: '🐀 Доложить о коллеге (настучать)', fn: () => { G.fx({ boss: 5, coll: -8, cons: -6, snitch: 1 }); G.toast('Настучал Степанычу на коллегу. Мастер доволен.', 'warn'); if (G.chance(30)) G.addNick('stukach'); G.spend(1); } },
+      { t: 'Ничего, я пойду', fn: () => {} }
+    ] }));
   };
 
   // ---------- Курсы
