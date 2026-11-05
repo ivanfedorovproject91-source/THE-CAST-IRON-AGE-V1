@@ -64,6 +64,8 @@
   A('study_ws', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Читать инструкции', i: '📖', h: 1, fx: { know: 6, energy: -3, mood: -1 }, txt: 'Прочитал инструкцию. Выяснил, что всё делал неправильно.' });
   A('help', { ph: ['work'], loc: 'shop', g: 'Коллеги и приколюхи', n: 'Помочь Серёге', i: '🤝', h: 1, fx: { coll: 4, energy: -5, rel: { seryoga: 3 }, cons: 1 }, txt: 'Подсобил напарнику. Неплохо.' });
   A('snitch', { ph: ['work'], loc: 'shop', g: 'Начальство и бумаги', n: 'Пообщаться с мастером', i: '🗣️', h: 1, menu: true, noTrainee: true, fn: () => { G.masterTalk(); return 'custom'; } });
+  A('board', { ph: ['work'], loc: 'admin', g: 'Начальство и бумаги', n: 'Доска почёта', i: '🏆', menu: true, fn: () => { G.honorBoard(); return 'custom'; } });
+  A('board_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Прочитать доску почёта', i: '🏆', menu: true, fn: () => { G.honorBoard(); return 'custom'; } });
   A('smoke_shop', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Перекур у станка', i: '🚬', h: 1, cost: 20, fx: { mood: 4, energy: 3, health: -1 }, risk: 30, fine: [100, 300], tag: 'risky', what: 'Курение не в курилке', txt: 'Затянулся. Дым смешался с цеховым.' });
   A('tea', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Чай в каптёрке', i: '🫖', h: 1, lunch: true, fx: { mood: 3, energy: 3 }, risk: 8, fine: [50, 150], what: 'Чаепитие в рабочее время', txt: 'Тёплый чай и тишина.' });
   A('milk', { ph: ['work'], loc: 'shop', anywhere: true, g: 'Перерыв и здоровье', n: 'Выпить заводское молоко', i: '🥛', menu: true, lunch: true, once: 'day', fx: { tox: -8, health: 2, cure: 1 }, txt: 'Заводское молоко. Белое и подозрительное.',
@@ -120,7 +122,7 @@
   S('cafe_eat', 'c_cafe', 'Кафе', 'Посидеть в «Вкус очка» (1 000 ₽)', '🍔', 1, { satiety: 32, mood: 6, money: -1000 }, 'Бургер и картошка. Рядом кто-то из знакомых.', { req: s => s.money < 1000 ? 'Нет денег' : null });
   S('kino', 'c_kino', 'Кино', 'Сходить на фильм (350 ₽)', '🎬', 2, { mood: 13, energy: 2, money: -350 }, 'Фильм про богатых. Смешной.');
   S('gym_buy', 'c_gym', 'Спортзал', 'Абонемент на месяц (8 000 ₽)', '🎫', 0, {}, 'Абонемент оплачен до ' + '…', { menu: true, req: s => s.money < 8000 ? 'Нет денег' : null, fn: s => { G.addMoney(-8000); s.flags.gym = G.week() + 4; G.toast('Абонемент до недели №' + (s.flags.gym + 1) + '. Вика улыбается.'); G.relAdd('vika', 3); }, txt: '' });
-  S('gym_train', 'c_gym', 'Спортзал', 'Тренировка (2 ч)', '🏋️', 2, { energy: -15, health: 3, cool: 1, mood: 4, neat: -8 }, 'Железо — лучшее лекарство.', { req: s => (s.flags.gym || -1) < G.week() ? 'Нужен абонемент' : null });
+  S('gym_train', 'c_gym', 'Спортзал', 'Тренировка (2 ч)', '🏋️', 2, {}, 'Железо — лучшее лекарство.', { menu: true, req: s => (s.flags.gym || -1) < G.week() ? 'Нужен абонемент' : null, fn: () => { G.gymGame(); return 'custom'; } });
   S('dk_chorus', 'c_dk', 'ДК «Металлург»', 'Хор ветеранов труда (чт)', '🎤', 2, { mood: 10, cool: -1, rel: { pelageya: 3 } }, 'Хор. Все фальшивят, но дружно.', { req: s => G.weekday() !== 3 ? 'Только по четвергам' : null });
   S('dk_dance', 'c_dk', 'ДК «Металлург»', 'Танцы (сб)', '💃', 3, { mood: 10, cool: 2, energy: -6, money: -100 }, 'Танцы до упаду.', { req: s => G.weekday() !== 5 ? 'Только по субботам' : null });
   S('dk_kvn', 'c_dk', 'ДК «Металлург»', 'КВН-кружок', '🎙️', 2, { mood: 8, cool: 3 }, 'Шутка про начальство — смех в зале.');
@@ -172,12 +174,12 @@
       if (G.chance(p)) {
         f.initOk = (f.initOk || 0) + 1; rel(3);
         G.fx(Object.assign({ bm: 3 }, o.okFx)); if (o.onOk) o.onOk();
-        G.toast(G.pick(o.ok), 'good');
+        G.toast(G.pick(o.ok), 'good'); if (G.boardAdd) G.boardAdd('Поощрён мастером за инициативу', 'good');
         G.spend(1);
       } else {
         f.initBad = (f.initBad || 0) + 1; rel(-3);
         G.fx(Object.assign({ bm: -1 }, o.badFx));
-        G.toast(G.pick(o.bad), 'bad');
+        G.toast(G.pick(o.bad), 'bad'); if (G.boardAdd) G.boardAdd('Проявил инициативу. Получил по инициативе', 'bad');
         if (s.st.boss < 30 && G.chance(15)) { G.fx({ rep: 1 }); G.toast('Мастер оформил это как самовольство. Выговор.', 'bad'); }
         G.spend(2);
       }
