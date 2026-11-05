@@ -64,8 +64,6 @@
   A('study_ws', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Читать инструкции', i: '📖', h: 1, fx: { know: 6, energy: -3, mood: -1 }, txt: 'Прочитал инструкцию. Выяснил, что всё делал неправильно.' });
   A('help', { ph: ['work'], loc: 'shop', g: 'Коллеги и приколюхи', n: 'Помочь Серёге', i: '🤝', h: 1, fx: { coll: 4, energy: -5, rel: { seryoga: 3 }, cons: 1 }, txt: 'Подсобил напарнику. Неплохо.' });
   A('snitch', { ph: ['work'], loc: 'shop', g: 'Начальство и бумаги', n: 'Пообщаться с мастером', i: '🗣️', h: 1, menu: true, noTrainee: true, fn: () => { G.masterTalk(); return 'custom'; } });
-  A('board', { ph: ['work'], loc: 'admin', g: 'Начальство и бумаги', n: 'Доска почёта', i: '🏆', menu: true, fn: () => { G.honorBoard(); return 'custom'; } });
-  A('board_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Прочитать доску почёта', i: '🏆', menu: true, fn: () => { G.honorBoard(); return 'custom'; } });
   A('smoke_shop', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Перекур у станка', i: '🚬', h: 1, cost: 20, fx: { mood: 4, energy: 3, health: -1 }, risk: 30, fine: [100, 300], tag: 'risky', what: 'Курение не в курилке', txt: 'Затянулся. Дым смешался с цеховым.' });
   A('tea', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Чай в каптёрке', i: '🫖', h: 1, lunch: true, fx: { mood: 3, energy: 3 }, risk: 8, fine: [50, 150], what: 'Чаепитие в рабочее время', txt: 'Тёплый чай и тишина.' });
   A('milk', { ph: ['work'], loc: 'shop', anywhere: true, g: 'Перерыв и здоровье', n: 'Выпить заводское молоко', i: '🥛', menu: true, lunch: true, once: 'day', fx: { tox: -8, health: 2, cure: 1 }, txt: 'Заводское молоко. Белое и подозрительное.',
@@ -313,4 +311,283 @@
     const s = G.s;
     if (s.flags.coded && G.week() >= s.flags.coded) { s.flags.coded = 0; if (G.chance(30)) { s.st.craving = 100; s.st.habit = C(s.st.habit + 20); G.modal({ title: 'СРЫВ', vib: 'error', text: 'Кодирование слетело. Ты «только понюхал». Через час — стол и друзья.', opts: [{ t: 'Эх…', fn: () => { G.fx({ drunk: 40, mood: -10, cons: -3 }); } }] }); } }
   };
+
+  // ---------- v1.5: качалка-мини-игра, доска, Егорыч, подсказки (встроено, чтобы не зависеть от отдельного файла)
+/* ===== Дополнения v1.5: качалка-мини-игра, доска почёта, Егорыч на проходной, подсказки =====
+   Подключается ПОСЛЕ career.js, ui.js и data_absurd.js (в index.html). */
+(function () {
+  const G = (window.G = window.G || {});
+  const D = G.D, C = G.clamp;
+  const $ = id => document.getElementById(id);
+
+  // ---------- Стили (вставляются сами)
+  const css = document.createElement('style');
+  css.textContent = `
+.gym-ov{position:absolute;inset:0;z-index:70;background:#000c;display:flex;align-items:center;justify-content:center;padding:16px}
+.gym-box{width:100%;max-width:420px;background:#1b1917;border:2px solid #000;border-top:4px solid var(--red,#c33);padding:16px;text-align:center;box-shadow:0 8px 30px #000}
+.gym-box h3{margin:0 0 6px;font-family:var(--f-head,'Russo One',sans-serif);letter-spacing:1px}
+.gym-info{font-size:14px;opacity:.85;margin-bottom:12px;min-height:34px}
+.gym-track{position:relative;height:46px;background:#0d0c0b;border:2px solid #000;border-radius:4px;margin:6px 0 10px;overflow:hidden}
+.gym-zone{position:absolute;top:0;bottom:0;background:#4fae4a99;border-left:2px solid #7fe07a;border-right:2px solid #7fe07a}
+.gym-mark{position:absolute;top:-2px;bottom:-2px;width:8px;margin-left:-4px;background:#ffd24a;box-shadow:0 0 10px #ffd24a}
+.gym-rep{font-family:var(--f-head,'Russo One',sans-serif);font-size:20px;min-height:28px;margin-bottom:8px}
+.gym-rep.good{color:#7fe07a}.gym-rep.bad{color:#ff5a46}
+.board-sec{margin:8px 0;text-align:left}.board-sec b{display:block;font-family:var(--f-head,'Russo One',sans-serif);margin-bottom:2px}
+.board-sec div{font-size:14px;line-height:1.35;margin:2px 0}`;
+  document.head.appendChild(css);
+
+  // =====================================================================
+  // 1. КАЧАЛКА: бегающий ползунок, 5 подходов. Точность тапа → сила.
+  // =====================================================================
+  const STR_RANKS = [[0, 'Ходячая зубочистка'], [15, 'Слабак с абонементом'], [30, 'Крепкий работяга'], [50, 'Гроза гантелей'], [70, 'Чугунный человек'], [90, 'Живой станок']];
+  G.strRank = v => STR_RANKS.filter(r => v >= r[0]).pop()[1];
+
+  G.gymGame = function () {
+    const s = G.s, app = $('app'); if (!app || $('gym-ov')) return;
+    const N = 5, scores = [];
+    let rep = 0, pos = 0, dir = 1, speed = 0.9, zc = 0.5, zw = 0.26, last = 0, done = false, wait = false;
+    const ov = document.createElement('div'); ov.id = 'gym-ov'; ov.className = 'gym-ov';
+    ov.innerHTML = '<div class="gym-box"><h3>🏋️ ЖЕЛЕЗНЫЙ ФЕЛИКС</h3><div class="gym-info" id="gy-info"></div><div class="gym-track" id="gy-track"><div class="gym-zone" id="gy-zone"></div><div class="gym-mark" id="gy-mark"></div></div><div class="gym-rep" id="gy-rep">&nbsp;</div><button class="btn big hazard" id="gy-btn">ЖМИ!</button></div>';
+    app.appendChild(ov);
+    const setup = () => {
+      zw = Math.max(0.08, 0.26 - rep * 0.04); zc = 0.2 + Math.random() * 0.6; speed = 0.9 + rep * 0.28; pos = Math.random() < 0.5 ? 0 : 1; dir = pos ? -1 : 1;
+      const z = $('gy-zone'); z.style.left = ((zc - zw / 2) * 100) + '%'; z.style.width = (zw * 100) + '%';
+      $('gy-info').innerHTML = 'Подход <b>' + (rep + 1) + '</b> из ' + N + '. Жми, когда жёлтая полоска в зелёной зоне.<br>Сила: <b>' + Math.round(s.flags.str || 0) + '</b> — ' + G.strRank(s.flags.str || 0);
+    };
+    const loop = t => {
+      if (done) return; const dt = Math.min(0.05, ((t - (last || t)) / 1000)); last = t;
+      if (!wait) { pos += dir * speed * dt; if (pos >= 1) { pos = 1; dir = -1; } else if (pos <= 0) { pos = 0; dir = 1; } }
+      const m = $('gy-mark'); if (m) m.style.left = (pos * 100) + '%';
+      requestAnimationFrame(loop);
+    };
+    const hit = () => {
+      if (wait || done) return; wait = true;
+      const d = Math.abs(pos - zc), half = zw / 2;
+      const acc = d <= half ? 0.6 + 0.4 * (1 - d / half) : Math.max(0, 0.6 - (d - half) * 3);
+      scores.push(acc);
+      const r = $('gy-rep');
+      r.className = 'gym-rep ' + (acc >= 0.6 ? 'good' : 'bad');
+      r.textContent = acc >= 0.9 ? 'ИДЕАЛЬНО! 💪' : acc >= 0.6 ? 'Хорошо' : acc >= 0.3 ? 'Слабо…' : 'Мимо. Штанга упала.';
+      G.vibe && G.vibe(acc >= 0.6 ? 'success' : 'error');
+      rep++;
+      setTimeout(() => { if (rep >= N) finish(); else { r.textContent = '\u00a0'; setup(); wait = false; } }, 650);
+    };
+    const finish = () => {
+      done = true; ov.remove();
+      const sum = scores.reduce((a, b) => a + b, 0), perfect = scores.filter(a => a >= 0.9).length, miss = scores.filter(a => a < 0.3).length;
+      const old = s.flags.str || 0, gain = Math.round(sum * 3.6 * (1 - old / 140));
+      s.flags.str = C(old + gain, 0, 100); s.flags.strDay = s.t.day;
+      G.fx({ energy: -15, health: 1 + Math.round(sum), cool: sum >= 4 ? 2 : 1, mood: 2 + Math.round(sum), neat: -8 });
+      let extra = '';
+      if (miss >= 3) { G.fx({ health: -4 }); extra = '<br>Ты потянул спину. Феликс сочувственно качает головой.'; }
+      if (perfect >= 4 && G.boardAdd) G.boardAdd('Вырвал всё железо в «Железном Феликсе»', 'good');
+      G.spend(2);
+      G.info('Итоги тренировки', 'Точных подходов: <b>' + perfect + '</b> из ' + N + '. Сила: <b>' + Math.round(old) + ' → ' + Math.round(s.flags.str) + '</b> (' + G.strRank(s.flags.str) + ').' + extra + '<br><small>Сила даёт бодрость по утрам и растёт от качества тапов. Без тренировок понемногу уходит.</small>', () => {}, { face: 'vika' });
+    };
+    $('gy-btn').onclick = hit; $('gy-track').onclick = hit;
+    setup(); requestAnimationFrame(loop);
+  };
+
+  // Сила: бодрость по утрам, детренировка
+  const _dt = G.dailyTick;
+  G.dailyTick = function () {
+    const r = _dt.apply(this, arguments), s = G.s, str = s.flags.str || 0;
+    if (s.flags.boardWeek !== G.week()) { s.flags.boardWeek = G.week(); if (s.car.shifts > 0) G.toast('📌 На доске в цехе вывесили новый выпуск', 'tip'); }
+    if (str > 0) {
+      if (s.flags.strDay !== undefined && s.t.day - s.flags.strDay > 6) s.flags.str = Math.max(0, str - 1);
+      const b = Math.floor((s.flags.str || 0) / 15); if (b) s.st.energy = C(s.st.energy + b);
+    }
+    return r;
+  };
+
+  // =====================================================================
+  // 2. ДОСКА («Цех» → «Доска»). Новый выпуск каждую неделю.
+  // =====================================================================
+  const STORIES = [
+    ['Михалыч, сварщик', 'За тридцать лет сварил всё, что можно, и две вещи, которые нельзя. Одну из них нашли в соседнем цехе и узнали по шву. Коллектив гордится, прокуратура наблюдает.'],
+    ['Дядя Лёша, охрана', 'Не пропустил на территорию ни одного постороннего. Все, кого он не пропустил, остались посторонними навсегда. Это называется стабильность.'],
+    ['Людка, кухарка', 'Изобрела суп, который за обедом превращается в компот, а вечером обратно. Научного объяснения нет, зато есть очередь.'],
+    ['Палыч, бригадир', 'Выловил в заводском пруду щуку, которая оказалась ревизором. Отпустил под честное слово. Премия — удочка, ревизор — в розыске.'],
+    ['Лидия Н., крановщица', 'Вчера подняла груз в двенадцать тонн и справедливость. Груз опустила, справедливость пока висит под потолком.'],
+    ['Тамара, уборщица', 'Двадцать лет моет один и тот же пол. Говорит, он с годами добрее. Пол подтверждает письменно.'],
+    ['Гоша «Танк», начальник охраны', 'Задержал нарушителя, который оказался собственным отражением. Составил протокол в двух экземплярах. Отражение подписало оба.'],
+    ['Витёк, наладчик', 'Починил станок, не сказав ни слова. Станок до сих пор молчит из благодарности и, возможно, из страха.'],
+    ['Екатерина Е., ОТК', 'Забраковала план по выпуску продукции. План исправился и больше не повторяет ошибок.'],
+    ['Станок №3', 'Работает без выходных, отпусков и жалоб. Единственный на заводе, кому не нужно объяснять, что такое смена.'],
+    ['Кот Чугунок', 'Охраняет склад от мышей. Мыши подали встречную жалобу на склад. Дело рассматривается котом.'],
+    ['Серёга, напарник', 'Рекордсмен по фразе «прикрой меня, я в туалете». Туалет подтвердил алиби, но попросил больше так не делать.'],
+    ['Баба Нюра, общежитие', 'Вырастила кактус, который поёт по четвергам. Кактус обещает записать пластинку, если ему дадут горшок получше.'],
+    ['Хомяк, кладовщик', 'Нашёл на складе недостающую гайку и теперь не отдаёт: «У неё всё хорошо, не надо её тревожить».']
+  ];
+  const NEWS = ['Завтра будет вчера. Просьба не опаздывать.', 'Потерян вторник. Нашедшему — благодарность в устной форме.', 'Курилка закрыта на перекур.', 'Объявлен конкурс на лучший конкурс. Участие обязательно.', 'Собрание профсоюза перенесено на то же время, но в другое место. Место не сообщаем.', 'Всем надеть тёплое. Зачем — выясним позже.', 'Станок №3 просит не называть его «железякой». Он слышит.', 'Из-за ремонта пола пол временно отсутствует.', 'Мастер Степаныч приглашает на чай. Чая нет, приглашение есть.', 'Нашлась пропавшая смена. Просит вернуть табель.', 'Просьба не кормить кота Чугунка. Он уже кормит нас.', 'В столовой дали компот. Вопросов к компоту нет.'];
+  const SHAME = ['Некто опоздал на минуту и на всю жизнь', 'Кто-то пил из чужой кружки и вернул пустой', 'Сотрудник X ходил по цеху с лицом «я ничего не видел»', 'Неизвестный курил под табличкой «Не курить». Табличка обиделась и закурила'];
+  const QUAL = [
+    { k: 'good', c: s => s.st.boss >= 65, h: 'Любимчик начальства', t: 'Начальство отметило сотрудника, о котором мало знает, но «вроде хороший».' },
+    { k: 'good', c: s => s.st.coll >= 60, h: 'Душа коллектива', t: 'Утверждён неформальным лидером курилки. Подписано: курилка.' },
+    { k: 'good', c: s => s.st.neat >= 85, h: 'Образец опрятности', t: 'Единственный, чья спецовка не имеет собственного запаха. Предлагается занести в красную книгу.' },
+    { k: 'good', c: s => (s.flags.str || 0) >= 35, h: 'Силач цеха', t: 'Станок №3 просит не пожимать ему руку так сильно. Станок пока цел.' },
+    { k: 'good', c: s => (s.flags.initOk || 0) >= 2, h: 'Рационализатор', t: 'Предложил улучшить станок. Станок выразил осторожное согласие.' },
+    { k: 'good', c: s => s.car.shifts >= 100, h: 'Ветеран цеха', t: 'Сто смен без единой пропущенной. По крайней мере, ни одну не нашли.' },
+    { k: 'good', c: s => s.car.shifts >= 30 && s.car.shifts < 100, h: 'Стаж пошёл', t: 'Тридцать смен — это уже не новичок, а подозрительно привычный человек.' },
+    { k: 'good', c: s => s.st.cons >= 70, h: 'Человек с чистой совестью', t: 'Совесть проверена и допущена к станку без ограничений.' },
+    { k: 'bad', c: s => s.car.snitch >= 3, h: 'Стукач месяца', t: 'Знает всё, рассказывает всё. Приглашений на чай стало ровно ноль.' },
+    { k: 'bad', c: s => s.st.drunk >= 30, h: 'Весёлый сотрудник', t: 'Замечен в приподнятом состоянии. Состояние выглядело счастливее хозяина.' },
+    { k: 'bad', c: s => s.st.neat < 25, h: 'Условно опрятный', t: 'Опрятность отмечена как «условная». Спецовка — как «условно спецовка».' },
+    { k: 'bad', c: s => s.money >= 150000, h: 'Подозрительно состоятельный', t: 'Источники дохода уточняются. Просьба их не уточнять.' }
+  ];
+  G.boardAdd = function (text, kind) {
+    const f = G.s.flags; f.board = f.board || [];
+    f.board.unshift({ w: G.week(), t: text, k: kind || 'good' }); if (f.board.length > 14) f.board.length = 14;
+  };
+  G.honorBoard = function () {
+    const s = G.s, wk = G.week(), H = n => G.hash(wk, n, 7), pick = (a, n) => a[Math.floor(H(n) * a.length)];
+    const q = QUAL.filter(x => { try { return x.c(s); } catch (e) { return false; } });
+    const good = q.filter(x => x.k === 'good'), shame = q.filter(x => x.k === 'bad');
+    const log = s.flags.board || [], logGood = log.filter(e => e.k === 'good').slice(0, 3), logBad = log.filter(e => e.k === 'bad').slice(0, 3);
+    let star;
+    if (good.length && H(1) < 0.6) { const g = good[Math.floor(H(2) * good.length)]; star = '<div><b style="color:#ffd24a">⭐ Это ты! ' + g.h + '</b></div><div>' + g.t + '</div>'; }
+    else { const st = pick(STORIES, 3); star = '<div><b>' + st[0] + '</b></div><div>' + st[1] + '</div>'; }
+    let li = Math.floor(G.hash(Math.floor(wk / 4), 11, 7) * STORIES.length);
+    if (STORIES[li][1] === (star.indexOf('Это ты') < 0 ? pick(STORIES, 3)[1] : '')) li = (li + 1) % STORIES.length;
+    const leg = STORIES[li];
+    const mine = good.map(g => '• ' + g.h).concat(logGood.map(e => '• ' + e.t));
+    const bad = shame.map(g => '• ' + g.h + ': ' + g.t).concat(logBad.map(e => '• ' + e.t));
+    if (!bad.length) bad.push('• ' + pick(SHAME, 5));
+    const news = [pick(NEWS, 2), pick(NEWS, 4), pick(NEWS, 6)].filter((v, i, a) => a.indexOf(v) === i);
+    const html = '<div class="board-sec" style="opacity:.7">Выпуск №' + (wk + 1) + ' · обновляется каждую неделю</div>'
+      + '<div class="board-sec"><b>🏆 Сотрудник недели</b>' + star + '</div>'
+      + '<div class="board-sec"><b>📜 Легенда месяца: ' + leg[0] + '</b><div>' + leg[1] + '</div></div>'
+      + '<div class="board-sec"><b>⭐ Твои заслуги</b>' + (mine.length ? mine.map(m => '<div>' + m + '</div>').join('') : '<div>Тебя тут пока нет. Но место в рамке для тебя уже забронировано.</div>') + '</div>'
+      + '<div class="board-sec"><b>📢 Объявления</b>' + news.map(n => '<div>• ' + n + '</div>').join('') + '</div>'
+      + '<div class="board-sec"><b>🪧 Доска позора</b>' + bad.slice(0, 4).map(n => '<div>' + n + '</div>').join('') + '</div>';
+    G.modal({ title: '📌 Доска завода', text: html, wide: true, opts: [{ t: 'Закрыть', fn: () => {} }] });
+  };
+  // Хук: слухи о нечистоплотности попадают на доску
+  const _hc = G.hygieneCheck;
+  if (_hc) G.hygieneCheck = function () { const r = _hc.apply(this, arguments); if ((G.s.flags.washMiss || 0) === 2) G.boardAdd('Сотрудника давно не видели в душе. Но чувствуют', 'bad'); return r; };
+
+  // =====================================================================
+  // 3. ЕГОРЫЧ НА ПРОХОДНОЙ
+  // =====================================================================
+  D.NPC.egorych = {
+    name: 'Егорыч', full: 'Егорыч (вахтёр)', age: 61, role: 'Вахтёр на проходной', color: '#8a7',
+    ap: { skin: '#d8a88c', shape: 'round', hair: 'bald', hc: '#999', brow: 'thick', eyes: 'tired', nose: 'red', mouth: 'flat', stache: 'brush', glasses: 'none', hat: 'cap', cloth: '#3a4a3a', collar: 'none', extra: ['flush'] },
+    at: null, likes: ['vodka', 'cigs', 'beer', 'cognac'], dislikes: ['milk'], rel: 0, talk: []
+  };
+  const say = (text, opts) => G.modal({ title: 'Егорыч', face: 'egorych', text, opts });
+  const GATE_LIKES = ['vodka', 'cigs', 'beer', 'cognac', 'env1'];
+
+  G.gate = function () {
+    const s = G.s, st = s.st, rel = () => G.R('egorych').l;
+    const pass = () => { s.day.gate = 1; G.gatePass(); };
+    const probs = [];
+    if (st.drunk >= 20) probs.push('«Ты пьяный! Я пьяных не пускаю — у меня на пьяных аллергия. На свою».');
+    else if ((s.smell || 0) - (s.mask || 0) >= 25) probs.push('«Дыхни. Ох… Нет. С таким выхлопом на территорию — только в противогазе».');
+    if (s.hang > 0) probs.push('«Рожа зелёная, глаза красные. С бодуна? Иди домой, лечись!»');
+    if (st.neat < 35) probs.push('«В таком виде? Ты форму стирал вообще? Иди помойся, чучело».');
+    if (!probs.length) return clean();
+    let tried = 0;
+    const out = (type) => {
+      const o = [];
+      o.push({ t: '🎁 Подарить подарок', fn: () => gift() });
+      if (!tried) o.push({ t: '🗣 Уговорить («Егорыч, ну как человек человека…»)', fn: () => persuade() });
+      if (rel() >= 40) o.push({ t: '🤝 «Егорыч, по-дружески…»', fn: () => { G.relAdd('egorych', -8); G.toast('Егорыч вздыхает: «Последний раз. Я всё записал в голове».'); G.boardAdd('Егорыч «не заметил» чей-то вид на проходной', 'bad'); pass(); } });
+      o.push({ t: '🧗 Через забор', fn: () => fence() });
+      o.push({ t: '🏠 Вернуться и привести себя в порядок', fn: () => { G.toast('Егорыч: «Иди-иди. Вернёшься человеком — поговорим».'); } });
+      return o;
+    };
+    const menu = intro => say((intro || '«Стоять! Пропуск!»') + '<br>' + probs.join('<br>') + '<br><i>«Не пущу. И не проси».</i>', out());
+    const gift = () => {
+      const ids = Object.keys(s.inv).filter(k => D.ITEMS[k] && (D.ITEMS[k].gift || D.ITEMS[k].bribe));
+      if (!ids.length) { G.toast('В рюкзаке ничего подходящего. Егорыч смотрит с презрением.', 'bad'); return menu('«Руки пустые — и разговор пустой».'); }
+      G.modal({ title: 'Подарок Егорычу', face: 'egorych', wide: true, opts: ids.map(k => ({ t: D.ITEMS[k].e + ' ' + D.ITEMS[k].n + ' ×' + s.inv[k], fn: () => {
+        const it = D.ITEMS[k], liked = GATE_LIKES.indexOf(k) >= 0, v = (it.gift || 3) * (liked ? 2 : 1);
+        G.give(k, -1);
+        if (v >= 4) {
+          G.relAdd('egorych', liked ? 8 : 3); if (it.bribe) G.fx({ cons: -2 });
+          const lines = { vodka: 'Он мгновенно спрятал бутылку в недра будки. «Проходи. Я тебя не видел. И бутылку не видел».', cigs: 'Он понюхал пачку, как сомелье. «Годится. Проходи, пока я добрый».', beer: 'Он открыл пивом рот и сам себя поздравил. «Проходи».', cognac: 'Егорыч прослезился: «Три звезды… как в молодости. Проходи, сынок».', env1: '«Это что, пропуск? Хороший пропуск». Он тут же забыл твою рожу.' };
+          G.toast(lines[k] || 'Егорыч принял подарок и сделал вид, что слепой. «Проходи».', 'good');
+          G.boardAdd('Егорыч ценит гостинцы. Это не коррупция, а традиция', 'bad'); pass();
+        } else { G.toast('Егорыч повертел подарок: «Это что, шутка?» Мало.', 'bad'); menu('«Не-не. Это мне не нужно».'); }
+      } })).concat([{ t: 'Передумал', fn: () => menu() }]) });
+    };
+    const persuade = () => {
+      tried = 1;
+      const p = C(25 + rel() / 2 + st.cool / 4 - probs.length * 12, 5, 70);
+      if (G.chance(p)) { G.fx({ mood: 2 }); G.relAdd('egorych', 2); G.toast('Егорыч сдался: «Ладно, красноречивый. Но — на твоей совести».', 'good'); pass(); }
+      else { G.fx({ boss: -2, mood: -3 }); G.relAdd('egorych', -3); menu('«Разговорчики!» — Егорыч ударяет по столу журналом.'); }
+    };
+    const fence = () => {
+      if (G.chance(45)) { G.fx({ cool: 3, mood: 2 }); G.toast('Перелез через забор. Егорыч в будке смотрит в другую сторону. Принципиально.', 'good'); pass(); }
+      else {
+        G.fx({ boss: -4, mood: -4 }); G.punish({ risk: 100, what: 'Лез через забор на территорию', fine: [100, 300], sev: 1 });
+        G.boardAdd('Некто застрял в заборе. Забор утверждает, что сам пострадал', 'bad'); G.toast('Застрял в заборе. Егорыч с наслаждением вызвал охрану.', 'bad'); pass();
+      }
+    };
+    menu();
+  };
+
+  function clean() {
+    const s = G.s, mood = G.chance(40);
+    const Q = [
+      ['«Пропуск! Кто тебя пустил вчера?»', [['Вы, Егорыч', '«Правильно. Помню, как же».', { rel: { egorych: 3 } }], ['Никто, я сам', '«Сам!.. У нас самому ходить не положено». Но пропустил.', { rel: { egorych: -1 }, mood: -1 }], ['Дядя Лёша', '«Лёша?! Он у меня ещё ответит». Егорыч обиделся за всех.', { rel: { egorych: -3, lyosha: -2 } }]]],
+      ['«Ноги вытер? Я спрашиваю — ноги!»', [['Вытер', '«Врёшь. Но проходи».', {}], ['Нет, вытру', 'Ты вытер ноги так тщательно, что Егорыч прослезился.', { energy: -1, rel: { egorych: 2 } }], ['У меня нет ног', '«Нет ног — нет пропуска. Ладно, проходи, калека».', { cool: 2, rel: { egorych: 2 } }]]],
+      ['«Пропуск покажи. Нет, не этот. Другой».', [['Показать этот же', 'Он посмотрел на него дольше, чем надо. «Другой же, а!» — и пропустил.', { mood: -1 }], ['Показать читательский билет', '«Библиотека — это хорошо». Пропустил, не читая.', { cool: 1, rel: { egorych: 2 } }], ['Показать язык', 'Егорыч торжественно показал свой в ответ. Вы квиты.', { mood: 3, rel: { egorych: 4 } }]]],
+      ['«Знаешь, сколько в этой проходной ступенек? Нет? И я нет. Каждый день считаю».', [['Помочь считать', 'Вы посчитали вместе: получилось семь. Или девять. Он счастлив.', { mood: 2, rel: { egorych: 4 } }], ['Промолчать', 'Егорыч вздыхает: «Никто не поможет в таком деле».', { rel: { egorych: -1 } }], ['Заняться своим делом', '«Ага, ага. Своим». Пропустил.', {}]]]
+    ];
+    const q = G.pick(Q);
+    const opts = q[1].map(o => ({ t: o[0], fn: () => { const sum = G.fx(o[2]); G.toast(o[1] + (sum ? ' (' + sum + ')' : '')); pass(); } }));
+    opts.push({ t: '💬 Поболтать с Егорычем', fn: () => chat() });
+    opts.push({ t: 'Молча пройти', fn: () => { if (mood) { G.fx({ mood: -1 }); G.relAdd('egorych', -1); G.toast('Егорыч в спину: «Здороваться надо, молодёжь!»'); } pass(); } });
+    say(q[0], opts);
+
+    function pass() { s.day.gate = 1; G.gatePass(); }
+    function chat() {
+      say('Егорыч откладывает кроссворд: «Ну, спрашивай, раз пришёл».', [
+        { t: 'Что вчера было на проходной?', fn: () => { G.fx({ mood: 2 }); G.relAdd('egorych', 2); G.toast('Вчера по территории прошла процессия гусей. Все с пропусками. А ты вот без. Шутка. Проходи.'); pass(); } },
+        { t: 'Что слышно про директора?', fn: () => {
+          const r = G.R('egorych').l;
+          if (r >= 10 && G.chance(50)) { s.world.binocSafe = G.week(); G.relAdd('egorych', 1); G.toast('Егорыч шёпотом: «Директор на совещании всю неделю. Бинокль в сейфе». Сегодня спокойнее.', 'good'); }
+          else { G.toast('«Что слышно… Слышно, как он бинокль протирает».'); }
+          pass();
+        } },
+        { t: 'Партию в домино?', fn: () => { G.fx({ mood: 3, energy: -2 }); G.relAdd('egorych', 5); G.toast('Проиграл в домино, но Егорыч в хорошем настроении. Он теперь «добрый».'); pass(); } },
+        { t: 'Пойду я', fn: () => pass() }
+      ]);
+    }
+  }
+  G.gatePass = function () { if (G._gateNext) { const f = G._gateNext; G._gateNext = null; f(); } };
+
+  // Подключение к кнопке «ИДТИ НА РАБОТУ» (после загрузки всех скриптов)
+  const wrapGate = () => {
+    if (G._gateWrapped || !G.career || !G.career.goToWork) return;
+    G._gateWrapped = true;
+    const orig = G.career.goToWork.bind(G.career);
+    G.career.goToWork = function () {
+      const s = G.s;
+      if (!s || !s.day || s.day.gate || s.car.sickUntil >= s.t.day) return orig();
+      G._gateNext = () => orig();
+      G.gate();
+    };
+  };
+  wrapGate(); window.addEventListener('load', wrapGate); setTimeout(wrapGate, 0);
+
+  // =====================================================================
+  // 4. ПОДСКАЗКИ (используют существующую систему советов)
+  // =====================================================================
+  [
+    { id: 't_gym', text: 'В «Железном Феликсе» жми точно в зелёную зону: чем точнее тапы, тем больше сила (даёт бодрость по утрам).', c: s => !s.flags.str && s.car.shifts > 5 },
+    { id: 't_board', text: 'Внизу вкладки «Цех» есть кнопка «Доска»: там истории заводчан и абсурд недели. Старайся, чтобы там упоминали тебя.', c: s => s.car.shifts > 2 },
+    { id: 't_gate', text: 'Егорыч на проходной не пустит пьяного, с бодуна или в грязной форме. Подарок или сообразительность спасут.', c: s => s.car.shifts < 15 },
+    { id: 't_master', text: 'У мастера можно предложить инициативу. Помни: инициатива наказуема — особенно если лезешь с идеями каждый день.', c: s => s.car.shifts > 4 },
+    { id: 't_hyg', text: 'Зубы чистить каждый день, мыться не реже раза в два дня — иначе упадёт опрятность, настроение и отношения.', c: s => s.st.neat < 60 },
+    { id: 't_canteen', text: 'В столовой завода лимит порций на день. Не налетай на добавку с первого раза.', c: s => s.car.shifts > 3 },
+    { id: 't_fx', text: 'Цифры над экраном показывают, как действие влияет на шкалы: красные плохие, зелёные хорошие.', c: s => s.car.shifts < 6 }
+  ].forEach(t => { if (!D.TIPS.some(x => x.id === t.id)) D.TIPS.push(t); });
 })();
+
+  // Кнопка «Доска» — самая нижняя в «Цехе» (после «Отчибучить»)
+  A('board', { ph: ['work'], loc: 'shop', g: 'Доска', n: 'Доска', i: '📌', menu: true, fn: () => { G.honorBoard(); return 'custom'; } });
+})();
+
+  
