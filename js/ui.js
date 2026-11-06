@@ -71,7 +71,7 @@
     const s = G.s, st = s.st;
     const nick = G.nickLabel();
     const bars = bar('❤ Здоровье', st.health) + bar('⚡ Энергия', st.energy) + bar('🙂 Настроение', st.mood) + bar('🍲 Сытость', st.satiety)
-      + (st.drunk > 2 ? bar('🍺 Опьянение', st.drunk, 'rust', 1) : '') + (s.hang > 0 ? bar('🤕 Похмелье', s.hang * 50, 'bad') : '') + (st.craving >= 40 ? bar('🥃 Тяга', st.craving, '', 1) : '');
+      + (st.drunk > 2 ? bar('🍺 Опьянение', st.drunk, 'rust', 1) : '') + (s.hang > 0 ? bar('🤕 Похмелье', s.hang * 50, 'bad') : '') + (st.craving >= 40 ? bar('🥃 Тяга', st.craving, '', 1) : '') + (st.neat < 50 ? bar('🧼 Опрятность', st.neat) : '');
     return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + (nick ? ' «' + nick + '»' : '') + '</div><div class="tb-sub">' + G.jobTitle() + ' · ' + G.status() + '</div></div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + ' · ' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
   }
   function navHTML() {
@@ -190,6 +190,7 @@
     h += '<div class="sub">' + subs.map(x => '<button class="' + (by === x[0] ? 'on' : '') + '" onclick="G.ui.setBy(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
     if (!LB.configured()) return h + '<div class="card note">Рейтинг временно недоступен.</div>';
     if (s.flags.dbg) h += '<div class="card note">⚠ Ты пользовался отладкой — твои результаты в рейтинг не отправляются.</div>';
+    if (G.seasonText) h += '<div class="card note">' + G.seasonText() + '</div>';
     if (G.settings.lbOn === false) h += '<div class="card note">Ты скрыт из рейтинга (настройка в «Деле»).</div>';
     const c = LB.cache[by];
     if (!c || Date.now() - c.t > 60000) LB.load(by);
@@ -234,10 +235,11 @@
     if (UI.sub === 'log') return h + s.log.slice(0, 60).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('');
     // досье
     h += '<div class="card" style="display:flex;gap:12px;align-items:center"><div class="prev" style="margin:0;flex:none;width:96px;height:96px">' + G.playerFace() + '</div><div><b style="font-family:var(--f-head);font-size:17px">' + esc(s.name) + '</b><div class="note">' + G.status() + '</div><div class="note">Очки жизни: <b style="color:var(--haz)">' + G.ojScore() + '</b></div>' + (s.nicks.length ? '<div class="note">Клички: ' + s.nicks.map(n => '«' + D.NICKS[n].n + '»').join(', ') + '</div>' : '') + '</div></div>';
-    h += '<div class="card"><h3>Показатели</h3><div class="bars" style="grid-template-columns:1fr">' + [['❤ Здоровье', st.health], ['⚡ Энергия', st.energy], ['🙂 Настроение', st.mood], ['🍲 Сытость', st.satiety], ['🧼 Опрятность', st.neat], ['👔 Начальство', st.boss, 'blue'], ['🤝 Коллеги', st.coll, 'blue'], ['😎 Крутизна', st.cool, 'blue'], ['⚖ Совесть', st.cons, 'blue'], ['📘 Знания', st.know, 'blue'], ['☣ Токсичность', st.tox, '', 1], ['🥃 Тяга', st.craving, '', 1], ['🍾 Привычка', st.habit, '', 1], ['🍺 Опьянение', st.drunk, 'rust', 1]].map(x => bar(x[0], x[1], x[2], x[3])).join('') + '</div></div>';
+    h += '<div class="card"><h3>Показатели</h3><div class="bars" style="grid-template-columns:1fr">' + [['❤ Здоровье', st.health], ['⚡ Энергия', st.energy], ['🙂 Настроение', st.mood], ['🍲 Сытость', st.satiety], ['🧼 Опрятность', st.neat], ['👔 Начальство', st.boss, 'blue'], ['🤝 Коллеги', st.coll, 'blue'], ['💪 Сила', (G.s.flags.str || 0), 'blue'], ['😎 Крутизна', st.cool, 'blue'], ['⚖ Совесть', st.cons, 'blue'], ['📘 Знания', st.know, 'blue'], ['☣ Токсичность', st.tox, '', 1], ['🥃 Тяга', st.craving, '', 1], ['🍾 Привычка', st.habit, '', 1], ['🍺 Опьянение', st.drunk, 'rust', 1]].map(x => bar(x[0], x[1], x[2], x[3])).join('') + '</div></div>';
+    if (G.plantStats) { const ps = G.plantStats(); h += '<div class="card"><h3>🏭 Завод</h3><div class="bars" style="grid-template-columns:1fr">' + [['🏭 Состояние завода', ps.plant, 'blue'], ['📊 Выполнение плана', ps.plan, 'blue'], ['🎵 Настроение цеха', ps.morale, 'blue']].map(x => bar(x[0], x[1], x[2])).join('') + '</div></div>'; }
     const ach = Object.keys(s.ach);
-    h += '<div class="card"><h3>Достижения (' + ach.length + ')</h3><div class="note">' + (ach.length ? ach.join(', ') : 'Пока нет.') + '</div></div>';
-    h += '<div class="card"><h3>Настройки</h3><button class="btn" onclick="G.ui.toggle(\'haptic\')">Вибрация: ' + (G.settings.haptic ? 'вкл' : 'выкл') + '</button><button class="btn" onclick="G.ui.toggle(\'tips\')">Подсказки: ' + (G.settings.tips ? 'вкл' : 'выкл') + '</button>' + (G.lb.configured() ? '<button class="btn" onclick="G.ui.toggleLb()">Показывать меня в рейтинге: ' + (G.settings.lbOn === false ? 'нет' : 'да') + '</button>' : '') + '<button class="btn red" onclick="G.ui.confirmNew()">Начать заново</button><button class="btn" onclick="G.ui.help()">Как играть</button></div>';
+    h += '<div class="card"><h3>Достижения (' + ach.length + ')</h3><div class="note">' + (ach.length ? ach.map(id => '<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border:1px solid #000;border-left:4px solid #ffd24a;background:#1b1917">🏅 ' + (G.achName ? G.achName(id) : id) + '</span>').join('') : 'Пока нет.') + '</div></div>';
+    h += '<div class="card"><h3>Настройки</h3><button class=\"btn\" onclick=\"G.ui.toggle(\'sound\')\">Звук: ' + (G.settings.sound ? 'вкл' : 'выкл') + '</button><button class=\"btn\" onclick=\"G.ui.toggle(\'music\')\">Музыка: ' + (G.settings.music ? 'вкл' : 'выкл') + '</button><button class="btn" onclick="G.ui.toggle(\'haptic\')">Вибрация: ' + (G.settings.haptic ? 'вкл' : 'выкл') + '</button><button class="btn" onclick="G.ui.toggle(\'tips\')">Подсказки: ' + (G.settings.tips ? 'вкл' : 'выкл') + '</button>' + (G.lb.configured() ? '<button class="btn" onclick="G.ui.toggleLb()">Показывать меня в рейтинге: ' + (G.settings.lbOn === false ? 'нет' : 'да') + '</button>' : '') + '<button class="btn red" onclick="G.ui.confirmNew()">Начать заново</button><button class="btn" onclick="G.ui.help()">Как играть</button></div>';
     return h;
   }
   UI.setSub = function (x) { UI.sub = x; UI.render(); };
@@ -320,6 +322,27 @@
   UI.hideModal = function () {
     const root = $('modal-root'); root.classList.remove('on'); root.innerHTML = '';
     if (UI.cleanup) { try { UI.cleanup(); } catch (e) {} UI.cleanup = null; }
+  };
+  // ---------- Всплывающие изменения шкал (красные/зелёные цифры, плавно исчезают)
+  const FX_INV = { drunk: 1, craving: 1, habit: 1, tox: 1 };
+  const FX_ICON = { health: '❤', energy: '⚡', mood: '🙂', satiety: '🍲', neat: '🧼', drunk: '🍺', craving: '🥃', habit: '🍾', boss: '👔', coll: '🤝', cool: '😎', cons: '⚖', know: '📘', tox: '☣', money: '💰' };
+  UI.floatFx = function (items) {
+    const box = $('fxpops'), top = $('top');
+    if (!box || !top || !G.s || G.s.phase === 'new' || top.classList.contains('hide')) return;
+    box.style.top = (top.offsetHeight + 10) + 'px';
+    let delay = 0;
+    items.forEach(it => {
+      const k = it[0], v = it[1]; if (k === 'bm' || !v) return;
+      const good = FX_INV[k] ? v < 0 : v > 0;
+      const d = document.createElement('div');
+      d.className = 'fxpop ' + ((G.CONFIG.FX_ALL_RED || !good) ? 'neg' : 'pos');
+      const sgn = v > 0 ? '+' : '−';
+      d.textContent = (FX_ICON[k] || '') + ' ' + (k === 'money' ? sgn + G.rub(Math.abs(v)) : D.STAT_RU[k] + ' ' + sgn + Math.abs(Math.round(v * 10) / 10));
+      d.style.animationDelay = delay + 'ms'; delay += 140;
+      box.appendChild(d);
+      setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 2700 + delay);
+    });
+    while (box.children.length > 8) box.removeChild(box.firstChild);
   };
   UI.toast = function (text, cls) {
     const box = $('toasts'); if (!box) return;
