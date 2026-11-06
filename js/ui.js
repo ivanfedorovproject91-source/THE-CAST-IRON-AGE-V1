@@ -185,7 +185,7 @@
   function ratingTab() {
     const LB = G.lb, s = G.s;
     const by = LB.by;
-    const subs = [['oj', 'Очки жизни'], ['shifts', 'Смены'], ['rank', 'Должность']];
+    const subs = [['oj', 'Очки жизни'], ['season', 'Сезон'], ['shifts', 'Смены'], ['rank', 'Должность']];
     let h = '<div class="card"><h3>🏆 Общий рейтинг</h3><div class="note">Лучшие работники «Чугунного века» со всех устройств. Рекорды сохраняются между забегами.</div></div>';
     h += '<div class="sub">' + subs.map(x => '<button class="' + (by === x[0] ? 'on' : '') + '" onclick="G.ui.setBy(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
     if (!LB.configured()) return h + '<div class="card note">Рейтинг временно недоступен.</div>';
@@ -195,8 +195,8 @@
     const c = LB.cache[by];
     if (!c || Date.now() - c.t > 60000) LB.load(by);
     if (!c) return h + '<div class="card note">' + (LB.err ? 'Не удалось загрузить рейтинг (' + esc(LB.err) + '). <button class="chip" onclick="G.ui.reloadLb()">Повторить</button>' : 'Загрузка…') + '</div>';
-    const d = c.data, val = r => by === 'oj' ? r.oj : by === 'shifts' ? r.shifts + ' см.' : D.RANKS[Math.min(10, r.rank)] || '—';
-    if (d.me) h += '<div class="card"><b>Твоё место: №' + d.me.pos + '</b> из ' + d.total + '<div class="note">' + esc(d.me.name) + ' · ' + (by === 'oj' ? 'рекорд ' + d.me.oj + ' оч.' : by === 'shifts' ? d.me.shifts + ' смен' : D.RANKS[Math.min(10, d.me.rank)]) + '</div></div>';
+    const d = c.data, val = r => by === 'oj' ? r.oj : by === 'season' ? (r.sb || 0) + ' оч.' : by === 'shifts' ? r.shifts + ' см.' : D.RANKS[Math.min(10, r.rank)] || '—';
+    if (d.me) h += '<div class="card"><b>Твоё место: №' + d.me.pos + '</b> из ' + d.total + '<div class="note">' + esc(d.me.name) + ' · ' + (by === 'oj' ? 'рекорд ' + d.me.oj + ' оч.' : by === 'season' ? 'сезон: ' + (d.me.sb || 0) + ' оч.' : by === 'shifts' ? d.me.shifts + ' смен' : D.RANKS[Math.min(10, d.me.rank)]) + '</div></div>';
     else h += '<div class="card note">Всего игроков: ' + d.total + '. ' + (LB.cache[by] ? 'Тебя в таблице пока нет — доработай смену до конца.' : '') + '</div>';
     const medals = ['🥇', '🥈', '🥉'];
     h += '<div style="padding:6px 10px 0">' + d.rows.map(r => '<div class="lbrow ' + (r.me ? 'me' : '') + '"><b>' + (medals[r.pos - 1] || '#' + r.pos) + '</b><div><span class="nm">' + esc(r.name) + '</span><small>' + esc(r.job || '—') + ' · ' + r.shifts + ' смен' + (r.end ? ' · ' + (D.ENDINGS[r.end] ? D.ENDINGS[r.end].e : '') : '') + '</small></div><em>' + esc(String(val(r))) + '</em></div>').join('') + '</div>';
