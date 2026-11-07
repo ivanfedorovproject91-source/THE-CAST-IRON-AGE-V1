@@ -1459,8 +1459,9 @@
       { q: 'Два работника поссорились. Что делать?', a: ['Выслушать обоих и развести по участкам', 'Уволить обоих', 'Сделать вид, что всё хорошо'] }, { q: 'Брак на партии. Как действовать?', a: ['Найти причину и исправить процесс', 'Скрыть и отправить', 'Найти виноватого и наказать'] },
       { q: 'Директор хочет отчёт «завтра к утру».', a: ['Подготовить честный отчёт и предупредить о пробелах', 'Нарисовать красивые цифры', 'Передать задачу Кулежову'] }, { q: 'План горит, народ устал. Что сделаешь?', a: ['Перераспределить смены и дать отдых', 'Ввести сверхурочные без оплаты', 'Пообещать премию, которой нет'] }
     ];
-    G.workGame = function (kind, title, cb) {
+    G.workGame = function (kind, title, cb, extra) {
       try {
+        if (kind === 'bank') return GAMES.quiz(title, cb, extra);
         if (kind === 'weld' || kind === 'tol') return G.sideGame(kind, cb);
         if (kind === 'sling') return GAMES.sort(title, cb, 'sling');
         if (kind === 'assign') return GAMES.quiz(title, cb, ASSIGN);
@@ -1730,7 +1731,7 @@
       if (G.weekday() === 0 && G.week() % 4 === 0 && (e.mRev || e.mExp)) { G.modal({ title: '📊 Итоги месяца', text: 'Выручка цеха: <b>' + mon(e.mRev) + '</b><br>Расходы: <b>' + mon(e.mExp) + '</b><br>Прибыль: <b>' + mon(e.mRev - e.mExp) + '</b>', opts: [{ t: 'Принято', fn: () => {} }] }); e.mRev = 0; e.mExp = 0; }
       if (!o) return;
       const q = MODES[e.mode], plan = G.plantStats ? G.plantStats().plan : 50, wear = s.machine.wear;
-      const power = staffEff() + (s.car.rank >= 7 ? 0.5 : 0), pr = power * 14 * q.speed * (1 - wear / 200) * (0.7 + plan / 200) * (e.logDays > 0 ? 1.1 : 1);
+      const power = staffEff() + (s.car.rank >= 7 ? 0.5 : 0), pr = power * 14 * q.speed * (1 - wear / 200) * (0.7 + plan / 200) * (e.logDays > 0 ? 1.1 : 1) * (1 + (f.engBoost || 0));
       const need = 0.4 * q.raw; let made = Math.max(0, Math.round(pr)); const max = Math.floor(e.raw / need);
       if (max < made) { if (made > 0 && G.chance(60)) msg('Сырья не хватает: производство замедлилось. Закупи металл.', 'warn'); made = max; }
       e.raw = Math.max(0, Math.round((e.raw - made * need) * 10) / 10);
@@ -1742,6 +1743,75 @@
       else if (s.t.day === o.deadline) msg('Сегодня срок сдачи заказа «' + o.cust + '»! Готово ' + o.good + ' из ' + o.qty + '.', 'warn');
     };
     const _dt23 = G.dailyTick; G.dailyTick = function () { const r = _dt23.apply(this, arguments); try { if (G.s.car.rank >= 6) ecoDaily(); } catch (e) {} return r; };
+  })();
+
+
+  // ======================= v2.4: карьерные ветки: охрана труда, ОТК, главный инженер =======================
+  (function () {
+    const D = G.D, C = G.clamp, msg = (t, c) => G.toast(t, c), sp = n => G.spend(n || 1);
+    const F = () => G.s.flags, mon = n => G.rub(Math.round(n));
+    const TR = {
+      ot: { n: '🦺 Охрана труда', lv: ['Специалист по охране труда', 'Ведущий специалист по охране труда', 'Начальник отдела охраны труда'], bonus: [25000, 40000, 60000], npc: ['pelageya', 'Пенсионер-консультант (бывший начальник отдела ОТ)', 'gone', 'Пелагея Фёдоровна вышла на пенсию и передала тебе печать, чернила и красную ручку: «Строго, но справедливо».'] },
+      otk: { n: '🔬 Контроль качества (ОТК)', lv: ['Контролёр-приёмщик', 'Старший контролёр', 'Начальник ОТК'], bonus: [30000, 55000, 85000], npc: ['ekaterina', 'Заведующая лабораторией', 'stay', 'Екатерина переведена заведовать лабораторией и осталась рядом. Она сказала, что давно мечтала о пробирках.'] },
+      eng: { n: '📐 Инженерная линия', lv: ['Инженер-технолог', 'Ведущий инженер', 'Главный инженер предприятия'], bonus: [45000, 80000, 140000], npc: ['rassvetov', 'Советник по технике (на пенсии)', 'gone', 'Рассветов передал тебе ключи от сейфа с чертежами: «Допуск — это закон природы. Береги его».'] }
+    };
+    const rel = id => G.R(id).l;
+    const reqs = k => { const s = G.s, f = F(), r = s.car.rank, st = s.st;
+      if (k === 'ot') return [{ t: 'Разряд не ниже 4-го', ok: r >= 4 }, { t: 'Спец. корочка по ТБ (у Татищевой)', ok: G.hasCert('c_ts') }, { t: 'Знания не ниже 55', ok: st.know >= 55 }, { t: 'Отношения с Пелагеей Ф. от 20', ok: rel('pelageya') >= 20 }];
+      if (k === 'otk') return [{ t: 'Разряд не ниже 5-го', ok: r >= 5 }, { t: 'Знания не ниже 65', ok: st.know >= 65 }, { t: 'Отношения с Екатериной Е. от 20', ok: rel('ekaterina') >= 20 }, { t: 'Выполнение плана не ниже 45', ok: (G.plantStats ? G.plantStats().plan : 50) >= 45 }];
+      return [{ t: 'Должность не ниже зама начальника цеха', ok: r >= 8 }, { t: 'Диплом ВО (у Татищевой)', ok: G.hasCert('c_vo') }, { t: 'Знания не ниже 70', ok: st.know >= 70 }, { t: 'Отношения с Рассветовым от 30', ok: rel('rassvetov') >= 30 }];
+    };
+    const lvl = k => (F().tlvl || {})[k] || 1;
+    const cur = () => F().track || null;
+
+    // ---------- Отдел кадров: смена ветки
+    G.tracksMenu = function () {
+      const f = F(), back = () => G.tracksMenu(), t = cur();
+      f.tlvl = f.tlvl || {}; f.tcnt = f.tcnt || {};
+      G.modal({ title: 'Карьерные ветки', face: 'tatishcheva', wide: true, text: 'Татищева: «Основная линия — это путь начальника. А есть и другие дороги. Ветка сохраняет ваш разряд, но меняет работу и функции.»<br>Текущая ветка: <b>' + (t ? TR[t].lv[lvl(t) - 1] : 'основная линия (производство)') + '</b>', opts: Object.keys(TR).map(k => { const L = reqs(k), ok = L.every(x => x.ok); return { t: TR[k].n + (t === k ? ' (текущая)' : ''), dis: t === k ? 'Вы уже здесь' : null, fn: () => G.modal({ title: TR[k].n, face: 'tatishcheva', text: 'Условия перехода:<br>' + L.map(x => (x.ok ? '✅ ' : '❌ ') + x.t).join('<br>') + '<br>Прибавка к окладу: до ' + mon(TR[k].bonus[2]) + '/мес. на высшем уровне.', opts: [{ t: ok ? 'Оформить перевод' : 'Условия не выполнены', dis: ok ? null : 'Не выполнены', fn: () => { f.track = k; f.tlvl[k] = f.tlvl[k] || 1; f.tcnt[k] = f.tcnt[k] || 0; G.fx({ mood: 5, boss: 2 }); msg('Ты переведён: ' + TR[k].lv[lvl(k) - 1] + '. Работа и обязанности теперь другие.', 'good'); sp(); } }, { t: 'Назад', fn: back }] }) }; }).concat([{ t: '↩ Вернуться на основную линию', dis: !t ? 'Вы на основной линии' : null, fn: () => { f.track = null; msg('Вы вернулись на основную линию производства.'); sp(); } }, { t: 'Закрыть', fn: () => {} }]) });
+    };
+    A('tracks', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Карьерные ветки (отдел кадров)', i: '🧭', menu: true, req: s => s.car.rank < 4 ? 'Нужен разряд не ниже 4-го' : null, fn: () => { G.tracksMenu(); return 'custom'; } });
+
+    // ---------- Название, оклад, рейтинг
+    const _jt = G.jobTitle; G.jobTitle = function () { const t = cur(); return t ? TR[t].lv[lvl(t) - 1] : _jt.apply(this, arguments); };
+    const _mp = G.monthlyPay; G.monthlyPay = function () { const v = _mp.apply(this, arguments), t = cur(); return t ? v + TR[t].bonus[lvl(t) - 1] : v; };
+    const _oj = G.ojScore; G.ojScore = function () { const f = G.s.flags, tl = f.tlvl || {}; return _oj.apply(this, arguments) + 300 * Object.keys(tl).reduce((a, k) => a + (tl[k] - 1), 0); };
+
+    // ---------- Работа в ветке: свои игры
+    const ENG = [
+      { q: 'Заказчик хочет сэкономить и заменить сталь на более дешёвую. Что решишь?', a: ['Пересчитать нагрузки и предложить допустимую замену', 'Согласиться без расчётов', 'Отказать и не объяснять'] },
+      { q: 'В чертеже допуск 0.01 мм, а станок «гуляет» на 0.05.', a: ['Пересмотреть допуск или отправить станок в ремонт', 'Оставить как есть', 'Приказать рабочим «точнее смотреть»'] },
+      { q: 'Расчёт показывает запас прочности 1.1. Норма — 1.5.', a: ['Усилить конструкцию и пересчитать', 'Округлить до 1.5', 'Отправить в производство и молиться'] },
+      { q: 'Новая технология сулит выигрыш, но не опробована.', a: ['Провести опытную партию', 'Внедрить сразу на всё', 'Запретить любые новшества'] },
+      { q: 'Рабочие просят изменить оснастку: так удобнее.', a: ['Оценить предложение и испытать', 'Отмахнуться', 'Одобрить без проверки'] },
+      { q: 'Чертёж нужно сдать завтра, а в нём спорный узел.', a: ['Сообщить заказчику и согласовать срок', 'Скрыть узел', 'Нарисовать что-нибудь похожее'] }
+    ];
+    const _wf = G.ACT.work.fn;
+    G.ACT.work.fn = function (s) {
+      const t = cur(); if (!t || s.instr.perv == null) return _wf.apply(this, arguments);
+      F().tcnt = F().tcnt || {}; F().tcnt[t] = (F().tcnt[t] || 0) + 1;
+      if (t === 'ot') G.mgGame('safe', sc => { G.doOp(sc); const e = (F().eco = F().eco || {}); e.safeDays = Math.max(e.safeDays || 0, 3); });
+      else if (t === 'otk') G.mgGame('qc', sc => { G.doOp(sc); const e = (F().eco = F().eco || {}); e.qcDays = Math.max(e.qcDays || 0, 2); });
+      else G.workGame('bank', 'РАСЧЁТЫ И РЕШЕНИЯ', sc => { G.doOp(sc); if (sc >= 0.67 && G.chance(35)) F().engBoost = Math.min(0.3, (F().engBoost || 0) + 0.02); }, ENG);
+      return 'custom';
+    };
+
+    // ---------- Особые действия веток
+    const trk = (id, k, n, i, fn) => A(id, { ph: ['work'], loc: 'shop', g: 'Ветка: ' + TR[k].n.replace(/^\S+\s/, ''), n, i, menu: true, once: 'day', req: s => cur() === k ? null : 'Не здесь', fn: () => { fn(); return 'custom'; } });
+    const INC = [['Рабочий порезал руку о заусенец.', 'Расследовать и выдать защитные перчатки', 'Сделать вид, что бывает'], ['На складе нашли бочку масла рядом с проходом.', 'Убрать, провести разбор, наказать виновных', 'Закрыть глаза'], ['У крана износился трос.', 'Остановить кран и заменить трос', 'Подождать до конца месяца'], ['Сварщик работал без маски.', 'Провести внеплановый инструктаж', 'Сделать выговор по-тихому']];
+    trk('ot_case', 'ot', 'Расследовать происшествие', '📑', () => { const x = G.pick(INC); G.modal({ title: 'Происшествие', face: 'pelageya', text: x[0], opts: [{ t: x[1], fn: () => { G.fx({ cons: 3, boss: 2, know: 1 }); if (G.plantStats) { const f = F(); f.plan = C((f.plan || 50) + 1); } msg('Меры приняты. Протокол составлен, цех стал безопаснее.', 'good'); if (G.rumor) G.rumor('ot', 'Новый специалист по охране труда принимает меры всерьёз. Народ уважает и побаивается.', { coll: -1, boss: 2 }, 50); sp(); } }, { t: x[2], fn: () => { G.fx({ cons: -3, boss: -2 }); G.s.pay.pen += 1500; msg('Закрыл глаза, но Надежда Николаевна заметила. Премию сняли (−1 500 ₽).', 'bad'); sp(); } }] }); });
+    trk('ot_brief', 'ot', 'Провести инструктаж для цеха', '🦺', () => { const e = (F().eco = F().eco || {}); e.safeDays = 7; (F().staff || []).forEach(x => { x.skill = Math.min(95, x.skill + 1); x.loy = Math.min(100, x.loy + 1); }); G.fx({ know: 1, energy: -4, mood: 1 }); G.relAdd('nadezhda', 2); msg('Инструктаж проведён: весь цех знает, где огнетушитель. Почти все.', 'good'); sp(); });
+    const ACC = [['Партия принята: 3 % брака. Но цех просит принять «ради плана».', 'Принять с замечанием', 'Забраковать и вернуть на доработку', 'Взять конверт и подписать'], ['Заказчик давит: «Нам нужно сегодня».', 'Принять только годные', 'Подписать всё', 'Потребовать пересортировку'], ['Мастер просит закрыть глаза на пару деталей.', 'Отказать вежливо', 'Согласиться по-дружески', 'Передать начальнику цеха']];
+    trk('otk_accept', 'otk', 'Приёмка партии', '📋', () => { const x = G.pick(ACC); G.modal({ title: 'Приёмка', face: 'ekaterina', text: x[0], opts: [{ t: x[1], fn: () => { G.fx({ cons: 2, boss: 1 }); if (F().eco) F().eco.qcDays = Math.max(F().eco.qcDays || 0, 3); msg('Приёмка прошла по правилам. Брака на выходе меньше.', 'good'); sp(); } }, { t: x[2], fn: () => { G.fx({ boss: 2, cons: 3 }); if (G.plantStats) { const f = F(); f.plan = C((f.plan || 50) - 2); } msg('Строго и честно, но план просел.', 'warn'); sp(); } }, { t: x[3], fn: () => { G.addMoney(1500); G.fx({ cons: -5, boss: -2 }); if (G.rumor) G.rumor('otk', 'Поговаривают, что в ОТК всё решается «по-людски». Особенно за конверт.', { cons: -2, boss: -3 }, 70); msg('Взял 1 500 ₽ и подписал. Совесть тоже подписала, но неохотно.', 'bad'); sp(); } }] }); });
+    trk('eng_design', 'eng', 'Разработать рацпредложение', '✏️', () => { G.workGame('tol', 'ЧЕРТЁЖ И ДОПУСКИ', sc => { const f = F(); f.engBoost = Math.min(0.3, (f.engBoost || 0) + 0.03 * sc); G.fx({ know: 2, energy: -5, boss: sc >= 0.6 ? 3 : 0 }); msg(sc >= 0.6 ? 'Рацпредложение принято: цех работает быстрее (+' + Math.round(f.engBoost * 100) + '%).' : 'Чертёж вышел сырым. Нужны доработки.', sc >= 0.6 ? 'good' : 'warn'); if (sc >= 0.8 && G.boardAdd) G.boardAdd('Рацпредложение инженера принято в производство', 'good'); sp(); }); });
+
+    // ---------- Рост в ветке и смена кадров
+    const need = { ot: [40, 120], otk: [40, 120], eng: [35, 100] };
+    const lvReq = (k, L) => { const st = G.s.st, p = G.plantStats ? G.plantStats().plan : 50; if (L === 2) return st.know >= 60 && (k !== 'eng' || p >= 50); if (k === 'ot') return st.know >= 75 && rel('pelageya') >= 40 && rel('nadezhda') >= 30; if (k === 'otk') return st.know >= 75 && rel('ekaterina') >= 30 && p >= 55; return st.know >= 80 && rel('rassvetov') >= 40 && G.hasCert('c_vo') && p >= 60; };
+    const trackDaily = () => { const f = F(), k = cur(); if (!k) return; const n = (f.tcnt || {})[k] || 0, L = lvl(k); if (L >= 3) return;
+      if (n >= need[k][L - 1] && lvReq(k, L + 1)) { f.tlvl[k] = L + 1; G.fx({ boss: 5, mood: 8 }); G.modal({ title: '⭐ Повышение в ветке', text: 'Ты получил должность: <b>' + TR[k].lv[L] + '</b>. Оклад вырос, обязанности расширились.', opts: [{ t: 'Отлично', fn: () => {} }] });
+        if (L + 1 === 3) { const m = TR[k].npc; f.npcMoved = f.npcMoved || {}; f.npcMoved[m[0]] = { role: m[1], mode: m[2] }; msg(m[3], 'warn'); if (G.applyMoves) G.applyMoves(); G.achieve('track3_' + k, 'Вершина ветки: ' + TR[k].lv[2]); if (G.boardAdd) G.boardAdd('Новый руководитель направления: ' + TR[k].lv[2], 'good'); } } };
+    const _dt24 = G.dailyTick; G.dailyTick = function () { const r = _dt24.apply(this, arguments); try { trackDaily(); } catch (e) {} return r; };
   })();
 
 })();
