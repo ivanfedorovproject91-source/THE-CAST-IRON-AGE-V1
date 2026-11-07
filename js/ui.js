@@ -181,30 +181,60 @@
     G.modal({ title: '📓 Журнал', wide: true, text: '<div style="max-height:55vh;overflow:auto">' + s.log.slice(0, 40).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('') + '</div>', opts: [{ t: 'Закрыть', fn: () => {} }] });
   };
 
-  // ---------- Общий рейтинг
+  // ---------- Общий рейтинг: личный, предприятия, бригады
+  const SECS = [['me', '👤 Личный', [['oj', 'Очки жизни'], ['season', 'Сезон'], ['money', 'Богатство'], ['pay', 'Зарплата'], ['rank', 'Карьера'], ['shifts', 'Смены']]],
+    ['co', '🏭 Предприятия', [['profit', 'Прибыль'], ['made', 'Выпуск'], ['staff', 'Штат'], ['quality', 'Качество']]],
+    ['br', '👥 Бригады', [['brig', 'Неделя']]]];
+  const fmt = n => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  function valOf(by, r) {
+    switch (by) {
+      case 'oj': return fmt(r.oj); case 'season': return fmt(r.sb) + ' оч.'; case 'shifts': return r.shifts + ' см.'; case 'money': return fmt(r.money) + ' ₽'; case 'pay': return fmt(r.pay) + ' ₽/мес.';
+      case 'profit': return fmt(r.profit) + ' ₽'; case 'made': return fmt(r.made) + ' дет.'; case 'staff': return r.staff + ' чел.'; case 'quality': return r.quality + '%';
+      default: return D.RANKS[Math.min(10, r.rank)] || '—';
+    }
+  }
   function ratingTab() {
-    const LB = G.lb, s = G.s;
-    const by = LB.by;
-    const subs = [['oj', 'Очки жизни'], ['season', 'Сезон'], ['shifts', 'Смены'], ['rank', 'Должность']];
-    let h = '<div class="card"><h3>🏆 Общий рейтинг</h3><div class="note">Лучшие работники «Чугунного века» со всех устройств. Рекорды сохраняются между забегами.</div></div>';
-    h += '<div class="sub">' + subs.map(x => '<button class="' + (by === x[0] ? 'on' : '') + '" onclick="G.ui.setBy(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
-    if (!LB.configured()) return h + '<div class="card note">Рейтинг временно недоступен.</div>';
+    const LB = G.lb, s = G.s, by = LB.by, sec = LB.sec || 'me';
+    const cur = SECS.find(x => x[0] === sec) || SECS[0];
+    let h = '<div class="card"><h3>🏆 Общий рейтинг</h3><div class="note">Лучшие работники, предприятия и бригады «Чугунного века» со всех устройств.</div></div>';
+    h += '<div class="sub">' + SECS.map(x => '<button class="' + (sec === x[0] ? 'on' : '') + '" onclick="G.ui.setSec(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
+    if (cur[2].length > 1) h += '<div class="sub">' + cur[2].map(x => '<button class="' + (by === x[0] ? 'on' : '') + '" onclick="G.ui.setBy(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
+    if (!LB.configured()) return h + '<div class="card note">Рейтинг временно недоступен: не указан адрес сервера (API_URL в config.js).</div>';
     if (s.flags.dbg) h += '<div class="card note">⚠ Ты пользовался отладкой — твои результаты в рейтинг не отправляются.</div>';
-    if (G.seasonText) h += '<div class="card note">' + G.seasonText() + '</div>';
+    if (by === 'season' && G.seasonText) h += '<div class="card note">' + G.seasonText() + '</div>';
     if (G.settings.lbOn === false) h += '<div class="card note">Ты скрыт из рейтинга (настройка в «Деле»).</div>';
     const c = LB.cache[by];
     if (!c || Date.now() - c.t > 60000) LB.load(by);
     if (!c) return h + '<div class="card note">' + (LB.err ? 'Не удалось загрузить рейтинг (' + esc(LB.err) + '). <button class="chip" onclick="G.ui.reloadLb()">Повторить</button>' : 'Загрузка…') + '</div>';
-    const d = c.data, val = r => by === 'oj' ? r.oj : by === 'season' ? (r.sb || 0) + ' оч.' : by === 'shifts' ? r.shifts + ' см.' : D.RANKS[Math.min(10, r.rank)] || '—';
-    if (d.me) h += '<div class="card"><b>Твоё место: №' + d.me.pos + '</b> из ' + d.total + '<div class="note">' + esc(d.me.name) + ' · ' + (by === 'oj' ? 'рекорд ' + d.me.oj + ' оч.' : by === 'season' ? 'сезон: ' + (d.me.sb || 0) + ' оч.' : by === 'shifts' ? d.me.shifts + ' смен' : D.RANKS[Math.min(10, d.me.rank)]) + '</div></div>';
-    else h += '<div class="card note">Всего игроков: ' + d.total + '. ' + (LB.cache[by] ? 'Тебя в таблице пока нет — доработай смену до конца.' : '') + '</div>';
-    const medals = ['🥇', '🥈', '🥉'];
-    h += '<div style="padding:6px 10px 0">' + d.rows.map(r => '<div class="lbrow ' + (r.me ? 'me' : '') + '"><b>' + (medals[r.pos - 1] || '#' + r.pos) + '</b><div><span class="nm">' + esc(r.name) + '</span><small>' + esc(r.job || '—') + ' · ' + r.shifts + ' смен' + (r.end ? ' · ' + (D.ENDINGS[r.end] ? D.ENDINGS[r.end].e : '') : '') + '</small></div><em>' + esc(String(val(r))) + '</em></div>').join('') + '</div>';
+    const d = c.data, medals = ['🥇', '🥈', '🥉'];
+    if (by === 'brig') {
+      h += '<div class="card note">Неделя ' + esc(d.week) + '. Очки бригады: смены × 100 + выпущенные детали у всех участников. Победители недели получают звание.</div>';
+      if (d.last && d.last.top && d.last.top.length) h += '<div class="card note">Итоги прошлой недели (' + esc(d.last.week) + '): ' + d.last.top.map((x, i) => (medals[i] || '') + ' ' + esc(x.name) + ' — ' + fmt(x.pts)).join(' · ') + '</div>';
+      if (d.my) {
+        h += '<div class="card"><b>Твоя бригада: «' + esc(d.my.name) + '»</b>' + (d.my.owner ? ' (ты бригадир)' : '') + ' · место №' + (d.my.pos || '—') + ' · очки недели: ' + fmt(d.my.pts)
+          + '<div class="note">' + d.my.members.map(m => (m.me ? '<b>' + esc(m.name) + '</b>' : esc(m.name)) + ' — ' + fmt(m.pts)).join(' · ') + '</div>'
+          + '<div class="btns"><button class="btn" onclick="G.ui.brigLeave()">Выйти из бригады</button></div></div>';
+      } else {
+        h += '<div class="card"><b>Ты пока не в бригаде.</b><div class="note">Создай свою (до ' + (d.max || 10) + ' человек) или вступи в готовую. Для вступления нужно хотя бы раз отправить результат (доиграй смену).</div><div class="btns"><button class="btn" onclick="G.ui.brigCreate()">➕ Создать бригаду</button></div></div>';
+      }
+      if (LB.brigMsg) h += '<div class="card note">' + esc(LB.brigMsg) + '</div>';
+      h += '<div style="padding:6px 10px 0">' + d.rows.map(r => '<div class="lbrow ' + (r.me ? 'me' : '') + '"><b>' + (medals[r.pos - 1] || '#' + r.pos) + '</b><div><span class="nm">' + esc(r.name) + '</span><small>' + r.members + ' из ' + (d.max || 10) + ' чел.' + (!d.my && r.members < (d.max || 10) ? ' · <a href="#" onclick="G.ui.brigJoin(\'' + esc(r.name).replace(/'/g, '') + '\');return false">вступить</a>' : '') + '</small></div><em>' + fmt(r.pts) + ' оч.</em></div>').join('') + '</div>';
+      h += '<div class="btns"><button class="btn" onclick="G.ui.reloadLb()">↻ Обновить</button></div>';
+      return h;
+    }
+    if (d.me) h += '<div class="card"><b>Твоё место: №' + d.me.pos + '</b> из ' + d.total + '<div class="note">' + esc(d.me.name) + ' · ' + esc(valOf(by, d.me)) + '</div></div>';
+    else h += '<div class="card note">Всего в таблице: ' + d.total + '. ' + (sec === 'co' ? 'Предприятие появляется в рейтинге, когда у тебя есть сотрудники (должность бригадира и выше).' : 'Тебя в таблице пока нет — доработай смену до конца.') + '</div>';
+    h += '<div style="padding:6px 10px 0">' + d.rows.map(r => '<div class="lbrow ' + (r.me ? 'me' : '') + '"><b>' + (medals[r.pos - 1] || '#' + r.pos) + '</b><div><span class="nm">' + esc(sec === 'co' ? (r.shop || r.name) : r.name) + '</span><small>' + (sec === 'co' ? esc(r.name) + ' · штат ' + r.staff + ' · выпуск ' + fmt(r.made) + ' · качество ' + r.quality + '%' : esc(r.job || '—') + ' · ' + r.shifts + ' смен' + (r.brigade ? ' · 👥 ' + esc(r.brigade) : '') + (r.end ? ' · ' + (D.ENDINGS[r.end] ? D.ENDINGS[r.end].e : '') : '')) + '</small></div><em>' + esc(valOf(by, r)) + '</em></div>').join('') + '</div>';
     h += '<div class="btns"><button class="btn" onclick="G.ui.reloadLb()">↻ Обновить</button></div>';
+    if (LB.status) h += '<div class="note" style="padding:4px 12px;opacity:.6">Отправка результата: ' + esc(LB.status) + '</div>';
     return h;
   }
+  UI.setSec = function (x) { const L = G.lb; L.sec = x; L.by = x === 'me' ? 'oj' : x === 'co' ? 'profit' : 'brig'; UI.render(); };
   UI.setBy = function (b) { G.lb.by = b; UI.render(); };
   UI.reloadLb = function () { G.lb.load(G.lb.by, true); G.lb.err = null; UI.render(); };
+  UI.brigCreate = function () { const n = window.prompt('Название бригады (3–20 символов):', ''); if (n && n.trim()) G.lb.brig('brigade_create', n.trim()); };
+  UI.brigJoin = function (n) { G.lb.brig('brigade_join', n); };
+  UI.brigLeave = function () { if (window.confirm('Выйти из бригады?')) G.lb.brig('brigade_leave'); };
 
   // ---------- Дело (досье)
   function fileTab() {
