@@ -3,9 +3,9 @@
   const G = (window.G = window.G || {});
   G.CONFIG = {
     // Версия игры (для сохранений и рейтинга). Повышайте при каждом обновлении.
-    VERSION: '1.10.0',
+    VERSION: '1.9.0',
     // Адрес API общего рейтинга, например 'https://my-server.example.com'. Пусто — рейтинг выключен.
-    API_URL: 'https://script.google.com/macros/s/AKfycbxYSO78NJv6qclY2jqaXdwU9_fEEbcM496t6vCi_rxKNeNZBIQbfLEmtCPNjE45ftmpvQ/exec',
+    API_URL: '',
     // Темп прогрессии: во сколько раз растут требования к стажу и баллам мастерства для повышений.
     // 1 = как в ТЗ (~760 смен до начальника цеха). 1.5 ≈ 1140 смен (по умолчанию), 2 ≈ 1520 смен.
     PACE: 1.5,
