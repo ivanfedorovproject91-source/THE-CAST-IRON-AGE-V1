@@ -1266,4 +1266,482 @@
     const _hb = G.honorBoard; G.honorBoard = function () { try { const p = G.plantStats(); G.toast('🏭 Завод: состояние ' + p.plant + ' · план ' + p.plan + ' · цех ' + p.morale); } catch (e) {} return _hb.apply(this, arguments); };
   })();
 
+
+  // ======================= v2.0: карьерные ступени, Кулежов, главный инженер, управление =======================
+  (function () {
+    const D = G.D, C = G.clamp, K = G.career, msg = (t, c) => G.toast(t, c), sp = n => G.spend(n || 1);
+    const F = () => G.s.flags;
+
+    // ---------- Новые персонажи: Кулежов (зам. начальника цеха) и главный инженер
+    const AT = (loc, p) => ({ loc, days: [0, 1, 2, 3, 4], p });
+    const LIES = [
+      ['«Я вчера обедал с министром. Он отдал мне свой суп: «Ешь, Андрей, ты нужнее».»', 'Поверить', 'Усомниться', 'Попросить познакомить'],
+      ['«Я раньше был космонавтом. Просто в космос не взяли: я на земле нужнее».', 'Поверить', 'Усомниться', 'Спросить про скафандр'],
+      ['«В детстве я починил экскаватор взглядом. Он до сих пор меня слушается».', 'Поверить', 'Усомниться', 'Позвать к станку'],
+      ['«У меня три гаража. В одном — гараж. В другом — гараж. Третий — секрет».', 'Поверить', 'Усомниться', 'Попросить показать'],
+      ['«Гагарин мне звонил. По ошибке, но я ответил».', 'Поверить', 'Усомниться', 'Спросить, о чём говорили'],
+      ['«Вчера победил медведя. Он первым начал. Теперь он в нашем профсоюзе».', 'Поверить', 'Усомниться', 'Предложить вступить в профсоюз самому'],
+      ['«Я недавно купил завод. Но передумал. Мне вернули деньги с процентами и извинениями».', 'Поверить', 'Усомниться', 'Спросить адрес завода'],
+      ['«Мне предлагали стать министром. Но у нас зарплата выше».', 'Поверить', 'Усомниться', 'Попросить рекомендацию']
+    ];
+    const talkOf = (id, lie) => ({ t: 'Кулежов, не моргая: ' + lie[0], o: [[lie[1], 'Кулежов расцветает: «Вот! Человек с воображением!» Он запомнил тебя с хорошей стороны.', { mood: 2, boss: 1, rel: { [id]: 3 } }], [lie[2], 'Кулежов вздохнул: «Ты просто не видел жизни. Но ладно, я не обиделся. Ну… почти».', { mood: -1, rel: { [id]: -2 } }], [lie[3], 'Он сменил тему, как переключают станок: мгновенно и без предупреждения. Но ты не спишь.', { mood: 3, cool: 1, rel: { [id]: 1 } }]] });
+    const NP = {
+      kulezhov: { name: 'Кулежов А.', full: 'Кулежов Андрей', age: 38, role: 'Зам. начальника цеха', color: '#a8d',
+        ap: { skin: '#e8c4a8', shape: 'oval', hair: 'bangs', hc: '#2a2a2a', brow: 'light', eyes: 'norm', nose: 'small', mouth: 'smile', glasses: 'none', cloth: '#5a4a6a', collar: 'none', extra: [] },
+        at: AT('shop', 0.8), likes: ['cognac', 'cigs', 'env1'], dislikes: [], rel: 0, talk: [] },
+      rassvetov: { name: 'Рассветов И. П.', full: 'Рассветов Игнат Платонович', age: 56, role: 'Главный инженер', color: '#7ad',
+        ap: { skin: '#dcb899', shape: 'long', hair: 'bald', hc: '#888', brow: 'thick', eyes: 'tired', nose: 'small', mouth: 'flat', glasses: 'none', cloth: '#3a4a5f', collar: 'none', extra: [] },
+        at: AT('admin', 0.6), likes: ['cognac', 'choco'], dislikes: [], rel: 0,
+        talk: [
+          { t: 'Рассветов не поднимает глаз от чертежа: «Допуск — это не пожелание. Допуск — это закон природы».', o: [['Согласиться', '«Приятно говорить с человеком, который слушает».', { know: 2, rel: { rassvetov: 4 } }], ['Пошутить про закон природы', '«Остроумие — хорошо. Но не в чертежах».', { rel: { rassvetov: -1 }, mood: 1 }]] },
+          { t: '«Вы знаете, чем инженер отличается от мастера? Мастер чинит, а инженер — чтобы не чинить».', o: [['Записать цитату', 'Он удивлённо кивнул. Цитату, видимо, и правда стоит записать.', { know: 1, rel: { rassvetov: 3 } }], ['Спросить про премию', '«Премия — это производная от чертежа. Идите, читайте чертёж».', { mood: -1 }]] }
+        ] }
+    };
+    LIES.forEach(l => NP.kulezhov.talk.push(talkOf('kulezhov', l)));
+    Object.keys(NP).forEach(id => { if (!D.NPC[id]) D.NPC[id] = NP[id]; if (D.NPC_ORDER && D.NPC_ORDER.indexOf(id) < 0) D.NPC_ORDER.push(id); });
+
+    G.kulezhovMenu = function () {
+      const s = G.s, face = 'kulezhov', rel = () => G.R('kulezhov').l, back = () => G.kulezhovMenu();
+      G.modal({ title: 'Кулежов А.', face, text: 'Кулежов поправляет галстук: «О, свои люди! Присаживайся, расскажу кое-что… и это почти правда».', opts: [
+        { t: '🤥 Послушать историю', fn: () => { const l = G.pick(LIES); G.modal({ title: 'История Кулежова', face, text: l[0], opts: [[l[1], 'Он доволен. Теперь вы почти друзья.', { mood: 3, rel: { kulezhov: 4 } }], [l[2], 'Кулежов поднял бровь: «Проверь, проверь. Только мне потом не звони».', { mood: -1, rel: { kulezhov: -2 } }], [l[3], 'Он ушёл в туманные подробности. Ты вышел с ощущением, что тебя только что очень вежливо обманули.', { mood: 2, cool: 1 }]].map(o => ({ t: o[0], fn: () => { msg(o[1]); G.fx(o[2], { npc: 'kulezhov' }); sp(); } })) }); } },
+        { t: '📈 Спросить про протекцию (повышение)', fn: () => { const r = Math.random(); if (r < 0.4 && rel() >= 10) { G.fx({ boss: 4 }); msg('Кулежов: «Говорил с директором!» — и правда что-то сказал. Начальство ждало, но вежливо.', 'good'); } else if (r < 0.85) { msg('«Я с директором на ты, всё решу». Через час директор спросил, кто это такой.'); } else { G.fx({ boss: -3 }); msg('Кулежов пошёл «решать» и случайно рассказал начальству, что ты хочешь его место.', 'bad'); } sp(); } },
+        { t: '🔍 Поймать на вранье', fn: () => { if (G.chance(50)) { G.fx({ cons: 2, boss: 1, rel: { kulezhov: -4 } }, { npc: 'kulezhov' }); msg('Ты поймал Кулежова на противоречии. Он ответил: «Это не противоречие, это многогранность».', 'good'); } else { G.fx({ mood: -3, rel: { kulezhov: -3 } }, { npc: 'kulezhov' }); msg('Ты попытался поймать, но он вывернулся так, что виноватым оказался ты.', 'bad'); } sp(); } },
+        { t: '🍻 Выпить за карьеру (300 ₽)', dis: s.money < 300 ? 'Нет денег' : null, fn: () => { G.fx({ money: -300, drunk: 8, mood: 4, rel: { kulezhov: 6 } }, { npc: 'kulezhov' }); msg(G.pick(['Кулежов за рюмкой выдал «страшную тайну»: директор, оказывается, боится котов. Чугунка, видимо, тоже.', 'Кулежов поклялся, что завтра станет директором. Через неделю напомнишь.']), 'good'); sp(); } },
+        { t: 'Уйти', fn: () => {} }
+      ] });
+    };
+    G.rassvetovMenu = function () {
+      const s = G.s, face = 'rassvetov';
+      G.modal({ title: 'Главный инженер', face, text: 'Рассветов отрывается от расчётов: «У вас вопрос по делу? Тогда проходите».', opts: [
+        { t: '📐 Задать технический вопрос', fn: () => { G.fx({ know: 2, mood: 1 }); G.relAdd('rassvetov', 3); msg('Рассветов объяснил, как работает допуск и почему «на глаз» — это не метод. Ты запомнил половину.'); sp(); } },
+        { t: '💡 Предложить рацпредложение', fn: () => { if (s.st.know >= 55 && G.chance(60)) { G.fx({ boss: 5, know: 2, bm: 4 }); G.relAdd('rassvetov', 5); msg('Рассветов внимательно изучил и сказал: «Это разумно. Оформляйте». Впервые за год.', 'good'); if (G.boardAdd) G.boardAdd('Рацпредложение одобрено главным инженером', 'good'); } else { G.fx({ mood: -2 }); msg('«Интересно, но без расчётов — не принимается». Ты ушёл с блокнотом и жаждой знаний.'); } sp(); } },
+        { t: '🏛 Узнать про путь главного инженера', fn: () => { const ok = s.car.rank >= 8 && G.hasCert && G.hasCert('c_vo'); G.modal({ title: 'Путь главного инженера', face, text: ok ? '«У вас есть диплом и должность. Если рассчитываете на моё кресло — готовьтесь, я ещё лет пятнадцать».' : '«Нужны: диплом ВО, должность не ниже зама начальника цеха и мои хорошие отношения».', opts: [{ t: 'Понятно', fn: () => {} }] }); } },
+        { t: 'Уйти', fn: () => {} }
+      ] });
+    };
+    const SPECIAL20 = { kulezhov: () => [{ t: '🤥 Разговор с Кулежовым', fn: () => G.kulezhovMenu() }], rassvetov: () => [{ t: '📐 Технические вопросы', fn: () => G.rassvetovMenu() }] };
+    const _sp20 = G.npcSpecial; G.npcSpecial = function (id) { const o = _sp20.apply(this, arguments); if (SPECIAL20[id]) SPECIAL20[id]().forEach(x => o.push(x)); return o; };
+
+    // ---------- Проверка условий повышения: опыт, план, репутация, отношения, дисциплина
+    const patchReq = (to, rel) => { const r = D.REQ[to]; if (!r) return; r.rel = Object.assign({}, r.rel || {}, rel); };
+    patchReq(6, { palych: 30, dudukin: 20 }); patchReq(7, { dudukin: 30, shchiplen: 20 }); patchReq(8, { kulezhov: 20, shchiplen: 35 }); patchReq(9, { shchiplen: 40, rassvetov: 20 });
+    const PLAN_REQ = { 6: 50, 7: 55, 8: 60, 9: 65 };
+    const _rl = K.reqLines;
+    K.reqLines = function (to) {
+      const L = _rl.apply(this, arguments); if (!L) return L; const s = G.s;
+      if (PLAN_REQ[to]) { const p = G.plantStats ? G.plantStats().plan : 50; L.push({ t: 'Выполнение плана завода: ' + p + ' / ' + PLAN_REQ[to], ok: p >= PLAN_REQ[to] }); }
+      if (to >= 7) L.push({ t: 'Нет серьёзных нарушений (удержаний за месяц нет)', ok: !(s.pay && s.pay.pen > 0) });
+      return L;
+    };
+
+    // ---------- Перестановки персонажей при повышении
+    const MOVES = {
+      6: [['palych', 'Рабочий-наставник (бывший бригадир)', 'stay', 'Палыч передал тебе бригадирскую тетрадь: «Теперь ты за всех отвечаешь, а я — только за себя. Красота».']],
+      7: [['dudukin', 'Мастер цеха №2', 'gone', 'Дудукин переведён мастером в соседний цех. Он пожал тебе руку: «Справишься. Звони, если что».'], ['stepanych', 'Пенсионер (бывший мастер)', 'gone', 'Степаныч вышел на заслуженный отдых и унёс с собой любимую кружку.']],
+      8: [['kulezhov', 'Мастер участка (бывший зам)', 'stay', 'Кулежов понижен до мастера и остался. Он утверждает, что сам попросил: «Хотел быть ближе к народу».']],
+      9: [['shchiplen', 'Главный по облакам (хозчасть)', 'admin', 'Щиплен переведён в хозчасть на должность «Главный по облакам». Прощаясь, он сунул тебе бутылку: «Не пей… пока я не уйду».']]
+    };
+    G.applyMoves = function () {
+      const f = G.s && G.s.flags; if (!f || !f.npcMoved) return;
+      Object.keys(f.npcMoved).forEach(id => { const m = f.npcMoved[id], n = D.NPC[id]; if (!n) return; n.role = m.role; if (m.mode === 'gone') n.at = null; else if (m.mode === 'admin') n.at = { loc: 'admin', days: [0, 1, 2, 3, 4], p: 0.5 }; });
+    };
+    G.rankShift = function (to) {
+      const f = F(); f.npcMoved = f.npcMoved || {};
+      (MOVES[to] || []).forEach(m => { f.npcMoved[m[0]] = { role: m[1], mode: m[2] }; msg(m[3], 'warn'); if (G.boardAdd) G.boardAdd('Кадровая перестановка: ' + (D.NPC[m[0]] ? D.NPC[m[0]].name : m[0]) + ' теперь «' + m[1] + '»', 'good'); });
+      G.applyMoves();
+      if (to === 9) F().seat = 90;
+      if (to >= 6) G.toast('Обращения к тебе теперь вежливее: управленцем быть престижно.', 'good');
+    };
+    const _pr = K.promote; K.promote = function (to) { const r = _pr.apply(this, arguments); try { G.rankShift(to); } catch (e) {} return r; };
+    const _kh20 = K.hook; K.hook = function () { const r = _kh20.apply(this, arguments); try { G.applyMoves(); } catch (e) {} return r; };
+
+    // ---------- Обращение к игроку по должности (подчинённые здороваются иначе)
+    const SUBS = ['seryoga', 'vityok', 'mikhalych', 'palych', 'afonya', 'khomyak', 'lyosha', 'gosha', 'kolyan', 'zahar', 'lidiya', 'tamara', 'nyura', 'vika', 'lyudka', 'tatyana', 'tamara', 'egorych'];
+    const GREET = {
+      6: ['Здравствуйте, бригадир!', 'Доброе утро, бригадир. Всё под контролем.'],
+      7: ['Здравствуйте, {n}! Как вы, мастер?', 'Мастер! Разрешите доложить?'],
+      8: ['Здравствуйте, {n}! Замначальника, мы вас уважаем.', 'О, заместитель! Проходите, мы тут стараемся.'],
+      9: ['Смирно! Начальник цеха идёт!', 'Здравствуйте, {n}. Чем обязаны вашим визитом?']
+    };
+    window.addEventListener('load', () => {
+      if (!G.modal || G._greetWrapped) return; G._greetWrapped = true; const _m = G.modal;
+      G.modal = function (m) {
+        try { const s = G.s; if (s && m && m.face && SUBS.indexOf(m.face) >= 0 && s.car.rank >= 6 && s.day) { s.day.greet = s.day.greet || {}; if (!s.day.greet[m.face]) { s.day.greet[m.face] = 1; const r = Math.min(9, s.car.rank), t = G.pick(GREET[r] || GREET[9]).replace('{n}', s.name); m = Object.assign({}, m, { text: '<i>«' + t + '»</i><br>' + (m.text || '') }); } } } catch (e) {}
+        return _m.call(this, m);
+      };
+    });
+
+    // ---------- «Путь к креслу директора» (недостижимая цель)
+    const SEAT = ['Труханов: «Я ещё тридцать лет буду работать, но вы, главное, не торопитесь».', 'Секретарь Аллочка: «Директор принимает по средам. Каждый год».', 'Соплежуйкин: «Вам не хватает… ну… мелочи. Я потом скажу какой».', 'В приказе №0 опять опечатка: слово «директор» заменено на «заместитель».', 'Кулежов: «Я с директором на ты. Он сказал, что скоро. Он так говорил и вчера».'];
+    A('seat', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Путь к креслу директора', i: '🪑', menu: true, req: s => s.car.rank < 9 ? 'Нужна должность начальника цеха' : null, fn: () => {
+      const f = F(); f.seat = Math.min(99, f.seat || 90); G.modal({ title: '🪑 Путь к креслу директора', text: 'Прогресс: <b>' + f.seat + '%</b>.<br>' + G.pick(SEAT) + '<br><small>Игра обещает: ещё чуть-чуть — и кресло твоё.</small>', opts: [{ t: 'Продолжать идти', fn: () => { G.fx({ boss: 1, mood: -1 }); if (G.week() > (f.seatWk || -1)) { f.seatWk = G.week(); f.seat = Math.min(99, f.seat + 1); } msg('Ты сделал ещё шаг. Кресло, кажется, сдвинулось. В обратную сторону.'); sp(); } }, { t: 'Остановиться', fn: () => {} }] }); return 'custom'; } });
+
+    // ---------- Управление цехом: новые возможности по должностям
+    const plan = v => { const f = F(); if (G.plantStats) G.plantStats(); f.plan = C((f.plan || 50) + v); };
+    const morale = v => { const f = F(); if (G.plantStats) G.plantStats(); f.shopMorale = C((f.shopMorale || 50) + v); };
+    A('mg_assign', { ph: ['work'], loc: 'shop', g: 'Управление', n: 'Расставить людей по участкам', i: '🧑‍🔧', menu: true, once: 'day', req: s => s.car.rank < 6 ? 'Нужна должность бригадира' : null, fn: () => { G.modal({ title: 'Расстановка', text: 'Куда сделать упор сегодня?', opts: [
+      { t: '🏭 На скорость', fn: () => { plan(5); morale(-2); G.fx({ boss: 2, energy: -4 }); msg('План растёт, народ ворчит.'); sp(); } },
+      { t: '🔍 На качество', fn: () => { plan(2); morale(2); G.fx({ know: 1, boss: 1 }); msg('Брака меньше, спокойствия больше.'); sp(); } },
+      { t: '🦺 На безопасность', fn: () => { plan(-1); morale(4); G.fx({ cons: 2, boss: 1 }); msg('Все в касках, все слегка недовольны, но целы.'); sp(); } }] }); return 'custom'; } });
+    A('mg_check', { ph: ['work'], loc: 'shop', g: 'Управление', n: 'Проверить работу участка', i: '📋', menu: true, once: 'day', req: s => s.car.rank < 7 ? 'Нужна должность мастера' : null, fn: () => { G.mini('papers', { title: 'Проверка участка', hint: 'Тапай по документам: принимай отчёты и накладные!' }, r => { plan(Math.round(7 * r.score)); G.fx({ boss: 2, know: 1, energy: -6 }); msg(r.score >= 0.7 ? 'Проверка прошла чётко. Участок подтянулся.' : 'Проверка вышла вялой, но замечания записаны.', r.score >= 0.7 ? 'good' : 'warn'); sp(); }); return 'custom'; } });
+    A('mg_meeting', { ph: ['work'], loc: 'shop', g: 'Управление', n: 'Провести планёрку', i: '📣', menu: true, once: 'day', req: s => s.car.rank < 8 ? 'Нужна должность зама начальника цеха' : null, fn: () => { G.modal({ title: 'Планёрка', text: 'Что скажешь коллективу?', opts: [
+      { t: 'Поставить жёсткий план', fn: () => { plan(6); morale(-5); G.fx({ boss: 3 }); msg('План принят. Лица вытянулись.'); sp(); } },
+      { t: 'Поблагодарить за работу', fn: () => { plan(1); morale(6); G.fx({ coll: 3, mood: 2 }); msg('Народ растаял. Работать стали охотнее.', 'good'); sp(); } },
+      { t: 'Пошутить про Кулежова', fn: () => { morale(4); G.fx({ cool: 2 }); msg('Смеялись все, кроме Кулежова. Он сказал, что это и был его план.'); sp(); } }] }); return 'custom'; } });
+    A('mg_report', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Доклад директору о состоянии цеха', i: '📑', menu: true, req: s => s.car.rank < 9 ? 'Нужна должность начальника цеха' : (G.week() === (s.flags.repWk === undefined ? -1 : s.flags.repWk) ? 'Раз в неделю' : null), fn: () => { const f = F(); f.repWk = G.week(); G.modal({ title: 'Доклад Труханову', face: 'truhanov', text: 'Труханов смотрит поверх очков: «Ну? Как у вас с планом?»', opts: [
+      { t: 'Доложить честно', fn: () => { const p = G.plantStats().plan; if (p >= 60) { G.fx({ boss: 5, mood: 3 }); msg('Труханов кивнул: «Хорошо. Так держать, а я сам ничего не придумаю».', 'good'); } else { G.fx({ boss: -2 }); msg('Труханов: «Хм. Исправляйте». Он что-то записал в блокнотик.', 'warn'); } sp(); } },
+      { t: 'Приукрасить цифры', fn: () => { if (G.chance(55)) { G.fx({ boss: 6 }); msg('Труханов остался доволен. Цифры, правда, придётся подтверждать.', 'warn'); plan(-2); } else { G.fx({ boss: -8, cons: -3 }); msg('Труханов проверил цифры и записал в блокнотик «приукрашивает».', 'bad'); } sp(); } }] }); return 'custom'; } });
+  })();
+
+
+  // ======================= v2.1: механики работы по профессиям, брак, премии и взятки =======================
+  (function () {
+    const D = G.D, C = G.clamp, msg = (t, c) => G.toast(t, c), F = () => G.s.flags;
+    const shuf = a => a.slice().sort(() => Math.random() - 0.5);
+    const ovl = html => { const root = document.getElementById('app'), o = document.createElement('div'); o.className = 'gym-ov'; const b = document.createElement('div'); b.className = 'gym-box'; b.innerHTML = html; o.appendChild(b); root.appendChild(o); return { o, b, q: s => b.querySelector(s) }; };
+    const accOf = (d, half) => d <= half ? 0.6 + 0.4 * (1 - d / half) : Math.max(0, 0.6 - (d - half) * 3);
+
+    // ---------- Мини-игры по профессиям
+    const GAMES = {
+      crane: (title, cb) => { // Кран: груз качается, опусти в зону
+        const u = ovl('<h3>' + title + '</h3><div class="gym-info" id="i">Опусти груз точно в зелёную зону. Он раскачивается!</div><div class="gym-track"><div class="gym-zone" id="z"></div><div class="gym-mark" id="m"></div></div><div class="gym-rep" id="r">&nbsp;</div><button class="btn big hazard" id="b">ОПУСТИТЬ ГРУЗ</button>');
+        let rd = 0, sc = [], t0 = 0, zc = 0.5, zw = 0.22, locked = false, pos = 0.5, done = false;
+        const setup = () => { zw = Math.max(0.12, 0.22 - rd * 0.03); zc = 0.2 + Math.random() * 0.6; u.q('#z').style.left = ((zc - zw / 2) * 100) + '%'; u.q('#z').style.width = (zw * 100) + '%'; u.q('#i').innerHTML = 'Груз ' + (rd + 1) + ' из 3'; };
+        const loop = ts => { if (done) return; if (!t0) t0 = ts; const sp = 1.6 + rd * 0.5; pos = 0.5 + 0.46 * Math.sin((ts - t0) / 1000 * sp * 2); u.q('#m').style.left = (pos * 100) + '%'; requestAnimationFrame(loop); };
+        u.q('#b').onclick = () => { if (locked) return; locked = true; const a = accOf(Math.abs(pos - zc), zw / 2); sc.push(a); u.q('#r').textContent = a >= 0.9 ? 'Точно в цель!' : a >= 0.6 ? 'Нормально' : 'Мимо, груз задел стойку'; rd++; setTimeout(() => { if (rd >= 3) { done = true; u.o.remove(); cb(sc.reduce((x, y) => x + y, 0) / 3); } else { setup(); locked = false; u.q('#r').innerHTML = '&nbsp;'; } }, 600); };
+        setup(); requestAnimationFrame(loop);
+      },
+      cut: (title, cb) => { // Обработка: зажми подачу и отпусти в зелёной зоне
+        const u = ovl('<h3>' + title + '</h3><div class="gym-info" id="i"></div><div class="gym-track"><div class="gym-zone" style="left:68%;width:20%"></div><div class="gym-mark" id="m" style="left:0"></div></div><div class="gym-rep" id="r">&nbsp;</div><button class="btn big hazard" id="b">ДЕРЖИ ПОДАЧУ</button>');
+        let rd = 0, sc = [], hold = false, prog = 0, last = 0, done = false, wait = false;
+        const info = () => { u.q('#i').innerHTML = 'Деталь ' + (rd + 1) + ' из 3. Держи кнопку, отпусти в зелёной зоне. Перегнёшь — деталь в брак.'; };
+        const fin = a => { sc.push(a); rd++; wait = true; hold = false; setTimeout(() => { if (rd >= 3) { done = true; u.o.remove(); cb(sc.reduce((x, y) => x + y, 0) / 3); } else { prog = 0; wait = false; u.q('#r').innerHTML = '&nbsp;'; info(); } }, 650); };
+        const loop = ts => { if (done) return; const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts; if (hold && !wait) { prog += dt * (0.5 + rd * 0.12); if (prog >= 1) { u.q('#r').textContent = 'Перегнул! Брак.'; fin(0); } } u.q('#m').style.left = Math.min(100, prog * 100) + '%'; requestAnimationFrame(loop); };
+        const b = u.q('#b'); const down = e => { if (!wait) hold = true; e.preventDefault(); }; const up = () => { if (!hold || wait) return; hold = false; const a = Math.max(0, 1 - Math.abs(prog - 0.78) / 0.45); u.q('#r').textContent = a >= 0.85 ? 'Чистая обработка!' : a >= 0.5 ? 'Допустимо' : 'Кривовато'; fin(a); };
+        b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up);
+        info(); requestAnimationFrame(loop);
+      },
+      wires: (title, cb) => { // Ремонт/электрика: соедини провода одного цвета
+        const COL = ['#e33', '#3a3', '#38f', '#fd2'], R = shuf([0, 1, 2, 3]);
+        const u = ovl('<h3>' + title + '</h3><div class="gym-info" id="i">Соедини провода одного цвета: сначала слева, потом справа. 12 секунд!</div><div style="display:flex;justify-content:space-between;margin:10px 0"><div id="l" style="display:flex;flex-direction:column;gap:8px"></div><div id="r" style="display:flex;flex-direction:column;gap:8px"></div></div><div class="gym-rep" id="t">12.0 с</div>');
+        let sel = -1, ok = 0, bad = 0, t0 = 0, done = false; const used = {};
+        const mk = (side, ci) => { const b = document.createElement('button'); b.className = 'btn'; b.style.cssText = 'background:' + COL[ci] + ';min-width:70px;height:40px;border:2px solid #000'; b.textContent = '●'; b.onclick = () => { if (done || used[side + ci]) return;
+          if (side === 'l') { sel = ci; return; } if (sel < 0) return;
+          if (sel === ci) { ok++; used['l' + ci] = used['r' + ci] = 1; b.style.opacity = 0.35; u.q('#l').children[ci].style.opacity = 0.35; } else bad++; sel = -1; if (ok >= 4) fin(); }; return b; };
+        [0, 1, 2, 3].forEach(i => u.q('#l').appendChild(mk('l', i))); R.forEach(i => u.q('#r').appendChild(mk('r', i)));
+        const fin = () => { if (done) return; done = true; u.o.remove(); cb(C((ok - 0.3 * bad) / 4, 0, 1)); };
+        const loop = ts => { if (done) return; if (!t0) t0 = ts; const el = (ts - t0) / 1000; u.q('#t').textContent = Math.max(0, 12 - el).toFixed(1) + ' с'; if (el >= 12) fin(); else requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+      },
+      sort: (title, cb, theme) => { // Склад/строповка: разложи по нужной полке
+        const T = theme === 'sling' ? { shelves: ['Строп 1 т', 'Строп 3 т', 'Строп 5 т'], items: [['📦 Ящик 0.8 т', 0], ['⚙ Редуктор 2.5 т', 1], ['🧱 Плита 4.5 т', 2], ['🛢 Бочка 0.9 т', 0], ['🔩 Вал 3 т', 1], ['🏗 Балка 5 т', 2], ['📦 Короб 0.6 т', 0], ['⚙ Двигатель 2.8 т', 1]] }
+          : { shelves: ['Металл', 'Крепёж', 'Жидкости'], items: [['🔩 Болт', 1], ['🛢 Масло', 2], ['⬛ Заготовка', 0], ['⚙ Шайба', 1], ['🧴 Растворитель', 2], ['📏 Пруток', 0], ['🔩 Гайка', 1], ['🎨 Краска', 2], ['⬛ Лист', 0], ['🛢 Смазка', 2]] };
+        const items = shuf(T.items).slice(0, 8);
+        const u = ovl('<h3>' + title + '</h3><div class="gym-info">Разложи по полкам, пока время не вышло.</div><div class="gym-rep" id="s" style="font-size:26px;min-height:44px"></div><div class="gym-rep" id="r">&nbsp;</div><div class="fi-btns" id="sh"></div>');
+        let i = 0, ok = 0, timer = null, lock = false, cur = null;
+        const next = () => { if (i >= items.length) { u.o.remove(); return cb(ok / items.length); } lock = false; cur = items[i]; u.q('#s').textContent = cur[0]; u.q('#r').innerHTML = '&nbsp;'; timer = setTimeout(() => ans(-1), Math.max(1000, 1900 - i * 90)); };
+        const ans = k => { if (lock) return; lock = true; clearTimeout(timer); const r = u.q('#r'); if (k === cur[1]) { ok++; r.textContent = 'Верно'; r.className = 'gym-rep good'; } else { r.textContent = k < 0 ? 'Не успел' : 'Не туда'; r.className = 'gym-rep bad'; } i++; setTimeout(next, 330); };
+        T.shelves.forEach((n, k) => { const b = document.createElement('button'); b.className = 'btn big'; b.textContent = n; b.onclick = () => ans(k); u.q('#sh').appendChild(b); }); next();
+      },
+      quiz: (title, cb, bank) => { // Распределение людей / решения: выбери верный вариант
+        const qs = shuf(bank).slice(0, 3); let i = 0, ok = 0;
+        const u = ovl('<h3>' + title + '</h3><div class="gym-info" id="q"></div><div class="gym-rep" id="r">&nbsp;</div><div id="o" style="display:flex;flex-direction:column;gap:8px"></div>');
+        const show = () => { if (i >= qs.length) { u.o.remove(); return cb(ok / qs.length); } const q = qs[i]; u.q('#q').innerHTML = '<b>' + q.q + '</b>'; u.q('#r').innerHTML = '&nbsp;'; const o = u.q('#o'); o.innerHTML = ''; shuf([0, 1, 2]).forEach(j => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = q.a[j]; b.onclick = () => { if (j === 0) { ok++; u.q('#r').textContent = 'Верное решение'; u.q('#r').className = 'gym-rep good'; } else { u.q('#r').textContent = 'Так себе решение'; u.q('#r').className = 'gym-rep bad'; } i++; o.innerHTML = ''; setTimeout(show, 700); }; o.appendChild(b); }); };
+        show();
+      }
+    };
+    const ASSIGN = [
+      { q: 'Тяжёлая погрузка. Кого поставишь?', a: ['Силача Гену', 'Аккуратную Люсю', 'Болтуна Витю'] }, { q: 'Срочный заказ горит. Кого?', a: ['Быструю Люсю', 'Опытного, но медленного Иваныча', 'Новичка Колю'] },
+      { q: 'Сложный чертёж. Кого?', a: ['Опытного Иваныча', 'Быстрого Гену', 'Новичка Колю'] }, { q: 'Тонкая отделка. Кого?', a: ['Аккуратную Люсю', 'Силача Гену', 'Быстрого Витю'] },
+      { q: 'Нужно обучить стажёра. Кого?', a: ['Терпеливого Иваныча', 'Нервного Гену', 'Молчуна Витю'] }
+    ];
+    const DECIDE = [
+      { q: 'Заказчик просит сделать на день раньше. Что решишь?', a: ['Согласовать реальные сроки', 'Пообещать и ускорить любой ценой', 'Сделать вид, что не слышал'] }, { q: 'Мастер просит новый инструмент. Бюджет ограничен.', a: ['Купить самое нужное, остальное отложить', 'Отказать всем', 'Купить всё и объясняться потом'] },
+      { q: 'Два работника поссорились. Что делать?', a: ['Выслушать обоих и развести по участкам', 'Уволить обоих', 'Сделать вид, что всё хорошо'] }, { q: 'Брак на партии. Как действовать?', a: ['Найти причину и исправить процесс', 'Скрыть и отправить', 'Найти виноватого и наказать'] },
+      { q: 'Директор хочет отчёт «завтра к утру».', a: ['Подготовить честный отчёт и предупредить о пробелах', 'Нарисовать красивые цифры', 'Передать задачу Кулежову'] }, { q: 'План горит, народ устал. Что сделаешь?', a: ['Перераспределить смены и дать отдых', 'Ввести сверхурочные без оплаты', 'Пообещать премию, которой нет'] }
+    ];
+    G.workGame = function (kind, title, cb) {
+      try {
+        if (kind === 'weld' || kind === 'tol') return G.sideGame(kind, cb);
+        if (kind === 'sling') return GAMES.sort(title, cb, 'sling');
+        if (kind === 'assign') return GAMES.quiz(title, cb, ASSIGN);
+        if (kind === 'decide') return GAMES.quiz(title, cb, DECIDE);
+        return GAMES[kind](title, cb);
+      } catch (e) { cb(0.5); }
+    };
+    const JOBGAME = { drob: 'rhythm', podsob: 'rhythm', liteyshik: 'rhythm', plavilshik: 'rhythm', stropalshik: 'sling', kran: 'crane', tokar: 'cut', chpu: 'cut', svarshik: 'weld', slesar: 'wires', elektrik: 'wires', laborant: 'papers', otk: 'tol', kladovshik: 'sort', deloproizv: 'papers' };
+    const JT = { drob: 'ДРОБЬ', podsob: 'ПОДСОБКА', liteyshik: 'ЛИТЬЁ', plavilshik: 'ПЛАВКА', stropalshik: 'СТРОПОВКА', kran: 'КРАН', tokar: 'ТОЧЕНИЕ', chpu: 'ЧПУ', svarshik: 'СВАРКА', slesar: 'РЕМОНТ', elektrik: 'ЭЛЕКТРИКА', laborant: 'АНАЛИЗЫ', otk: 'КОНТРОЛЬ ОТК', kladovshik: 'СКЛАД', deloproizv: 'БУМАГИ' };
+    G.ACT.work.fn = function (s) {
+      if (s.instr.perv == null) { msg('Без первичного инструктажа допуска нет! Иди к Палычу или Пелагее.', 'bad'); return false; }
+      const r = s.car.rank, j = G.job(); let kind, title;
+      if (r >= 8) { kind = 'decide'; title = 'СОВЕЩАНИЕ И РЕШЕНИЯ'; } else if (r === 7) { kind = 'papers'; title = 'ПРОВЕРКИ И УКАЗАНИЯ'; } else if (r === 6) { kind = 'assign'; title = 'РАСПРЕДЕЛЕНИЕ ЛЮДЕЙ'; }
+      else { kind = JOBGAME[s.car.job] || 'rhythm'; title = JT[s.car.job] || j.name; }
+      if (kind === 'rhythm' || kind === 'papers') G.mini(kind, { title: title, hint: kind === 'papers' ? 'Тапай по папкам, пока не кончилось время' : 'Тапай «РАБОТАТЬ», когда маркер в зелёной зоне', rounds: 3 + Math.min(2, Math.floor(G.physical() / 2)) }, res => G.doOp(res.score));
+      else G.workGame(kind, title, sc => G.doOp(sc));
+      return 'custom';
+    };
+
+    // ---------- Действия, зависящие от профессии (чужие скрыты)
+    const MACH = ['drob', 'podsob', 'liteyshik', 'plavilshik', 'tokar', 'chpu', 'slesar'];
+    const isJob = (s, list) => s.car.rank < 6 && list.indexOf(s.car.job) >= 0;
+    G.ACT.oil.req = s => isJob(s, MACH) ? null : 'Не здесь';
+    const care = (id, jobs, n, i, txt) => A(id, { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n, i, h: 1, once: 'day', fx: { know: 2, energy: -3 }, txt, req: s => isJob(s, jobs) ? null : 'Не здесь', fn: s => { s.flags.careDay = s.t.day; } });
+    care('care_weld', ['svarshik'], 'Заменить электроды и зачистить кромки', '🔥', 'Электроды свежие, кромки блестят. Шов будет красивым.');
+    care('care_crane', ['kran', 'stropalshik'], 'Осмотреть тросы и крюки', '🪝', 'Тросы целы, крюки на месте. Можно жить.');
+    care('care_elec', ['elektrik'], 'Проверить щиток и заземление', '⚡', 'Щиток не бьётся током. Приятная новость.');
+    care('care_otk', ['otk', 'laborant'], 'Поверить калибры и приборы', '📏', 'Калибры показывают честно. Они у вас единственные.');
+    care('care_stock', ['kladovshik', 'deloproizv'], 'Провести инвентаризацию и разобрать стеллаж', '📋', 'Всё учтено. Кроме того, что украдено.');
+    const _q = G.quality; G.quality = function () { const q = _q.apply(this, arguments); return G.s.flags.careDay === G.s.t.day ? Math.min(100, q + 6) : q; };
+    const _mi = G.machineIncident; G.machineIncident = function () { if (G.s.flags.careDay === G.s.t.day && G.chance(60)) { msg('Утренний осмотр спас от поломки.', 'good'); return; } return _mi.apply(this, arguments); };
+
+    // ---------- Брак: бригадир, ОТК, взятки и любовь
+    const _op = G.doOp;
+    G.doOp = function (score) {
+      const s = G.s, r = _op.apply(this, arguments);
+      try { if (s.car.rank < 6 && score < 0.35) { s.day.defects = (s.day.defects || 0) + 1; s.stats.brak++; msg('Деталь с браком. Надеемся, не заметят.', 'warn'); } } catch (e) {}
+      return r;
+    };
+    const penalty = (n, why) => { const s = G.s; s.pay.pen += n; G.fx({ boss: -3, mood: -4 }); msg(why + ' Премия снята на ' + G.rub(n) + '.', 'bad'); if (G.boardAdd) G.boardAdd('Лишён премии за брак', 'bad'); };
+    const defectCase = (n, by, done) => {
+      const s = G.s, f = F(), cost = Math.min(6000, 1500 * n), face = by === 'otk' ? 'ekaterina' : 'palych';
+      const who = by === 'otk' ? 'Екатерина Е. (ОТК)' : (D.NPC.palych.name + ' (бригадир)');
+      const bribe = (amount, item) => { if (item && G.has(item)) G.give(item, -1); else G.addMoney(-amount); f.bribed = (f.bribed || 0) + 1; G.fx({ cons: -3 }); msg('Вопрос решён «по-человечески»: брак исчез из ведомости.', 'warn'); if (G.rumor) G.rumor('brak', 'Говорят, ты откупился от брака. Не все осуждают.', { cons: -1, coll: 1 }, 55); done(); };
+      G.modal({ title: '⚠ Брак на смене', face, text: who + ' обнаружил(а) брак: деталей — <b>' + n + '</b>. Возможное наказание: лишение премии на <b>' + G.rub(cost) + '</b>.', opts: [
+        { t: '🙇 Признать вину', fn: () => { penalty(cost, 'Ты признал вину.'); G.fx({ cons: 2 }); done(); } },
+        { t: '💵 Договориться (конверт 1 000 ₽)', dis: s.money < 1000 && !G.has('env1') ? 'Нет денег' : null, fn: () => bribe(1000, 'env1') },
+        { t: '🔧 Свалить на станок', dis: s.machine.wear < 40 ? 'Станок в порядке' : null, fn: () => { if (G.chance(50)) { msg('Станок и правда подвёл. Тебя пожалели.', 'good'); done(); } else { penalty(Math.round(cost * 1.3), 'Станок оказался ни при чём.'); done(); } } }
+      ] });
+    };
+    const _es = G.endShift;
+    G.endShift = function () {
+      const s = G.s, f = F(), n = s.day && s.day.defects || 0;
+      if (n > 0 && s.car.rank < 6 && s.phase !== 'evening') {
+        const palych = D.NPC.palych && !(f.npcMoved && f.npcMoved.palych && s.car.rank >= 6);
+        const deal = f.brigDeal !== undefined && s.t.day <= f.brigDeal, eDeal = f.ekDeal !== undefined && G.week() <= f.ekDeal;
+        const noticed = palych && !deal && G.chance(Math.min(85, 40 + 10 * n));
+        const toOtk = !noticed && G.chance(35);
+        const proceed = () => _es.apply(G, arguments);
+        if (noticed) { defectCase(n, 'brig', proceed); return; }
+        if (toOtk) {
+          const ek = G.R('ekaterina');
+          if (eDeal) msg('Екатерина вспомнила вашу договорённость и закрыла глаза на брак.', 'warn');
+          else if (ek.stage >= 4) { msg('Екатерина нашла брак, посмотрела на тебя и тихо порвала акт. Любовь зла.', 'good'); G.relAdd('ekaterina', 1); if (G.rumor) G.rumor('ek', 'Говорят, начальница ОТК закрывает глаза на твой брак. Подозрительно.', { coll: -2 }, 60); }
+          else { defectCase(n, 'otk', proceed); return; }
+        }
+      }
+      return _es.apply(this, arguments);
+    };
+    // Договориться заранее (меню Палыча и Екатерины)
+    const _sp21 = G.npcSpecial;
+    G.npcSpecial = function (id) {
+      const o = _sp21.apply(this, arguments), s = G.s, f = F();
+      const dealOpt = (key, val, label, txt) => o.push({ t: label, dis: s.money < 1000 && !G.has('env1') ? 'Нет денег' : null, fn: () => { if (G.has('env1')) G.give('env1', -1); else G.addMoney(-1000); f[key] = val; G.fx({ cons: -3 }); msg(txt, 'warn'); G.spend(1); } });
+      if (id === 'palych' && s.car.rank < 6) dealOpt('brigDeal', s.t.day + 7, '💵 Подкинуть бригадиру на чай (1 000 ₽)', 'Палыч смущённо взял: «На неделю хватит глазам не замечать. Но чур — аккуратнее».');
+      if (id === 'ekaterina' && s.car.rank < 6) dealOpt('ekDeal', G.week() + 1, '💵 Договориться насчёт брака (1 000 ₽)', 'Екатерина холодно кивнула: «Я ничего не слышала. До следующей недели».');
+      return o;
+    };
+  })();
+
+
+  // ======================= v2.2: сотрудники цеха, найм, зарплаты, мораль коллектива =======================
+  (function () {
+    const D = G.D, C = G.clamp, K = G.career, msg = (t, c) => G.toast(t, c), sp = n => G.spend(n || 1);
+    const F = () => G.s.flags, shuf = a => a.slice().sort(() => Math.random() - 0.5), mon = n => G.rub(Math.round(n));
+    const TR = {
+      slow_exp: { n: 'Опытный, но медленный', prod: -12, skill: 18, err: 3 }, fast_err: { n: 'Быстрый, часто ошибается', prod: 15, skill: 0, err: 14 },
+      conflict: { n: 'Хороший специалист, конфликтный', prod: 0, skill: 15, err: 4, conf: 1 }, young: { n: 'Молодой, быстро обучается', prod: 0, skill: -14, err: 6, learn: 1 },
+      diligent: { n: 'Старательный, без инициативы', prod: 5, skill: 5, err: 4 }, lazy: { n: 'Талантливый лентяй', prod: -5, skill: 20, err: 6 },
+      booze: { n: 'Золотые руки, слабость к рюмке', prod: 8, skill: 12, err: 10 }, honest: { n: 'Честный и надёжный', prod: 2, skill: 8, err: 2 }
+    };
+    const FN = ['Иван', 'Пётр', 'Сидор', 'Николай', 'Алексей', 'Фёдор', 'Захар', 'Григорий', 'Тимур', 'Олег', 'Борис', 'Кирилл'], LN = ['Петров', 'Иванов', 'Сидоров', 'Смирнов', 'Кузнецов', 'Попов', 'Лебедев', 'Козлов', 'Новиков', 'Морозов', 'Волков', 'Соловьёв'];
+    const jobName = id => (D.JOBS[id] && D.JOBS[id].name) || id;
+    const CAP = r => r >= 9 ? 12 : r >= 8 ? 8 : r >= 7 ? 5 : r >= 6 ? 3 : 0;
+    const eff = e => { const t = TR[e.trait], br = F().staff.some(x => x.brig) ? 1.05 : 1; return C((e.skill / 100) * (0.6 + 0.4 * e.loy / 100) * (1 + (t.prod || 0) / 100) * br, 0, 1.4); };
+    G.staffEff = eff;
+    const mk = (o) => { const f = F(); f.staffId = (f.staffId || 0) + 1; const t = TR[o.trait]; return Object.assign({ id: f.staffId, skill: C(55 + (t.skill || 0) + Math.round(Math.random() * 20 - 10), 25, 95), loy: 50 + Math.round(Math.random() * 20), shift: f.staffId % 2 + 1, brig: false, hired: G.s.t.day }, o); };
+    const ensure = () => {
+      const f = F(); if (f.staff || G.s.car.rank < 6) return; f.budget = f.budget || 0; f.delays = 0; f.pays = 0;
+      f.staff = [mk({ npc: 'seryoga', name: 'Серёга', job: 'tokar', trait: 'fast_err', pay: 24000 }), mk({ npc: 'mikhalych', name: 'Михалыч', job: 'svarshik', trait: 'slow_exp', pay: 30000 }), mk({ npc: 'vityok', name: 'Витёк', job: 'slesar', trait: 'young', pay: 21000 })];
+    };
+    const _pr2 = K.promote; K.promote = function (to) { const r = _pr2.apply(this, arguments); try { if (to >= 6) ensure(); if (to === 7 && F().staff && !F().staff.some(e => e.npc === 'afonya')) F().staff.push(mk({ npc: 'afonya', name: 'Афоня', job: 'slesar', trait: 'conflict', pay: 23000 })); } catch (e) {} return r; };
+    const pay$ = n => { const f = F(); if (f.budget >= n) { f.budget -= n; return true; } if (G.s.money >= n) { G.addMoney(-n); return true; } return false; };
+    const can$ = n => F().budget >= n || G.s.money >= n;
+    const line = e => e.name + ' — ' + jobName(e.job) + ' · навык ' + Math.round(e.skill) + ' · лояльность ' + Math.round(e.loy) + ' · ' + mon(e.pay) + '/мес.' + (e.brig ? ' · бригадир' : '');
+
+    G.staffMenu = function () {
+      ensure(); const s = G.s, f = F(), r = s.car.rank, st = f.staff || [], back = () => G.staffMenu();
+      const mor = G.plantStats ? G.plantStats().morale : 50;
+      G.modal({ title: 'Сотрудники цеха', wide: true, text: 'Бюджет цеха: <b>' + mon(f.budget || 0) + '</b> · Сотрудников: <b>' + st.length + '/' + CAP(r) + '</b> · Мораль цеха: <b>' + mor + '</b> · Задержек зарплаты: <b>' + (f.delays || 0) + '</b>', opts: st.map(e => ({ t: line(e), fn: () => card(e) })).concat([
+        { t: '➕ Нанять сотрудника (500 ₽)', dis: r < 7 ? 'Нужна должность мастера' : st.length >= CAP(r) ? 'Штат полон' : null, fn: () => hire() },
+        { t: '📅 Распределение по сменам', dis: r < 8 ? 'Нужна должность зама начальника' : null, fn: () => shifts() },
+        { t: '💰 Политика зарплат', dis: r < 9 ? 'Нужна должность начальника цеха' : null, fn: () => policy() },
+        { t: 'Закрыть', fn: () => {} }]) });
+      function card(e) {
+        const t = TR[e.trait];
+        G.modal({ title: e.name, text: jobName(e.job) + '<br>Характер: <b>' + t.n + '</b><br>Навык: ' + Math.round(e.skill) + ' · Производительность: ' + Math.round(eff(e) * 100) + '% · Лояльность: ' + Math.round(e.loy) + '<br>Смена: ' + e.shift + ' · Зарплата: ' + mon(e.pay) + '/мес.', opts: [
+          { t: '📚 Повысить квалификацию (1 000 ₽)', dis: !can$(1000) ? 'Нет денег' : e.skill >= 95 ? 'Потолок' : null, fn: () => { pay$(1000); e.skill = Math.min(95, e.skill + (t.learn ? 12 : 8)); e.loy += 3; msg(e.name + ' прошёл курсы. Навык растёт.', 'good'); sp(); back(); } },
+          { t: '💵 Повысить зарплату на 10%', fn: () => { e.pay = Math.round(e.pay * 1.1 / 100) * 100; e.loy = Math.min(100, e.loy + 8); msg(e.name + ' доволен. Работать будет лучше.', 'good'); sp(); back(); } },
+          { t: e.brig ? '⭐ Снять с бригадира' : '⭐ Назначить бригадиром', dis: r < 8 ? 'Нужна должность зама начальника' : null, fn: () => { st.forEach(x => { x.brig = false; }); if (!e.brig) { e.brig = true; e.pay = Math.round(e.pay * 1.1 / 100) * 100; e.loy = Math.min(100, e.loy + 5); msg(e.name + ' назначен бригадиром: команда подтянулась.', 'good'); } sp(); back(); } },
+          { t: '🔁 Перевести в другую смену', fn: () => { e.shift = e.shift === 1 ? 2 : 1; msg(e.name + ' теперь во ' + e.shift + '-й смене.'); back(); } },
+          { t: '❌ Уволить', dis: r < 7 ? 'Нужна должность мастера' : e.npc ? 'Старый кадр: уволить нельзя, только перевести' : null, fn: () => G.modal({ title: 'Увольнение', text: 'Уволить ' + e.name + '? Выходное пособие: ' + mon(e.pay / 2) + '.', opts: [{ t: 'Уволить', fn: () => { if (!pay$(Math.round(e.pay / 2))) { msg('Нет денег на пособие.', 'bad'); return; } f.staff = st.filter(x => x !== e); if (e.loy >= 60 || e.brig) { f.shopMorale = C((f.shopMorale || 50) - 5); msg('Коллектив недоволен: ' + e.name + ' был уважаемым человеком.', 'bad'); } else if (eff(e) < 0.4) { f.shopMorale = C((f.shopMorale || 50) + 2); msg('Коллектив вздохнул с облегчением.'); } else msg('Уволен. Без драмы.'); G.fx({ cons: -1 }); sp(); back(); } }, { t: 'Передумал', fn: () => card(e) }] }) },
+          { t: 'Назад', fn: back }] });
+      }
+      function hire() {
+        const pool = Object.keys(D.JOBS), cands = [0, 1, 2].map(() => { const j = G.pick(shuf(pool)), jb = D.JOBS[j], tr = G.pick(shuf(Object.keys(TR))); return mk({ name: G.pick(shuf(LN)) + ' ' + G.pick(shuf(FN))[0] + '.', job: j, trait: tr, pay: Math.round(jb.pay[0] * (0.9 + Math.random() * 0.3) / 100) * 100, loy: 55 }); });
+        G.modal({ title: 'Кандидаты', wide: true, text: 'Собеседование. Выбери одного (500 ₽ за оформление):', opts: cands.map(e => ({ t: line(e) + ' · ' + TR[e.trait].n, dis: !can$(500) ? 'Нет денег' : null, fn: () => { pay$(500); f.staff.push(e); msg(e.name + ' принят на работу. Новый человек в цехе.', 'good'); if (f.staff.length >= 5) G.achieve('crew5', 'Руководитель: в штате 5 человек'); if (f.staff.length >= 12) G.achieve('crew12', 'Большой цех: 12 сотрудников'); sp(); back(); } })).concat([{ t: 'Назад', fn: back }]) });
+      }
+      function shifts() {
+        const a = st.filter(e => e.shift === 1).length, b = st.length - a;
+        G.modal({ title: 'Смены', text: 'Первая смена: <b>' + a + '</b> чел. · Вторая смена: <b>' + b + '</b> чел.<br>Баланс смен влияет на план: ровное распределение даёт бонус.', opts: [{ t: '⚖ Распределить поровну', fn: () => { st.forEach((e, i) => { e.shift = i % 2 + 1; }); msg('Смены сбалансированы.', 'good'); sp(); back(); } }, { t: 'Назад', fn: back }] });
+      }
+      function policy() {
+        G.modal({ title: 'Политика зарплат', text: 'Бюджет цеха: ' + mon(f.budget || 0) + '. Решения влияют на лояльность всего цеха.', opts: [
+          { t: '🎁 Выписать премию цеху (5 000 ₽)', dis: !can$(5000) ? 'Нет денег' : null, fn: () => { pay$(5000); st.forEach(e => { e.loy = Math.min(100, e.loy + 8); }); f.shopMorale = C((f.shopMorale || 50) + 8); msg('Премия выписана. Цех гудит, как улей.', 'good'); sp(); back(); } },
+          { t: '📈 Поднять зарплаты на 10%', fn: () => { st.forEach(e => { e.pay = Math.round(e.pay * 1.1 / 100) * 100; e.loy = Math.min(100, e.loy + 6); }); msg('Зарплаты выросли. Расходы тоже.', 'good'); sp(); back(); } },
+          { t: '📉 Урезать зарплаты на 10%', fn: () => { st.forEach(e => { e.pay = Math.round(e.pay * 0.9 / 100) * 100; e.loy = Math.max(0, e.loy - 9); }); f.shopMorale = C((f.shopMorale || 50) - 5); msg('Зарплаты урезаны. Коллектив мрачнеет.', 'bad'); sp(); back(); } },
+          { t: 'Назад', fn: back }] });
+      }
+    };
+    A('staff', { ph: ['work'], loc: 'shop', g: 'Управление', n: 'Сотрудники цеха', i: '👥', menu: true, req: s => s.car.rank < 6 ? 'Нужна должность бригадира' : null, fn: () => { G.staffMenu(); return 'custom'; } });
+
+    // ---------- Ежедневные расчёты: производительность, конфликты, зарплата по понедельникам
+    const plan = v => { const f = F(); if (G.plantStats) G.plantStats(); f.plan = C((f.plan || 50) + v); };
+    const payroll = () => {
+      const f = F(), st = f.staff; if (!st || !st.length) return;
+      const wk = Math.round(st.reduce((a, e) => a + e.pay / 4, 0)), income = Math.round(st.length * 6000 * (0.6 + (G.plantStats().plan / 100) * 0.8));
+      f.budget = (f.budget || 0) + income;
+      if (f.budget >= wk) { f.budget -= wk; f.pays = (f.pays || 0) + 1; st.forEach(e => { e.loy = Math.min(100, e.loy + 1); }); msg('💼 Цех получил зарплату: ' + mon(wk) + ' (поступления ' + mon(income) + ').', 'good'); if (f.pays >= 12 && !f.delays) G.achieve('nodelay', 'Зарплата вовремя 12 недель'); return; }
+      const lack = wk - f.budget;
+      G.modal({ title: '💼 Не хватает на зарплату', text: 'Бюджет цеха: ' + mon(f.budget) + ', нужно ' + mon(wk) + '. Не хватает <b>' + mon(lack) + '</b>.', opts: [
+        { t: 'Доплатить из своих', dis: G.s.money < lack ? 'Нет денег' : null, fn: () => { G.addMoney(-lack); f.budget = 0; st.forEach(e => { e.loy = Math.min(100, e.loy + 3); }); G.fx({ cons: 1, mood: -2 }); msg('Зарплата выплачена из твоего кармана. Люди это запомнят.', 'good'); } },
+        { t: 'Задержать зарплату', fn: () => { f.delays = (f.delays || 0) + 1; f.pays = 0; st.forEach(e => { e.loy = Math.max(0, e.loy - (8 + 2 * f.delays)); }); f.shopMorale = C((f.shopMorale || 50) - 7); G.fx({ boss: 1, coll: -3 }); msg('Зарплата задержана. По цеху пошёл ропот.', 'bad'); if (f.delays >= 3) msg('Цех шумит: «Сколько можно ждать?». Задержки накапливаются.', 'bad'); } }] });
+    };
+    const staffDaily = () => {
+      const s = G.s, f = F(), st = f.staff; if (!st || !st.length) return; const cap = CAP(s.car.rank) || 3;
+      const avg = st.reduce((a, e) => a + eff(e), 0) / st.length, a1 = st.filter(e => e.shift === 1).length, bal = Math.abs(a1 - (st.length - a1)) <= 1 ? 0.5 : -0.3;
+      plan((avg - 0.55) * 8 * (0.5 + st.length / cap * 0.5) + bal);
+      f.shopMorale = C((f.shopMorale || 50) + (st.reduce((a, e) => a + e.loy, 0) / st.length - 50) / 20);
+      const brig = st.some(e => e.brig);
+      st.forEach(e => { const t = TR[e.trait];
+        if (G.chance(t.err * 0.4)) { plan(-1.2); if (G.chance(30)) msg('У ' + e.name + ' брак: план просел.', 'warn'); }
+        if (t.conf && G.chance(brig ? 4 : 12)) { f.shopMorale = C(f.shopMorale - 3); msg(e.name + ' поругался с коллегой. Мораль цеха падает.', 'warn'); }
+        e.skill = Math.min(95, e.skill + 0.06 * (t.learn ? 4 : 1));
+      });
+      for (const e of st.slice()) if (e.loy < 15) { f.staff = f.staff.filter(x => x !== e); f.shopMorale = C(f.shopMorale - 3); msg(e.name + ' уволился: «Хватит с меня».', 'bad'); }
+      if (G.weekday() === 0) payroll();
+    };
+    const _dt22 = G.dailyTick; G.dailyTick = function () { const r = _dt22.apply(this, arguments); try { staffDaily(); } catch (e) {} return r; };
+  })();
+
+
+  // ======================= v2.3: производственная экономика, заказы, управленческие мини-игры =======================
+  (function () {
+    const D = G.D, C = G.clamp, msg = (t, c) => G.toast(t, c), sp = n => G.spend(n || 1);
+    const F = () => G.s.flags, shuf = a => a.slice().sort(() => Math.random() - 0.5), mon = n => G.rub(Math.round(n));
+    const eco = () => { const f = F(); f.eco = f.eco || { raw: 0, order: null, mode: 'norm', done: 0, rev: 0, exp: 0, made: 0, rej: 0, mRev: 0, mExp: 0, qcDays: 0, logDays: 0, safeDays: 0, cheap: false }; return f.eco; };
+    const rawPrice = () => Math.round(45 + 40 * G.hash(G.week(), 3, 9));
+    const MODES = { qual: { n: '🎯 Качественно', speed: 0.8, def: 0.03, raw: 1, bonus: 1.15, d: 'Медленнее, брака мало, заказчик доплачивает' }, norm: { n: '⚙ Обычный режим', speed: 1, def: 0.08, raw: 1, bonus: 1, d: 'Сбалансированно' }, rush: { n: '⚡ Быстро и дёшево', speed: 1.25, def: 0.18, raw: 0.85, bonus: 0.95, d: 'Быстро и экономнее по сырью, но много брака' } };
+    const CUST = ['ООО «Рога и Шестерёнки»', 'ИП «Гайка и Ко»', 'завод «Красный Болт»', 'артель «Вечный Двигатель»', 'ТД «Станкоторг»', 'кооператив «Самоварные краны»', 'ООО «Три Кузнеца»', 'АО «Заклёпка Плюс»'];
+    const PARTS = ['шестерён', 'фланцев', 'втулок', 'кронштейнов', 'заклёпок', 'валов', 'самоварных кранов', 'гаек повышенной духовности'];
+    const staffEff = () => { const st = F().staff || []; return st.reduce((a, e) => a + (G.staffEff ? G.staffEff(e) : e.skill / 100 * 0.8), 0); };
+    const budget$ = n => { const f = F(); if ((f.budget || 0) >= n) { f.budget -= n; return true; } if (G.s.money >= n) { G.addMoney(-n); return true; } return false; };
+    const can$ = n => (F().budget || 0) >= n || G.s.money >= n;
+    const orders = () => { const wk = G.week(), r = G.s.car.rank, sc = 0.6 + ((F().staff || []).length) / 8;
+      return [0, 1, 2].map(i => { const h = k => G.hash(wk, i * 7 + k, 11); const qty = Math.round((150 + h(1) * 450) * sc / 10) * 10, price = Math.round(120 + h(2) * 180 + r * 8); return { id: wk * 10 + i, cust: CUST[Math.floor(h(3) * CUST.length)], part: PARTS[Math.floor(h(4) * PARTS.length)], qty, price, days: 10 + Math.floor(h(5) * 10) }; }); };
+
+    // ---------- Меню «Производство и заказы»
+    G.ecoMenu = function () {
+      const s = G.s, f = F(), e = eco(), o = e.order, back = () => G.ecoMenu(), r = s.car.rank;
+      const estRate = Math.min(0.5, MODES[e.mode].def + s.machine.wear / 400 + (e.cheap ? 0.08 : 0) + 0.04), need = o ? Math.max(0, Math.round((o.qty - o.good) * 0.4 * MODES[e.mode].raw / (1 - estRate) * 1.05 - e.raw)) : 0;
+      const status = o ? '<br>Заказ: <b>' + o.cust + '</b> — ' + o.qty + ' ' + o.part + ' по ' + mon(o.price) + '<br>Готово годных: <b>' + o.good + '</b> из ' + o.qty + ' (брак ' + o.bad + ') · срок до дня ' + o.deadline + (s.t.day > o.deadline ? ' <b style="color:#ff5a46">(просрочено!)</b>' : ' (осталось ' + (o.deadline - s.t.day) + ' дн.)') : '<br>Активного заказа нет.';
+      G.modal({ title: 'Производство и заказы', wide: true, text: 'Сырьё: <b>' + e.raw + ' кг</b> · цена металла: <b>' + rawPrice() + ' ₽/кг</b> · бюджет цеха: <b>' + mon(f.budget || 0) + '</b> · режим: <b>' + MODES[e.mode].n + '</b>' + status, opts: [
+        { t: '📥 Принять заказ покупателя', dis: o ? 'Уже есть активный заказ' : null, fn: () => take() },
+        { t: '🧱 Закупить металл', fn: () => buy(need) },
+        { t: '🎚 Режим производства', fn: () => mode() },
+        { t: '💰 Финансовый отчёт', fn: () => report() },
+        { t: '🗑 Отказаться от заказа (−10% стоимости)', dis: !o ? 'Нет заказа' : null, fn: () => { const pen = Math.round(o.qty * o.price * 0.1); budget$(Math.min(pen, f.budget || 0)); G.fx({ boss: -3 }); e.order = null; msg('Заказчик недоволен. Неустойка ' + mon(pen) + '.', 'bad'); sp(); } },
+        { t: 'Закрыть', fn: () => {} }] });
+      function take() {
+        const L = orders();
+        G.modal({ title: 'Заказы покупателей', wide: true, text: 'Выбери заказ. Подумай о сырье, людях и сроках.', opts: L.map(x => ({ t: x.cust + ': ' + x.qty + ' ' + x.part + ' по ' + mon(x.price) + ' (выручка ' + mon(x.qty * x.price) + ') · срок ' + x.days + ' дн.', fn: () => { e.order = { cust: x.cust, part: x.part, qty: x.qty, price: x.price, deadline: s.t.day + x.days, made: 0, bad: 0, good: 0, start: s.t.day }; msg('Заказ принят: ' + x.qty + ' ' + x.part + ' для «' + x.cust.replace(/[«»]/g, '') + '». Закупи металл и выбери режим.', 'good'); sp(); mode(true); } })).concat([{ t: 'Назад', fn: back }]) });
+      }
+      function buy(n) {
+        const p = rawPrice(), want = Math.max(50, Math.round(n || 200));
+        G.modal({ title: 'Закупка металла', text: 'Цена: <b>' + p + ' ₽/кг</b> (меняется каждую неделю). Нужно примерно <b>' + want + ' кг</b> на заказ. Есть: ' + e.raw + ' кг.', opts: [
+          { t: 'Качественный металл на ' + want + ' кг — ' + mon(want * p), dis: !can$(want * p) ? 'Нет денег' : null, fn: () => { budget$(want * p); e.exp += want * p; e.mExp += want * p; e.raw += want; e.cheap = false; msg('Металл закуплен: +' + want + ' кг.', 'good'); sp(); back(); } },
+          { t: 'Дешёвый металл с примесями на ' + want + ' кг — ' + mon(want * p * 0.75), dis: !can$(want * p * 0.75) ? 'Нет денег' : null, fn: () => { budget$(want * p * 0.75); e.exp += want * p * 0.75; e.mExp += want * p * 0.75; e.raw += want; e.cheap = true; msg('Металл дешёвый: экономия есть, но брака будет больше.', 'warn'); sp(); back(); } },
+          { t: 'Половина партии — ' + mon(want * p / 2), dis: !can$(want * p / 2) ? 'Нет денег' : null, fn: () => { budget$(want * p / 2); e.exp += want * p / 2; e.mExp += want * p / 2; e.raw += Math.round(want / 2); sp(); back(); } },
+          { t: 'Назад', fn: back }] });
+      }
+      function mode(fromTake) {
+        G.modal({ title: 'Режим производства', text: 'Выбери подход к производству (можно менять):', opts: Object.keys(MODES).map(k => ({ t: MODES[k].n + ' — ' + MODES[k].d, fn: () => { e.mode = k; msg('Режим: ' + MODES[k].n, 'good'); if (fromTake) back(); else back(); } })).concat([{ t: 'Назад', fn: back }]) });
+      }
+      function report() {
+        G.modal({ title: 'Финансовый отчёт цеха', text: 'За всё время:<br>Выручка: <b>' + mon(e.rev) + '</b><br>Расходы (сырьё, электричество, ремонты): <b>' + mon(e.exp) + '</b><br>Прибыль: <b>' + mon(e.rev - e.exp) + '</b><br>Выполнено заказов: <b>' + e.done + '</b><br>Произведено деталей: ' + e.made + ' · брак: ' + e.rej + (e.made ? ' (' + Math.round(e.rej / e.made * 100) + '%)' : ''), opts: [{ t: 'Назад', fn: back }] });
+      }
+    };
+    A('eco', { ph: ['work'], loc: 'shop', g: 'Управление', n: 'Производство и заказы', i: '🏭', menu: true, req: s => s.car.rank < 7 ? 'Нужна должность мастера' : null, fn: () => { G.ecoMenu(); return 'custom'; } });
+
+    // ---------- Управленческие мини-игры
+    const ovl = html => { const root = document.getElementById('app'), o = document.createElement('div'); o.className = 'gym-ov'; const b = document.createElement('div'); b.className = 'gym-box'; b.innerHTML = html; o.appendChild(b); root.appendChild(o); return { o, b, q: s => b.querySelector(s) }; };
+    const grid = (u, items, cols) => { const g = u.q('#g'); g.style.cssText = 'display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px;margin:8px 0'; items.forEach(it => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = it.txt; b.onclick = () => it.on(b); g.appendChild(b); }); };
+    G.mgGame = function (kind, cb) {
+      try {
+        if (kind === 'wires') return G.workGame('wires', 'РЕМОНТ СТАНКА', cb);
+        if (kind === 'pack') { // Логистика: нажимай числа по порядку
+          const u = ovl('<h3>🚚 ЛОГИСТИКА</h3><div class="gym-info">Погрузи ящики по порядку: 1, 2, 3… Чем быстрее, тем лучше.</div><div id="g"></div><div class="gym-rep" id="t">0.0 с</div>');
+          const nums = shuf([1, 2, 3, 4, 5, 6, 7, 8, 9]); let nxt = 1, t0 = 0, pen = 0, done = false;
+          grid(u, nums.map(n => ({ txt: '📦 ' + n, on: b => { if (done) return; if (!t0) t0 = Date.now(); if (n === nxt) { b.disabled = true; b.style.opacity = 0.3; nxt++; if (nxt > 9) { done = true; const t = (Date.now() - t0) / 1000 + pen; u.o.remove(); cb(C(1 - (t - 8) / 18, 0, 1)); } } else { pen += 1; u.q('#t').textContent = 'Не тот ящик! +1 с'; } } })), 3);
+          return;
+        }
+        // inspect: контроль качества / охрана труда
+        const QC = kind === 'qc';
+        let items;
+        if (QC) { items = []; for (let i = 0; i < 12; i++) { const bad = i < 4; const d = bad ? (0.07 + Math.random() * 0.08) * (Math.random() < 0.5 ? -1 : 1) : (Math.random() - 0.5) * 0.09; items.push({ txt: (10 + d).toFixed(2) + ' мм', bad }); } }
+        else { const GOOD = ['🧯 Огнетушитель на месте', '🧤 Перчатки целы', '🦺 Жилет надет', '🚪 Проход свободен', '💡 Освещение в норме', '🪖 Каска надета'], BAD = ['🔌 Голые провода', '🚬 Курят у бочки с маслом', '👟 Тапочки вместо ботинок', '🛢 Масло на полу', '⛓ Ограждение снято', '🔓 Станок без заземления']; items = shuf(BAD).slice(0, 4).map(t => ({ txt: t, bad: true })).concat(shuf(GOOD).slice(0, 6).map(t => ({ txt: t, bad: false }))); }
+        items = shuf(items); const badN = items.filter(x => x.bad).length;
+        const u = ovl('<h3>' + (QC ? '🔬 КОНТРОЛЬ КАЧЕСТВА' : '🦺 ПРОВЕРКА ОХРАНЫ ТРУДА') + '</h3><div class="gym-info">' + (QC ? 'Эталон 10.00 мм, допуск ±0.05. Отметь детали с браком.' : 'Найди нарушения на производстве.') + ' Время: 12 с.</div><div id="g"></div><div class="gym-rep" id="t">12.0 с</div><button class="btn big hazard" id="d">ГОТОВО</button>');
+        let hits = 0, wrong = 0, done = false, t0 = 0;
+        const fin = () => { if (done) return; done = true; u.o.remove(); cb(C((hits - 0.6 * wrong) / badN, 0, 1)); };
+        grid(u, items.map(it => ({ txt: it.txt, on: b => { if (done || b.dataset.x) return; b.dataset.x = 1; if (it.bad) { hits++; b.style.background = '#2f6b2c'; } else { wrong++; b.style.background = '#8a2a22'; } if (hits >= badN) fin(); } })), 2);
+        u.q('#d').onclick = fin; const loop = ts => { if (done) return; if (!t0) t0 = ts; const el = (ts - t0) / 1000; u.q('#t').textContent = Math.max(0, 12 - el).toFixed(1) + ' с'; if (el >= 12) fin(); else requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+      } catch (e) { cb(0.5); }
+    };
+    const mg = (id, loc, n, i, rank, kind, fn) => A(id, { ph: ['work'], loc, g: 'Управление', n, i, menu: true, once: 'day', req: s => s.car.rank < rank ? 'Нужна должность выше' : null, fn: () => { G.mgGame(kind, sc => { fn(sc); sp(); }); return 'custom'; } });
+    mg('eco_repair', 'shop', 'Ремонт станка (мини-игра)', '🔧', 6, 'wires', sc => { const e = eco(); const d = Math.round(15 + 20 * sc); G.s.machine.wear = Math.max(0, G.s.machine.wear - d); e.exp += 200; if (F().budget >= 200) F().budget -= 200; G.fx({ know: 1, energy: -5 }); msg('Станок отремонтирован: износ −' + d + '.', sc >= 0.6 ? 'good' : 'warn'); });
+    mg('eco_qc', 'shop', 'Контроль качества партии', '🔬', 7, 'qc', sc => { const e = eco(); e.qcDays = sc >= 0.8 ? 5 : 3; G.fx({ know: 1, boss: 1 }); msg(sc >= 0.6 ? 'Браковка проведена: брака в партии станет меньше.' : 'Проверка вышла поверхностной.', sc >= 0.6 ? 'good' : 'warn'); });
+    mg('eco_logi', 'shop', 'Логистика склада', '🚚', 7, 'pack', sc => { const e = eco(); e.logDays = sc >= 0.8 ? 5 : 3; G.fx({ energy: -4 }); msg(sc >= 0.6 ? 'Склад в порядке: отгрузка пойдёт быстрее.' : 'Склад разобран кое-как.', sc >= 0.6 ? 'good' : 'warn'); });
+    mg('eco_safety', 'shop', 'Проверка охраны труда', '🦺', 7, 'safe', sc => { const e = eco(); e.safeDays = 7; G.relAdd('nadezhda', Math.round(4 * sc)); G.fx({ cons: 2, boss: 1 }); if (G.plantStats) { const f = F(); f.plan = C((f.plan || 50) + Math.round(3 * sc)); } msg(sc >= 0.6 ? 'Нарушения найдены и устранены. Надежда Николаевна довольна.' : 'Проверка прошла формально.', sc >= 0.6 ? 'good' : 'warn'); });
+    const _mi3 = G.machineIncident; G.machineIncident = function () { if (eco().safeDays > 0 && G.chance(50)) { msg('Проверенные ограждения предотвратили аварию.', 'good'); return; } return _mi3.apply(this, arguments); };
+
+    // ---------- Ежедневное производство
+    const deliver = () => {
+      const s = G.s, f = F(), e = eco(), o = e.order, late = Math.max(0, s.t.day - o.deadline), rate = o.made ? o.bad / o.made : 0, q = MODES[e.mode];
+      let rev = o.qty * o.price * (rate <= 0.04 ? 1.15 : 1) * Math.max(0.6, 1 - 0.05 * late) * (e.mode === 'qual' ? 1.05 : 1);
+      f.budget = (f.budget || 0) + Math.round(rev); e.rev += rev; e.mRev += rev; e.done++;
+      const bonus = late === 0 ? Math.round(rev * 0.015) : 0; if (bonus) s.pay.acc += bonus;
+      G.fx({ boss: late ? -2 : 4, mood: late ? -2 : 4 }); if (f.plan !== undefined) f.plan = C(f.plan + (late ? 1 : 5) + (rate <= 0.04 ? 2 : 0));
+      G.modal({ title: '📦 Заказ выполнен', text: '«' + o.cust + '» получил ' + o.qty + ' ' + o.part + '.<br>Брак за время работы: ' + o.bad + ' (' + Math.round(rate * 100) + '%).<br>Выручка: <b>' + mon(rev) + '</b>' + (late ? '<br>Просрочка: ' + late + ' дн. (штраф к цене)' : '') + (bonus ? '<br>Тебе начислена премия: <b>' + mon(bonus) + '</b>' : ''), opts: [{ t: 'Отлично', fn: () => {} }] });
+      if (G.boardAdd && late === 0 && rate <= 0.04) G.boardAdd('Заказ для «' + o.cust.replace(/[«»]/g, '') + '» выполнен в срок и без брака', 'good');
+      if (e.done >= 3) G.achieve('orders3', 'Три заказа выполнено'); if (e.rev - e.exp >= 500000) G.achieve('profit500', 'Цех принёс прибыль в полмиллиона');
+      e.order = null;
+    };
+    const ecoDaily = () => {
+      const s = G.s, f = F(), e = eco(), o = e.order; if (e.qcDays > 0) e.qcDays--; if (e.logDays > 0) e.logDays--; if (e.safeDays > 0) e.safeDays--;
+      if (G.weekday() === 0 && G.week() % 4 === 0 && (e.mRev || e.mExp)) { G.modal({ title: '📊 Итоги месяца', text: 'Выручка цеха: <b>' + mon(e.mRev) + '</b><br>Расходы: <b>' + mon(e.mExp) + '</b><br>Прибыль: <b>' + mon(e.mRev - e.mExp) + '</b>', opts: [{ t: 'Принято', fn: () => {} }] }); e.mRev = 0; e.mExp = 0; }
+      if (!o) return;
+      const q = MODES[e.mode], plan = G.plantStats ? G.plantStats().plan : 50, wear = s.machine.wear;
+      const power = staffEff() + (s.car.rank >= 7 ? 0.5 : 0), pr = power * 14 * q.speed * (1 - wear / 200) * (0.7 + plan / 200) * (e.logDays > 0 ? 1.1 : 1);
+      const need = 0.4 * q.raw; let made = Math.max(0, Math.round(pr)); const max = Math.floor(e.raw / need);
+      if (max < made) { if (made > 0 && G.chance(60)) msg('Сырья не хватает: производство замедлилось. Закупи металл.', 'warn'); made = max; }
+      e.raw = Math.max(0, Math.round((e.raw - made * need) * 10) / 10);
+      const elec = 600 + Math.round(made * 2.5); e.exp += elec; f.budget = (f.budget || 0) - elec; e.mExp += elec;
+      const rate = C(q.def + wear / 400 + (e.cheap ? 0.08 : 0) - (e.qcDays > 0 ? 0.05 : 0) + ((f.shopMorale || 50) < 35 ? 0.04 : 0), 0.01, 0.5), bad = Math.round(made * rate);
+      o.made += made; o.bad += bad; o.good += made - bad; e.made += made; e.rej += bad; s.machine.wear = C(wear + Math.min(2, made / 40));
+      if (o.good >= o.qty) deliver();
+      else if (s.t.day - o.deadline > 10) { const pen = Math.round(o.qty * o.price * 0.2); f.budget = (f.budget || 0) - pen; e.exp += pen; G.fx({ boss: -6, mood: -4 }); if (f.plan !== undefined) f.plan = C(f.plan - 6); msg('Заказ «' + o.cust + '» сорван: неустойка ' + mon(pen) + '. Заказчик ушёл к конкурентам.', 'bad'); if (G.boardAdd) G.boardAdd('Сорван заказ для «' + o.cust.replace(/[«»]/g, '') + '»', 'bad'); e.order = null; }
+      else if (s.t.day === o.deadline) msg('Сегодня срок сдачи заказа «' + o.cust + '»! Готово ' + o.good + ' из ' + o.qty + '.', 'warn');
+    };
+    const _dt23 = G.dailyTick; G.dailyTick = function () { const r = _dt23.apply(this, arguments); try { if (G.s.car.rank >= 6) ecoDaily(); } catch (e) {} return r; };
+  })();
+
 })();
