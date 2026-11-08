@@ -1814,4 +1814,184 @@
     const _dt24 = G.dailyTick; G.dailyTick = function () { const r = _dt24.apply(this, arguments); try { trackDaily(); } catch (e) {} return r; };
   })();
 
+
+  // ======================= v3.1: транспорт и машины, больничный, увольнение, медкомиссия, рвота, «Приспичело» =======================
+  (function () {
+    const D = G.D, C = G.clamp, K = G.career, msg = (t, c) => G.toast(t, c), sp = n => G.spend(n || 1);
+    const F = () => G.s.flags, mon = n => G.rub(Math.round(n));
+    const CFG = G.CONFIG;
+
+    // ---------- Стили оверлеев (рвота и «Приспичело»)
+    const css = document.createElement('style');
+    css.textContent = '.vomit-ov{position:absolute;inset:0;z-index:80;background:radial-gradient(circle at 30% 20%,#6b8e23 0,#3d5a14 45%,#22330b 100%);display:flex;align-items:center;justify-content:center;padding:16px;animation:vwob .5s infinite alternate}@keyframes vwob{from{filter:hue-rotate(0)}to{filter:hue-rotate(25deg)}}.vomit-box{width:100%;max-width:420px;text-align:center;color:#f4ffd0}.vomit-box .big{font-size:90px;animation:vshk .25s infinite alternate}@keyframes vshk{from{transform:rotate(-8deg) scale(1)}to{transform:rotate(8deg) scale(1.1)}}.v-bar{height:22px;background:#142006;border:2px solid #000;margin:10px 0;overflow:hidden}.v-bar i{display:block;height:100%;background:linear-gradient(90deg,#b5d63a,#f2e04a);transition:width .08s}.v-bar.red i{background:linear-gradient(90deg,#e8a33a,#d33)}.press-ov{position:absolute;inset:0;z-index:80;background:#240c0c;display:flex;align-items:center;justify-content:center;padding:16px;animation:pflash .4s infinite alternate}@keyframes pflash{from{background:#240c0c}to{background:#4a1010}}.press-box{width:100%;max-width:420px;text-align:center;color:#ffe7d0}.press-box .big{font-size:80px}';
+    document.head.appendChild(css);
+
+    // ---------- 1. Драки: только с мужчинами (не с женщинами и не с котом)
+    const NOFIGHT = ['tatishcheva', 'shurygina', 'lyudka', 'tatyana', 'pelageya', 'tamara', 'nadezhda', 'lidiya', 'ekaterina', 'alevtina', 'allochka', 'nyura', 'vika', 'chugunok', 'belka'];
+    G.noFight = id => NOFIGHT.indexOf(id) >= 0;
+    const _fight = G.fight; G.fight = function (id) { if (G.noFight(id)) { msg('С женщинами и котами не дерёмся. Совесть и Чугунок не позволят.', 'warn'); return; } return _fight.apply(this, arguments); };
+    const _spf = G.npcSpecial; G.npcSpecial = function (id) { const o = _spf.apply(this, arguments); return G.noFight(id) ? o.filter(x => !/Нарваться на драку/.test(x.t)) : o; };
+
+    // ---------- 2. Энергия и настроение падают быстрее (настраивается в config.js)
+    const _adv = G.advance; G.advance = function (h) {
+      _adv.apply(this, arguments); const s = G.s, st = s.st, work = s.phase === 'work' || s.phase === 'lunch', k = work ? 1 : 0.5;
+      st.energy = C(st.energy - (CFG.DRAIN_ENERGY === undefined ? 0.7 : CFG.DRAIN_ENERGY) * k * h); st.mood = C(st.mood - (CFG.DRAIN_MOOD === undefined ? 0.45 : CFG.DRAIN_MOOD) * k * h); capMood();
+    };
+    // Нервный срыв вместо мгновенного «ушёл сам»: раз в 8 недель
+    const _ce = G.checkEnd; G.checkEnd = function () {
+      const s = G.s; if (s && !s.end && s.phase !== 'new' && s.st.mood <= 0 && (F().breakdownWk === undefined || G.week() - F().breakdownWk >= 8)) {
+        F().breakdownWk = G.week(); s.st.mood = 25; s.st.energy = Math.max(s.st.energy, 35); s.car.sickUntil = Math.max(s.car.sickUntil || -1, s.t.day + 2);
+        msg('Нервный срыв: ты рыдал у станка. Врач выписал два дня отдыха.', 'bad');
+      }
+      return _ce.apply(this, arguments);
+    };
+
+    // ---------- 3. Больничный: свободный день вместо тупика
+    const _sd = G.startDay; G.startDay = function () {
+      const r = _sd.apply(this, arguments), s = G.s;
+      if (s.car.sickUntil >= s.t.day && G.isWorkday()) { s.phase = 'weekend'; s.t.hour = 9; s.loc = 'home'; s.day.sick = true; msg('🤒 Больничный: сегодня свободный день. Отдыхай, занимайся чем хочешь, а завтра по расписанию.', 'warn'); }
+      return r;
+    };
+
+    // ---------- 4. Увольнение: взятка директору или заявление
+    const _fr = G.fireRisk; G.fireRisk = function () { const r = _fr.apply(this, arguments), k = (G.s && G.s.car.rank) || 0; return Math.round(r * Math.max(0.3, 1 - k * 0.07)); };
+    const _end = G.end;
+    G.end = function (id) {
+      const s = G.s;
+      if (id === 'fired' && s && !s.end && s.phase !== 'new' && !G._bribeBusy && (F().bribeWk === undefined || G.week() - F().bribeWk >= 6)) {
+        G._bribeBusy = true; const cost = Math.round((60000 + 30000 * s.car.rank + 25000 * s.car.rep) / 1000) * 1000, self = this, args = arguments;
+        G.modal({ title: '📄 ПРИКАЗ ОБ УВОЛЬНЕНИИ', face: 'truhanov', vib: 'error', text: 'Труханов подписывает приказ и смотрит поверх очков: «Но я человек не злой. Вопрос можно решить лично. Сумма — <b>' + mon(cost) + '</b>. Без расписки».', opts: [
+          { t: '💰 Дать взятку генеральному директору (' + mon(cost) + ')', dis: s.money < cost ? 'Нет денег' : null, fn: () => {
+            G._bribeBusy = false; G.addMoney(-cost); F().bribeWk = G.week();
+            if (G.chance(80)) { s.car.rep = Math.max(0, s.car.rep - 1); G.fx({ boss: -8, cons: -6 }); msg('Труханов убрал конверт, как фокусник. «Приказ… потерялся. Работайте». Но теперь ты у него в блокнотике по-другому.', 'warn'); if (G.boardAdd) G.boardAdd('Вопрос с увольнением решён «лично»', 'bad'); }
+            else { msg('Деньги Труханов взял, приказ подписал всё равно. «Благодарю за вклад».', 'bad'); _end.apply(self, args); } } },
+          { t: '🚪 Уволиться (подписать заявление)', fn: () => { G._bribeBusy = false; _end.apply(self, args); } }] });
+        return;
+      }
+      return _end.apply(this, arguments);
+    };
+
+    // ---------- 5. Медкомиссия без мгновенного конца игры
+    K.medCommission = function () {
+      const s = G.s, st = s.st; let fails = 0; const rep = [];
+      const rooms = [['Терапевт', st.health >= 45 && st.tox <= 65], ['ЛОР и рентген лёгких', st.tox <= 55], ['Нарколог', st.habit <= 60 && !(s.day.peak > 40)], ['Психиатр', st.mood >= 25 && !s.flags.burnout], ['Невролог и окулист', !(s.car.lowE > 5)]];
+      const finish = () => {
+        rooms.forEach(r => { if (!r[1]) fails++; rep.push((r[1] ? '✅ ' : '❌ ') + r[0]); });
+        let verdict, fx = {}, final = false, extra = '';
+        if (fails === 0) verdict = 'ГОДЕН';
+        else if (fails === 1) { verdict = 'ГОДЕН С ОГРАНИЧЕНИЕМ'; s.flags.limited = G.week() + 8; fx = { mood: -4 }; extra = '<br><br>Перевод на лёгкий труд: оклад −10% на 8 недель.'; }
+        else if (fails === 2) { verdict = 'ПРОФЗАБОЛЕВАНИЕ'; fx = { money: -12000, health: 15, tox: -30 }; s.car.sickUntil = s.t.day + 14; extra = '<br><br>Лечение 2 недели, платное (12 000 ₽).'; }
+        else { s.flags.medUnfit = (s.flags.medUnfit || 0) + 1; if (s.flags.medUnfit >= 2) { verdict = 'НЕ ГОДЕН'; final = true; } else { verdict = 'НЕ ГОДЕН (УСЛОВНО)'; fx = { money: -15000, health: 20, tox: -40, mood: -5 }; s.car.sickUntil = s.t.day + 21; s.flags.limited = G.week() + 12; extra = '<br><br>Последнее предупреждение: 3 недели лечения (платно, 15 000 ₽) и лёгкий труд 12 недель. Следующая комиссия — через 12 недель. Не пройдёшь снова — спишут по здоровью.'; } }
+        if (fails <= 1) s.flags.medUnfit = 0;
+        s.flags.medNext = G.week() + (verdict.indexOf('УСЛОВНО') >= 0 ? 12 : 26); G.fx(fx);
+        G.modal({ title: 'МЕДКОМИССИЯ: ' + verdict, vib: fails ? 'error' : 'success', face: 'alevtina', text: rep.join('<br>') + extra, opts: [{ t: 'Ок', fn: () => { if (final) G.end('health'); else if (s.car.sickUntil >= s.t.day) { s.phase = 'weekend'; s.t.hour = 9; s.loc = 'home'; s.day.sick = true; } else { s.phase = 'work'; s.loc = 'shop'; s.t.hour = 8; G.advance(4); G.settle(); } } }] });
+      };
+      const opts = [];
+      if (G.has('env1')) opts.push({ t: '✉ Подмазать врача (все кабинеты пройдены)', fn: () => { G.give('env1', -1); G.fx({ cons: -4 }); rooms.forEach(r => { r[1] = true; }); finish(); } });
+      opts.push({ t: 'Идти по кабинетам', fn: finish });
+      G.modal({ title: 'ПЛАНОВАЯ МЕДКОМИССИЯ', face: 'alevtina', text: 'Раз в полгода — обязательно. Терапевт, ЛОР, нарколог, психиатр, рентген, анализы. Не пил молоко? Узнаем.', opts });
+    };
+
+    // ---------- 6. Машины и дорога на работу
+    Object.assign(D.STATUS, {
+      car0: { n: 'Запорожец «Горбатый»', p: 60000, e: '🚗', tier: 'car', v: 0.5 },
+      car1b: { n: '«Лада-Гранта»', p: 350000, e: '🚗', tier: 'car', v: 1.5 },
+      car2b: { n: 'Японская иномарка (праворукая)', p: 1200000, e: '🚙', tier: 'car', v: 2.5 },
+      car4: { n: 'Спорткар «Бумер»', p: 8000000, e: '🏎️', tier: 'car', v: 4 }
+    });
+    D.NICKS.zasranec = { n: 'Засранец', fx: { coll: -1 }, bad: 1 };
+    const carOwned = () => { const k = Object.keys(G.s.own || {}).find(x => D.STATUS[x] && D.STATUS[x].tier === 'car'); return k ? { key: k, v: D.STATUS[k].v, n: D.STATUS[k].n } : null; };
+    const fuelCost = v => Math.round((500 + 1100 * v + 300 * v * v) / 100) * 100, svcCost = v => Math.round((900 + 1800 * v + 500 * v * v) / 100) * 100;
+    G.carInfo = carOwned;
+    const car$ = () => { const f = F(), c = carOwned(); if (!c) return null; if (!f.car || f.car.key !== c.key) f.car = { key: c.key, cond: 100, fuelWk: -1, broken: -1 }; return Object.assign(f.car, { v: c.v, n: c.n }); };
+    const MODES = { walk: '🚶 Пешком', scooter: '🛴 Электросамокат', bus: '🚌 Автобус', car: '🚗 Своя машина' };
+    const carBlock = () => { const c = car$(); if (!c) return 'Нет машины'; if (c.broken >= G.s.t.day) return 'Машина в ремонте до дня ' + c.broken; const need = c.fuelWk !== G.week() ? fuelCost(c.v) : 0; return need > G.s.money ? 'Нет денег на бензин (' + mon(need) + ')' : null; };
+    const modeInfo = m => { const c = car$(); return ({ walk: 'сильнее устанешь (−8 энергии)', scooter: '300 ₽, почти не устаёшь', bus: '60 ₽, энергия цела, но настроение падает (−8)', car: c ? c.n + (c.fuelWk !== G.week() ? ' · заправка ' + mon(fuelCost(c.v)) : ' · бак полон') : '' })[m]; };
+    const canMode = m => { const s = G.s; if (m === 'scooter' && s.money < 300) return 'Нет денег'; if (m === 'bus' && s.money < 60) return 'Нет денег'; if (m === 'car') return carBlock(); return null; };
+    function go(mode, next) {
+      const s = G.s, f = F(), st = s.st, c = car$();
+      f.commute = { mode }; s.day.commute = mode;
+      if (mode === 'walk') { G.fx({ energy: -8, mood: -1 }); msg('Дошёл пешком. Ноги гудят.'); }
+      else if (mode === 'scooter') { G.fx({ money: -300, energy: -2, mood: 1 }); msg('Прокатился на электросамокате: ветер, свобода и минус 300 ₽.'); }
+      else if (mode === 'bus') { G.fx({ money: -60, mood: -8 }); msg('Автобус: давка, запахи, чужой локоть. Энергия цела, настроение — нет.', 'warn'); }
+      else {
+        if (c.fuelWk !== G.week()) { G.addMoney(-fuelCost(c.v)); c.fuelWk = G.week(); G.toast('Заправился на неделю: −' + mon(fuelCost(c.v)), 'warn'); }
+        const p = Math.max(0.02, (0.03 + (100 - c.cond) * 0.0015) * Math.max(0.6, 1.6 - 0.25 * c.v)); c.cond = Math.max(0, c.cond - 2.5);
+        G.fx({ mood: 2 + Math.round(c.v * 1.5), cool: Math.round(c.v) });
+        if (G.chance(p * 100)) { c.broken = s.t.day + (c.v < 2 ? 3 : 2); const rc = Math.min(s.money, Math.round(svcCost(c.v) * 0.5)); G.addMoney(-rc); G.fx({ energy: -6, mood: -5, boss: -1 }); msg('🔧 Машина сломалась по дороге! Эвакуатор и ремонт: −' + mon(rc) + '. Опоздал и вымотался. Пару дней она в сервисе.', 'bad'); }
+        else msg('Приехал на ' + c.n + '. Сидеть в тепле — уже счастье.', 'good');
+      }
+      next();
+    }
+    G.commuteChoose = function (next) {
+      const f = F(), opts = [];
+      if (f.commute && f.commute.mode && !canMode(f.commute.mode)) opts.push({ t: '↩ Как обычно: ' + MODES[f.commute.mode], fn: () => go(f.commute.mode, next) });
+      Object.keys(MODES).forEach(m => { if (m === 'car' && !carOwned()) return; opts.push({ t: MODES[m] + ' — ' + modeInfo(m), dis: canMode(m), fn: () => go(m, next) }); });
+      G.modal({ title: 'Как добираешься на работу?', text: 'Утро. Смена с 8:00.', opts });
+    };
+    function homeTrip() {
+      const s = G.s, m = s.day && s.day.commute; if (!m) return;
+      if (m === 'walk') { G.fx({ energy: -4 }); msg('Домой пешком: устал, но дошёл.'); }
+      else if (m === 'scooter') { if (s.money >= 150) { G.fx({ money: -150, energy: -1 }); msg('Домой на самокате: −150 ₽.'); } else { G.fx({ energy: -4 }); msg('Самокат не оплатить — пошёл пешком.', 'warn'); } }
+      else if (m === 'bus') { G.fx({ money: -Math.min(60, Math.max(0, s.money)), mood: -4 }); msg('Домой на автобусе: давка и тоска.', 'warn'); }
+      else { const c = car$(); if (c && c.broken < s.t.day) { G.fx({ mood: 1 }); c.cond = Math.max(0, c.cond - 1.5); msg('Домой на машине: тепло и музыка.'); } else { G.fx({ energy: -4 }); } }
+    }
+    const _es2 = G.endShift; G.endShift = function () { try { homeTrip(); } catch (e) {} return _es2.apply(this, arguments); };
+    const wrapCommute = () => {
+      if (G._commuteWrapped || !K || !K.goToWork) return; G._commuteWrapped = true; const orig = K.goToWork.bind(K);
+      K.goToWork = function () {
+        const s = G.s;
+        if (!s || !s.day || s.day.commute || s.car.sickUntil >= s.t.day) return orig();
+        G.commuteChoose(() => orig());
+      };
+    };
+    window.addEventListener('load', wrapCommute); setTimeout(wrapCommute, 50);
+    A('car_service', { ph: ['free'], loc: 'home', g: 'Быт', n: 'Техобслуживание машины', i: '🛠️', menu: true, req: s => { const c = car$(); return !c ? 'Нет машины' : c.cond >= 98 && c.broken < s.t.day ? 'Машина в порядке' : s.money < svcCost(c.v) ? 'Нет денег (' + mon(svcCost(c.v)) + ')' : null; }, fn: () => { const c = car$(), p = svcCost(c.v); G.addMoney(-p); c.cond = 100; c.broken = -1; G.fx({ mood: 2 }); msg('ТО пройдено (' + mon(p) + '): масло, колодки, фильтры. Машина как новая.', 'good'); sp(); return 'custom'; } });
+    // Машина — постоянный плюс к энергии, настроению, уважению
+    const _dt25 = G.dailyTick; G.dailyTick = function () {
+      const r = _dt25.apply(this, arguments), s = G.s, st = s.st, c = car$();
+      if (c) { if (c.broken >= s.t.day) st.mood = C(st.mood - 1); else { st.energy = C(st.energy + 1 + c.v); st.mood = C(st.mood + 1 + 0.7 * c.v); if (st.coll < 35 + 12 * c.v) st.coll = C(st.coll + 0.25 * c.v); if (st.cool < 30 + 14 * c.v) st.cool = C(st.cool + 0.25 * c.v); } }
+      capMood(); return r;
+    };
+
+    // ---------- 7. Засранец: потолок настроения и уважения
+    const hasNick = id => G.s && G.s.nicks && G.s.nicks.indexOf(id) >= 0;
+    function capMood() { const s = G.s; if (s && s.st && hasNick('zasranec')) { s.st.mood = Math.min(s.st.mood, 50); s.st.coll = Math.min(s.st.coll, 38); } }
+
+    // ---------- 8. Рвота при сильном опьянении
+    G.vomitGame = function () {
+      const s = G.s, root = document.getElementById('app'); if (!root || document.getElementById('vomit-ov') || s.day.vomitDone) return; s.day.vomitDone = 1;
+      const o = document.createElement('div'); o.id = 'vomit-ov'; o.className = 'vomit-ov';
+      o.innerHTML = '<div class="vomit-box"><div class="big">🤮</div><h3>ТОШНИТ!</h3><div class="gym-info" style="color:#f4ffd0">Тапай быстро, чтобы удержать! Шкала не должна дойти до края.</div><div class="v-bar" id="vb"><i id="vf" style="width:50%"></i></div><div class="gym-rep" id="vt">5.0 с</div><button class="btn big hazard" id="vbtn">ТЕРПИ! 🤢</button></div>';
+      root.appendChild(o); let v = 50, t0 = 0, last = 0, done = false; const bar = o.querySelector('#vf'), vb = o.querySelector('#vb'), T = 5;
+      const fin = ok => { if (done) return; done = true; o.remove(); if (G.buzz) G.buzz(ok ? 'success' : 'error');
+        if (ok) { G.fx({ mood: -2 }); msg('Удержался! Желудок передумал. Пока.', 'good'); }
+        else { G.fx({ mood: -12, neat: -30, coll: -4, health: -3, satiety: -25, drunk: -35, cool: -3 }); msg('🤮 Блеванул. Прямо при всех. Позор, лужа и запах.', 'bad'); if (s.phase === 'work') G.fx({ boss: -2 }); if (G.rumor) G.rumor('vomit', 'Все обсуждают, как тебя вывернуло. Некоторые — в красках.', { coll: -2, cool: -2 }, 100); if (G.boardAdd) G.boardAdd('Выставил на всеобщее обозрение содержимое желудка', 'bad'); if (G.chance(30)) G.addNick('fontan'); } };
+      o.querySelector('#vbtn').onclick = () => { v = Math.max(0, v - 9); };
+      const loop = ts => { if (done) return; if (!t0) { t0 = ts; last = ts; } const dt = Math.min(0.05, (ts - last) / 1000); last = ts; v += dt * 22; bar.style.width = Math.min(100, v) + '%'; vb.className = 'v-bar' + (v > 75 ? ' red' : ''); const el = (ts - t0) / 1000; o.querySelector('#vt').textContent = Math.max(0, T - el).toFixed(1) + ' с'; if (v >= 100) fin(false); else if (el >= T) fin(true); else requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+    };
+    const _fx25 = G.fx; G.fx = function (f, ctx) { const r = _fx25.apply(this, arguments); try { capMood(); const s = G.s; if (s && s.st && s.st.drunk >= 85 && s.day && !s.day.vomitDone && s.phase !== 'new') setTimeout(() => G.vomitGame(), 80); } catch (e) {} return r; };
+
+    // ---------- 9. «Приспичело»: 1–3 раза в неделю, по разу за смену
+    G.pressGame = function () {
+      const s = G.s, root = document.getElementById('app'); if (!root || document.getElementById('press-ov')) return;
+      const o = document.createElement('div'); o.id = 'press-ov'; o.className = 'press-ov';
+      o.innerHTML = '<div class="press-box"><div class="big">🚽</div><h3>ПРИСПИЧЕЛО!</h3><div class="gym-info" style="color:#ffe7d0">Бегом до туалета! Тапай, чтобы дотерпеть и добежать (14 тапов).</div><div class="v-bar red" id="pb"><i id="pf" style="width:0%"></i></div><div class="gym-rep" id="pt">5.0 с</div><button class="btn big hazard" id="pbtn">ТЕРПЕТЬ И БЕЖАТЬ! 🏃</button></div>';
+      root.appendChild(o); let n = 0, t0 = 0, done = false; const T = 5.2, bar = o.querySelector('#pf');
+      const fin = ok => { if (done) return; done = true; o.remove(); if (G.buzz) G.buzz(ok ? 'success' : 'error'); const f = F();
+        if (ok) { G.fx({ mood: 1 }); msg('Успел! Дверь кабинки захлопнулась вовремя. Лучшая победа за неделю.', 'good'); }
+        else { f.pooCount = (f.pooCount || 0) + 1; G.fx({ mood: -15, neat: -45, coll: -5, cool: -8, boss: -2 }); msg('💩 Не успел. Обкакался. Тихо, быстро и безнадёжно.', 'bad'); if (G.rumor) G.rumor('poo', 'По заводу пошли слухи: «Видели, что случилось у кабинки? Не подходи близко».', { coll: -3, cool: -2 }, 100); if (G.boardAdd) G.boardAdd('Не добежал до туалета', 'bad'); if (f.pooCount >= 2) G.addNick('zasranec'); if (s.phase === 'work') sp(); } };
+      o.querySelector('#pbtn').onclick = () => { n++; bar.style.width = Math.min(100, n / 14 * 100) + '%'; if (n >= 14) fin(true); };
+      const loop = ts => { if (done) return; if (!t0) t0 = ts; const el = (ts - t0) / 1000; o.querySelector('#pt').textContent = Math.max(0, T - el).toFixed(1) + ' с'; if (el >= T) fin(false); else requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+    };
+    const pressPlan = () => { const f = F(), wk = G.week(); if (f.pressWk === wk && f.pressDays) return; f.pressWk = wk; const k = G.pick([1, 2, 3]), base = G.s.t.day, cand = [0, 1, 2, 3, 4, 5, 6].map(x => base + x).sort(() => Math.random() - 0.5); f.pressDays = cand.slice(0, k); };
+    const _kh25 = K.hook; K.hook = function () {
+      const r = _kh25.apply(this, arguments);
+      try { const s = G.s; if (s && s.phase === 'work' && !s.day.pressDone && s.car.shifts >= 2) { pressPlan(); const h = 9 + Math.floor(G.hash(s.t.day, 5, 3) * 7); if (F().pressDays.indexOf(s.t.day) >= 0 && s.t.hour >= h) { s.day.pressDone = 1; setTimeout(() => G.pressGame(), 100); } } } catch (e) {}
+      return r;
+    };
+  })();
+
 })();
