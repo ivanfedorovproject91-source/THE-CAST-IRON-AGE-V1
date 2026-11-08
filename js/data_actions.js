@@ -496,8 +496,11 @@
       o.push({ t: '🎁 Подарить подарок', fn: () => gift() });
       if (!tried) o.push({ t: '🗣 Уговорить («Егорыч, ну как человек человека…»)', fn: () => persuade() });
       if (rel() >= 40) o.push({ t: '🤝 «Егорыч, по-дружески…»', fn: () => { G.relAdd('egorych', -8); G.toast('Егорыч вздыхает: «Последний раз. Я всё записал в голове».'); G.boardAdd('Егорыч «не заметил» чей-то вид на проходной', 'bad'); pass(); } });
-      o.push({ t: '🧗 Через забор', fn: () => fence() });
-      o.push({ t: '🏠 Вернуться и привести себя в порядок', fn: () => { G.toast('Егорыч: «Иди-иди. Вернёшься человеком — поговорим».'); } });
+      o.push({ t: '💵 Сунуть Егорычу взятку', fn: () => bribe() });
+      o.push({ t: '🧗 Через забор (50 на 50)', fn: () => fence() });
+      o.push({ t: '🏠 Домой привести себя в порядок (потеряешь пару часов)', fn: () => { G.advance(2); G.fx({ boss: -2, mood: -2 }); G.toast('Егорыч: «Иди-иди. Вернёшься человеком — поговорим». Время уходит, начальство косится.'); } });
+      o.push({ t: '🤒 Домой и взять больничный (800 ₽)', dis: s.money < 800 ? 'Нет денег' : null, fn: () => sickHome() });
+      o.push({ t: '🚫 Прогул (это увольнение!)', fn: () => truancy() });
       return o;
     };
     const menu = intro => say((intro || ['«Понедельник! Все приползли. Пропуск!»', '«Вторник. Пропуск, голубчик».', '«Среда — день Надежды Николаевны. Пропуск!»', '«Четверг. Смена на исходе. Пропуск».', '«Пятница, душа поёт! Пропуск, голубчик».'][G.weekday()] || '«Стоять! Пропуск!»') + '<br>' + probs.join('<br>') + '<br><i>«Не пущу. И не проси».</i>', out());
@@ -522,12 +525,20 @@
       else { G.fx({ boss: -2, mood: -3 }); G.relAdd('egorych', -3); menu('«Разговорчики!» — Егорыч ударяет по столу журналом.'); }
     };
     const fence = () => {
-      if (G.chance(45)) { G.fx({ cool: 3, mood: 2 }); G.toast('Перелез через забор. Егорыч в будке смотрит в другую сторону. Принципиально.', 'good'); if (G.rumor) G.rumor('fence', 'Говорят, ты перелез через забор на проходной. Егорыч это отрицает.', { cool: 3, boss: -1 }, 70); pass(); }
+      if (G.chance(50)) { G.fx({ cool: 3, mood: 2 }); G.toast('Перелез через забор. Егорыч в будке смотрит в другую сторону. Принципиально.', 'good'); if (G.rumor) G.rumor('fence', 'Говорят, ты перелез через забор на проходной. Егорыч это отрицает.', { cool: 3, boss: -1 }, 70); pass(); }
       else {
         G.fx({ boss: -4, mood: -4 }); G.punish({ risk: 100, what: 'Лез через забор на территорию', fine: [100, 300], sev: 1 });
         G.boardAdd('Некто застрял в заборе. Забор утверждает, что сам пострадал', 'bad'); G.toast('Застрял в заборе. Егорыч с наслаждением вызвал охрану.', 'bad'); pass();
       }
     };
+    const bribe = () => {
+      const B = [['💵 50 ₽ и улыбка', 50, 0.35, null], ['💵 100 ₽ на чай', 100, 0.55, null], ['💵 300 ₽', 300, 0.85, null], ['💵 1 000 ₽ в конверте', 1000, 1, null], ['🚬 Пачка сигарет', 0, 0.8, 'cigs'], ['🍫 Шоколадка', 0, 0.6, 'choco'], ['🍺 Пиво', 0, 0.75, 'beer'], ['🍾 Водка', 0, 1, 'vodka']];
+      G.modal({ title: 'Взятка Егорычу', face: 'egorych', wide: true, text: 'Чем «поблагодаришь»? Чем лучше «благодарность», тем выше шанс.', opts: B.map(o => ({ t: o[0], dis: o[3] ? (G.has(o[3]) ? null : 'Нет в рюкзаке') : (s.money < o[1] ? 'Нет денег' : null), fn: () => {
+        if (G.chance(o[2] * 100)) { if (o[3]) G.give(o[3], -1); else G.addMoney(-o[1]); G.relAdd('egorych', 2); G.fx({ cons: -2 }); G.toast(G.pick(['Егорыч незаметно убрал подношение: «Проходи. Я ничего не видел. И ты тоже».', 'Подношение исчезло в ящике. «Только быстро, пока я добрый».', 'Егорыч кивнул на дверь: «Иди, студент. И не дыши на людей».']), 'good'); s.flags.egGifts = (s.flags.egGifts || 0) + 1; if (G.boardAdd) G.boardAdd('Проходная «решает вопросы»', 'bad'); pass(); }
+        else { G.relAdd('egorych', -1); G.toast('Егорыч оскорблённо отодвинул: «Это что, на чай? Я не нищий!» Мало.', 'bad'); menu('«Оскорблять вахтёра подачкой — это надо уметь».'); } } })).concat([{ t: 'Назад', fn: () => menu() }]) });
+    };
+    const sickHome = () => { G.addMoney(-800); s.car.sickUntil = Math.max(s.car.sickUntil || -1, s.t.day); s.phase = 'weekend'; s.t.hour = 9; s.loc = 'home'; s.day.sick = true; G.toast('🤒 Взял больничный (справка у знакомого врача). Сегодня свободный день.', 'warn'); if (G.ui && G.ui.render) G.ui.render(); };
+    const truancy = () => G.modal({ title: 'Прогул', face: 'egorych', text: 'Прогул — это увольнение. Точно?', opts: [{ t: 'Назад', fn: () => menu() }, { t: 'Да, прогулять', fn: () => G.end('fired') }] });
     menu();
   };
 
@@ -1990,6 +2001,221 @@
     const _kh25 = K.hook; K.hook = function () {
       const r = _kh25.apply(this, arguments);
       try { const s = G.s; if (s && s.phase === 'work' && !s.day.pressDone && s.car.shifts >= 2) { pressPlan(); const h = 9 + Math.floor(G.hash(s.t.day, 5, 3) * 7); if (F().pressDays.indexOf(s.t.day) >= 0 && s.t.hour >= h) { s.day.pressDone = 1; setTimeout(() => G.pressGame(), 100); } } } catch (e) {}
+      return r;
+    };
+  })();
+
+
+  // ======================= v3.2: прогресс (уровни, цели, бонус дня), Тамара-сплетница, романтика по рангам, алкаш, проходная, задержки зарплаты =======================
+  (function () {
+    const D = G.D, C = G.clamp, K = G.career, msg = (t, c) => G.toast(t, c), sp = n => G.spend(n || 1);
+    const F = () => G.s.flags, mon = n => G.rub(Math.round(n)), esc = x => String(x).replace(/[<>&]/g, '');
+    const scale = () => C((G.monthlyPay ? G.monthlyPay() : 30000) / 30000, 1, 5);   // награды растут вместе с зарплатой, но остаются скромными
+    const hasNick = id => G.s && G.s.nicks && G.s.nicks.indexOf(id) >= 0;
+
+    // ---------- Новые предметы: минералка; больше телефонов
+    D.ITEMS.mineral = { n: 'Минералка «Чугунная ключевая»', p: 70, cat: 'аптека', e: '💧', use: {}, sober: 25, d: 'Чем больше пьёшь за день — тем быстрее трезвеешь (−25…−45 опьянения)' };
+    Object.assign(D.STATUS, {
+      phone0: { n: 'Кнопочный «Кирпич-3310»', p: 1500, e: '📱', tier: 'phone', v: 0.3 },
+      phone1b: { n: 'Смартфон «Мелкомягкий»', p: 12000, e: '📱', tier: 'phone', v: 1.5 },
+      phone2b: { n: 'Игровой «Дракон-X»', p: 45000, e: '📱', tier: 'phone', v: 2.5 },
+      phone3b: { n: 'Складной «Раскладушка Z»', p: 140000, e: '📱', tier: 'phone', v: 3.5 },
+      phone4: { n: 'Золотой «Вертю»', p: 450000, e: '📱', tier: 'phone', v: 5 }
+    });
+    D.NICKS.alkash = { n: 'Алкаш', fx: { coll: -2, boss: -2, cons: -1 }, bad: 1 };
+    const _ui = G.useItem; G.useItem = function (id) {
+      const had = G.s && G.has(id), it = D.ITEMS[id], r = _ui.apply(this, arguments);
+      if (had && it && it.sober) { const f = F(), n = (f.minToday && f.minToday.d === G.s.t.day ? f.minToday.n : 0); f.minToday = { d: G.s.t.day, n: n + 1 }; const dr = Math.min(45, it.sober + 5 * n); G.fx({ drunk: -dr, mood: 1 }); G.s.smell = Math.max(0, (G.s.smell || 0) - 10); msg('💧 Минералка: опьянение −' + dr + (n ? ' (организм вошёл во вкус)' : '') + '.', 'good'); }
+      return r;
+    };
+
+    // ---------- Опыт и уровни («Путь заводчанина»)
+    const xpFor = L => (L - 1) * (L - 1) * 30, lvlOf = xp => Math.min(40, Math.floor(Math.sqrt(xp / 30)) + 1);
+    const TITLES = ['Новобранец', 'Подсобник', 'Рабочая косточка', 'Цеховой', 'Уважаемый человек', 'Мастер на все руки', 'Заводская легенда', 'Железный человек', 'Чугунная душа', 'Икона завода'];
+    const titleOf = L => TITLES[Math.min(TITLES.length - 1, Math.floor((L - 1) / 4))];
+    const ICYCLE = ['mineral', 'choco', 'rassol', 'coffee', 'vitamins', 'flowers', 'env1'];
+    const rewardFor = L => ({ money: Math.round(250 * L * scale() / 50) * 50, item: L % 3 === 0 ? ICYCLE[(L / 3 - 1) % ICYCLE.length] : null });
+    G.xp = function (n) { const f = F(); f.xp = (f.xp || 0) + Math.round(n); G.checkLevel(); };
+    G.checkLevel = function () {
+      const f = F(); f.lvl = f.lvl || 1;
+      while (lvlOf(f.xp || 0) > f.lvl) {
+        f.lvl++; const r = rewardFor(f.lvl); G.addMoney(r.money); if (r.item) G.give(r.item, 1); G.fx({ mood: 4 });
+        G.modal({ title: '⭐ УРОВЕНЬ ' + f.lvl, text: 'Ты стал: <b>' + titleOf(f.lvl) + '</b>.<br>Награда: ' + mon(r.money) + (r.item ? ' и ' + D.ITEMS[r.item].e + ' ' + D.ITEMS[r.item].n : '') + '.<br><small>Следующий уровень: ' + (xpFor(f.lvl + 1) - f.xp) + ' оп.</small>', opts: [{ t: 'Отлично!', fn: () => {} }] });
+        if (f.lvl >= 10) G.achieve('lvl10', 'Уровень 10: ' + titleOf(f.lvl));
+      }
+    };
+    const _es3 = G.endShift; G.endShift = function () { try { G.xp(12); } catch (e) {} return _es3.apply(this, arguments); };
+    const _ach3 = G.achieve; G.achieve = function (id, t) { const had = G.s && G.s.ach && G.s.ach[id]; const r = _ach3.apply(this, arguments); try { if (!had) G.xp(25); } catch (e) {} return r; };
+    const _pr3 = K.promote; K.promote = function (to) { const r = _pr3.apply(this, arguments); try { G.xp(60); } catch (e) {} return r; };
+
+    // ---------- Бонус дня (раз в реальные сутки, серия до 7 дней)
+    const DAILY = [{ m: 300 }, { m: 200, i: 'mineral' }, { m: 400, i: 'choco' }, { m: 500, i: 'rassol' }, { m: 600, i: 'coffee' }, { m: 800, i: 'env1' }, { m: 1500, i: 'wine' }];
+    const dkey = d => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    const dailyBonus = () => {
+      const s = G.s, f = F(); const now = new Date(), key = dkey(now), y = new Date(now.getTime() - 86400000);
+      const d = f.daily || (f.daily = { last: '', streak: 0 }); if (d.last === key) return;
+      d.streak = d.last === dkey(y) ? d.streak + 1 : 1; d.last = key;
+      const r = DAILY[(d.streak - 1) % 7], money = Math.round(r.m * scale() / 50) * 50, xp = 10 + 5 * Math.min(d.streak, 10);
+      G.addMoney(money); if (r.i) G.give(r.i, 1); G.xp(xp);
+      const days = DAILY.map((x, i) => (i + 1 <= ((d.streak - 1) % 7) + 1 ? '🟢' : '⚪')).join(' ');
+      G.modal({ title: '🎁 БОНУС ДНЯ', text: 'Заходишь в игру <b>' + d.streak + '-й день подряд</b>!<br>' + days + '<br>Сегодня: ' + mon(money) + (r.i ? ' + ' + D.ITEMS[r.i].e + ' ' + D.ITEMS[r.i].n : '') + ' и ' + xp + ' оп.<br><small>Пропустишь день — серия начнётся заново. На 7-й день награда — самая крупная.</small>', opts: [{ t: 'Забрать', fn: () => {} }] });
+    };
+
+    // ---------- Цели заводчанина
+    const own = (s, tier) => Object.keys(s.own || {}).some(k => D.STATUS[k] && D.STATUS[k].tier === tier);
+    const GOALS = [
+      { id: 'g_shift5', t: 'Отработать 5 смен', c: s => s.car.shifts >= 5, p: s => [s.car.shifts, 5], r: { xp: 30, item: 'coffee' } },
+      { id: 'g_m5k', t: 'Накопить 5 000 ₽', c: s => s.money >= 5000, p: s => [s.money, 5000], r: { xp: 40, money: 300 } },
+      { id: 'g_phone', t: 'Купить телефон', c: s => own(s, 'phone'), r: { xp: 50, mood: 5 } },
+      { id: 'g_rank1', t: 'Стать разрядником (Разряд 1)', c: s => s.car.rank >= 1, r: { xp: 60, money: 500 } },
+      { id: 'g_dry7', t: 'Не пить 7 дней подряд', c: s => (s.flags.dry || 0) >= 7, p: s => [s.flags.dry || 0, 7], r: { xp: 70, item: 'vitamins' } },
+      { id: 'g_shift20', t: 'Отработать 20 смен', c: s => s.car.shifts >= 20, p: s => [s.car.shifts, 20], r: { xp: 60, money: 600 } },
+      { id: 'g_room3', t: 'Купить 3 предмета для комнаты', c: s => Object.keys(s.flags.room || {}).length >= 3, p: s => [Object.keys(s.flags.room || {}).length, 3], r: { xp: 70, mood: 6 } },
+      { id: 'g_m20k', t: 'Накопить 20 000 ₽', c: s => s.money >= 20000, p: s => [s.money, 20000], r: { xp: 80, item: 'wine' } },
+      { id: 'g_egor', t: 'Подружиться с Егорычем (отношения 30)', c: s => G.R('egorych').l >= 30, p: s => [G.R('egorych').l, 30], r: { xp: 70, item: 'cigs' } },
+      { id: 'g_str25', t: 'Накачать силу до 25', c: s => (s.flags.str || 0) >= 25, p: s => [Math.round(s.flags.str || 0), 25], r: { xp: 80, mood: 6 } },
+      { id: 'g_rank3', t: 'Достичь Разряда 3', c: s => s.car.rank >= 3, r: { xp: 100, money: 1000 } },
+      { id: 'g_car', t: 'Купить машину', c: s => own(s, 'car'), r: { xp: 120, mood: 10 } },
+      { id: 'g_fish10', t: 'Поймать 10 рыб', c: s => ((s.flags.fish || {}).total || 0) >= 10, p: s => [(s.flags.fish || {}).total || 0, 10], r: { xp: 70, item: 'beer' } },
+      { id: 'g_m100k', t: 'Накопить 100 000 ₽', c: s => s.money >= 100000, p: s => [s.money, 100000], r: { xp: 150, item: 'perfume' } },
+      { id: 'g_late', t: 'Пережить задержку зарплаты', c: s => (s.flags.payLateCount || 0) >= 1, r: { xp: 60, item: 'rassol' } },
+      { id: 'g_ach10', t: 'Собрать 10 достижений', c: s => Object.keys(s.ach || {}).length >= 10, p: s => [Object.keys(s.ach || {}).length, 10], r: { xp: 120, money: 1000 } },
+      { id: 'g_brig', t: 'Стать бригадиром', c: s => s.car.rank >= 6, r: { xp: 200, money: 2000 } },
+      { id: 'g_staff5', t: 'Нанять 5 сотрудников', c: s => (s.flags.staff || []).length >= 5, p: s => [(s.flags.staff || []).length, 5], r: { xp: 150, money: 1500 } },
+      { id: 'g_order', t: 'Выполнить заказ покупателя', c: s => ((s.flags.eco || {}).done || 0) >= 1, r: { xp: 150, money: 2000 } },
+      { id: 'g_lvl10', t: 'Дорасти до 10 уровня', c: s => (s.flags.lvl || 1) >= 10, p: s => [s.flags.lvl || 1, 10], r: { xp: 100, item: 'cognac' } },
+      { id: 'g_master', t: 'Стать мастером участка', c: s => s.car.rank >= 7, r: { xp: 250, money: 3000 } },
+      { id: 'g_m500k', t: 'Накопить 500 000 ₽', c: s => s.money >= 500000, p: s => [s.money, 500000], r: { xp: 250, item: 'jewelry' } },
+      { id: 'g_head', t: 'Стать начальником цеха', c: s => s.car.rank >= 9, r: { xp: 400, money: 5000 } }
+    ];
+    const goalsActive = () => { const done = F().goalsDone || []; return GOALS.filter(g => done.indexOf(g.id) < 0).slice(0, 3); };
+    G.checkGoals = function () {
+      const s = G.s, f = F(); f.goalsDone = f.goalsDone || [];
+      goalsActive().forEach(g => { try { if (g.c(s)) { f.goalsDone.push(g.id); const m = g.r.money ? Math.round(g.r.money * scale() / 50) * 50 : 0; if (m) G.addMoney(m); if (g.r.item) G.give(g.r.item, 1); if (g.r.mood) G.fx({ mood: g.r.mood }); G.xp(g.r.xp); msg('🎯 Цель выполнена: «' + g.t + '»! ' + (m ? '+' + mon(m) + ' ' : '') + (g.r.item ? D.ITEMS[g.r.item].e + ' ' : '') + '+' + g.r.xp + ' оп.', 'good'); } } catch (e) {} });
+    };
+    G.progressCard = function () {
+      const f = F(), L = f.lvl || 1, xp = f.xp || 0, a = xpFor(L), b = xpFor(L + 1), pct = C((xp - a) / Math.max(1, b - a) * 100, 0, 100), r = rewardFor(L + 1);
+      const bar = (v, c) => '<div style="height:10px;background:#0d0c0b;border:1px solid #000;margin:3px 0"><i style="display:block;height:100%;width:' + C(v, 0, 100) + '%;background:' + (c || '#ffd24a') + '"></i></div>';
+      const gl = goalsActive().map(g => { const p = g.p ? g.p(G.s) : null; return '<div style="margin:6px 0">🎯 ' + g.t + (p ? ' — ' + Math.min(p[0], p[1]).toLocaleString('ru') + ' / ' + p[1].toLocaleString('ru') : '') + (p ? bar(p[0] / p[1] * 100, '#4fae4a') : '') + '</div>'; }).join('') || '<div>Все цели выполнены. Ты легенда.</div>';
+      const d = f.daily || { streak: 0 };
+      return '<div class="card"><h3>🧭 Путь заводчанина</h3><div>Уровень <b>' + L + '</b>: ' + titleOf(L) + '</div>' + bar(pct) + '<div class="note">Опыт ' + xp + ' / ' + b + ' · следующая награда: ' + mon(r.money) + (r.item ? ' + ' + D.ITEMS[r.item].e : '') + '<br>Опыт дают смены, цели, достижения и повышения.</div><div class="note">🔥 Серия входов: ' + (d.streak || 0) + ' дн. (бонус дня раз в сутки)</div></div><div class="card"><h3>🎯 Цели</h3>' + gl + '</div>';
+    };
+
+    // ---------- Романтика открывается с ростом ранга (для «Стажёра» — никого)
+    const ROMRANK = { tatyana: 1, lyudka: 1, tamara: 1, pelageya: 3, lidiya: 3, nadezhda: 4, ekaterina: 5, tatishcheva: 6 };
+    const locked = id => ROMRANK[id] !== undefined && G.s.car.rank < ROMRANK[id];
+    const _rl = G.romanceLabel; G.romanceLabel = function (id) { if (locked(id)) return '🔒 Романтика откроется с ранга «' + D.RANKS[ROMRANK[id]] + '»'; if (id === 'tamara') return '🧹 Ухаживать за Тамарой Ивановной'; return _rl.apply(this, arguments); };
+    const _rm = G.romanceMove; G.romanceMove = function (id) { if (locked(id)) { msg('Пока рано: романтика с ней откроется с ранга «' + D.RANKS[ROMRANK[id]] + '». Сначала расти по службе.', 'warn'); return; } if (id === 'tamara') return G.tamaraArc(); return _rm.apply(this, arguments); };
+
+    // ---------- Тамара Ивановна: главная сплетница завода
+    const DOS = {
+      seryoga: ['Весёлый прохиндей: на работе «в туалете», в жизни — душа компании.', 'Любит пиво и розыгрыши. Скинься на пиво — станет другом на смену.'], vityok: ['Добрый и наивный, верит, что станки меняются местами.', 'Молодой, быстро учится. Дай ему наставника — вырастет в слесаря.'],
+      mikhalych: ['Сварщик от бога, шов у него поёт. Обидчив.', 'Любит, когда хвалят шов. С ним про сварку не спорь — проиграешь.'], palych: ['Бригадир-наставник, спокойный как удав, рыбак.', 'За 1 000 ₽ на «чай» неделю не заметит твой брак.'],
+      lyosha: ['Дядя Лёша: подозрителен ко всему, кроме пива.', 'Принюхивается при входе: жвачка и леденцы убирают перегар.'], egorych: ['Вахтёр-старожил: вредина с душой как старая тряпка.', 'Любит водку, сигареты и когда его слушают. Друзьям даёт секретный пропуск (отношения от 60).'],
+      gosha: ['Начальник охраны «Танк»: силён как три станка, умён как один.', 'С ним в драку лучше не лезть: проиграешь и получишь выговор.'], lyudka: ['Кухарка с золотым половником и железным характером.', 'Любит комплименты. Её борщ на вчерашнем компоте — лучше не обсуждать.'],
+      tatyana: ['Тихая кухарка, добрая и застенчивая.', 'Принеси шоколадку — расскажет все столовские новости.'], kolyan: ['Мечтатель: ему снилось, что он завод.', 'Слаб к спиртному: может занять и не отдать.'],
+      khomyak: ['Кладовщик «Хомяк»: бережёт склад как крепость.', 'Спецовки выдаёт только своим. Дружба = лишняя каска.'], afonya: ['Слесарь-романтик: гитара без струн, мечтает о юге.', 'Пьёт «для дегустации» и зовёт на левую халтуру (платят, но попасться можно).'],
+      nyura: ['Баба Нюра: знает про общагу всё и кормит пирожками.', 'Подружись — угостит пирожками и даст совет «по-бабушкиному».'], vika: ['Вика из спортзала: бодрая, как весенний ручей.', 'Абонемент продлит всем, кто видел гантели. То есть всем.'],
+      stepanych: ['Старый мастер: ворчит, но завод любит больше жены.', 'Скоро на пенсию. Когда ты сам станешь мастером, он уйдёт.'], dudukin: ['Мастер Дудукин: адекватный, приятный, настоящий специалист.', 'Любит инициативу и разговоры по делу, доносов не терпит. Подарки + рабочие вопросы дают премию.'],
+      pelageya: ['Инженер по охране труда: строгая, но справедливая.', 'Проводит инструктаж с экзаменом. Не выучишь — будет выговор.'], lidiya: ['Крановщица Лидия: поднимает тонны, голубей и настроение.', 'Может прокатить на крюке. Только никому.'],
+      eblanov: ['Конструктор-гений с чертежами «в процессе».', 'Его чертежи надо проверять: иногда в них ошибки, иначе ОТК вернёт.'], rafik: ['Шофёр директора: знает все дороги и все секреты.', 'Директорская машина «едет сама», он просто рядом. Не спорь.'],
+      alevtina: ['Медсестра: внимательная и участливая.', 'Раз в полгода — медкомиссия. Тошнить и пить перед ней вредно для карьеры.'], allochka: ['Секретарша Аллочка: голос директора и его уши.', 'Любит внимание. Её судьба решится на выборах.'],
+      ekaterina: ['Начальница ОТК: ледяная красавица с калибром.', 'Если у вас роман, брак ей «не виден». Иначе беспощадна.'], nadezhda: ['Проверяющая по ОТ: гроза цеха по средам.', 'Берёт конверт: экзамен и замечания испаряются. Но слухи ходят.'],
+      shchiplen: ['Начальник цеха: вредный, любит выпить и подарки.', 'К нему вежливо и с коньяком. Грубость — служебка и −5 000 ₽.'], kulezhov: ['Зам. начальника цеха: патологический врун, но безобидный.', 'Его «протекция» срабатывает редко. Но срабатывает.'],
+      shurygina: ['Бухгалтерия в одном лице: держит всё в кулаке и в тайне.', 'Когда задерживают зарплату — иди к ней. Но с шоколадкой.'], tatishcheva: ['Начальница кадров: молода, строга, любит порядок.', 'Корочки и курсы — у неё. Без них повышения не будет.'],
+      soplezhuykin: ['Зам. генерального директора: подозрительный, любит подарки и жалобы.', 'Может лишить премии. Спасут подарок или связи.'], rassvetov: ['Главный инженер: знает цену допуску и людям.', 'Хочет рацпредложения, а не слова. Приходи с расчётами.'],
+      truhanov: ['Генеральный директор: блокнотик, очки, абсолютная власть.', 'Берёт «личные вопросы». Но на последнюю ступень всё равно не пустит.']
+    };
+    const TIERNPC = { 1: ['seryoga', 'vityok', 'mikhalych', 'palych', 'lyosha', 'egorych', 'gosha', 'lyudka', 'tatyana', 'kolyan', 'khomyak', 'afonya', 'nyura', 'vika'], 2: ['stepanych', 'dudukin', 'pelageya', 'lidiya', 'eblanov', 'rafik', 'alevtina', 'allochka', 'ekaterina', 'nadezhda'], 3: ['shchiplen', 'kulezhov', 'shurygina', 'tatishcheva', 'soplezhuykin', 'rassvetov'], 4: ['truhanov'] };
+    const NEWS = [
+      [1, 'В столовой борщ «на основе вчерашнего компота». Кто не успел — тот не отравился.'], [1, 'Серёга «в туалете» уже сорок минут. Туалет подал заявление о помощи.'], [1, 'Корова из цеха уволилась: ей предложили молоко, а она хотела премию.'], [2, 'Егорыч говорит, что без гостинца в праздник не пустит. И не врёт: проверено.'],
+      [2, 'У Щиплена в ящике стола — коньяк. «Лекарство от вас всех». Он принимает по рецепту подарка.'], [2, 'Надежда Николаевна не любит неубранные рабочие места и людей. В обратном порядке.'], [2, 'Дудукин ждёт инициативных: сообщи о проблеме — станешь любимчиком.'], [3, 'В среду — проверка. Выучи вопросы или приготовь конверт. Совесть можно оставить дома.'],
+      [3, 'Говорят, зарплату иногда задерживают: «бухгалтерия ищет деньги». Найдёт — выдаст.'], [3, 'Соплежуйкин любит жалобы на коллег. Но коллеги тоже любят жаловаться на него.'], [3, 'Кулежов «знаком с директором». Директор об этом пока не знает.'], [4, 'Чтобы стать мастером, нужны корочки, план завода и хорошие отношения с Дудукиным и Щипленом.'],
+      [4, 'Кресло генерального директора занято навечно. Остальное — как повезёт. А повезёт — если подарить коньяк.'], [4, 'Труханов в блокнотике ведёт «личные заметки» на всех. Не делай глупостей, он пишет красной ручкой.']
+    ];
+    const tamTier = () => { const rel = G.R('tamara').l, sh = G.s.car.shifts, a = rel >= 65 ? 4 : rel >= 45 ? 3 : rel >= 25 ? 2 : rel >= 10 ? 1 : 0, b = sh < 5 ? 0 : sh < 15 ? 1 : sh < 40 ? 2 : sh < 80 ? 3 : 4; return Math.min(a, b); };
+    G.gossipMenu = function () {
+      const s = G.s, f = F(), t = tamTier(), face = 'tamara', back = () => G.gossipMenu(); f.dossier = f.dossier || {};
+      const known = Object.keys(f.dossier).length;
+      G.modal({ title: 'Тамара Ивановна', face, text: t === 0 ? 'Тамара, не отрываясь от швабры: «Ничего не знаю, милок. Полы мою. Приходи, как подружимся».' : 'Тамара опирается на швабру: «Ну, спрашивай. Я тут всё вижу — уборщица, она как радар, только с ведром».<br><small>Что знает: ' + known + ' заводчан · доверие: ' + ['низкое', 'растёт', 'хорошее', 'высокое', 'абсолютное'][t] + '</small>', opts: [
+        { t: '🗣 Узнать про человека', dis: t === 0 ? 'Пока не доверяет' : s.day.gossipAsk ? 'Сегодня уже спрашивал' : null, fn: () => who() },
+        { t: '📰 Новость дня', dis: t === 0 ? 'Пока не доверяет' : s.day.gossipNews ? 'Сегодня уже слышал' : null, fn: () => news() },
+        { t: '📖 Что я уже знаю', dis: known ? null : 'Пока ничего', fn: () => list() },
+        { t: '🧹 Помочь с уборкой (−5 энергии)', fn: () => { G.fx({ energy: -5, mood: 1 }); G.relAdd('tamara', 3); msg('Ты помог Тамаре с полом. Она растрогана и вручила пирожок.', 'good'); G.give('bread', 1); sp(); } },
+        { t: '💝 Ухаживать (по-человечески)', dis: locked('tamara') ? 'Рано (нужен ранг «' + D.RANKS[ROMRANK.tamara] + '»)' : null, fn: () => G.tamaraArc() },
+        { t: 'Уйти', fn: () => {} }] });
+      function who() {
+        const ids = []; for (let k = 1; k <= t; k++) (TIERNPC[k] || []).forEach(i => { if (D.NPC[i]) ids.push(i); });
+        G.modal({ title: 'О ком расскажет?', face, wide: true, text: 'Круг её знаний растёт вместе с доверием.', opts: ids.slice(0, 40).map(id => ({ t: D.NPC[id].name + ' — ' + (D.NPC[id].role || '') + (f.dossier[id] ? ' ✓' : ''), fn: () => { s.day.gossipAsk = 1; const d = DOS[id] || ['Человек как человек.', 'Тут я пас.'], ut = Object.keys(TIERNPC).find(k => TIERNPC[k].indexOf(id) >= 0) | 0, deep = t >= Math.min(4, ut + 1), rec = f.dossier[id] = f.dossier[id] || {}; rec.c = d[0]; if (deep) rec.s = d[1]; G.relAdd('tamara', 1); G.xp(3);
+            G.modal({ title: D.NPC[id].name, face, text: '<b>Характер:</b> ' + d[0] + '<br>' + (deep ? '<b>Секрет:</b> ' + d[1] : '<i>Тамара многозначительно замолчала: про остальное — когда подружимся покрепче.</i>'), opts: [{ t: 'Спасибо, Тамара Ивановна', fn: () => {} }] }); } })).concat([{ t: 'Назад', fn: back }]) });
+      }
+      function news() { s.day.gossipNews = 1; const pool = NEWS.filter(x => x[0] <= t), n = pool[Math.floor(G.hash(s.t.day, 7, 5) * pool.length)] || pool[0]; G.xp(2); G.modal({ title: '📰 Новость дня', face, text: n[1], opts: [{ t: 'Ого…', fn: () => {} }] }); }
+      function list() { const ids = Object.keys(f.dossier); G.modal({ title: '📖 Записная книжка', wide: true, text: ids.map(id => '<b>' + (D.NPC[id] ? D.NPC[id].name : id) + ':</b> ' + esc(f.dossier[id].c) + (f.dossier[id].s ? '<br><i>' + esc(f.dossier[id].s) + '</i>' : '')).join('<hr style="opacity:.2">'), opts: [{ t: 'Назад', fn: back }] }); }
+    };
+    // Забавное «ухаживание» за бабушкой (ничего неприличного, только пирожки и швабры)
+    const TAM = [
+      { t: 'Тамара Ивановна оценивающе смотрит: «Ты чего вокруг меня ходишь, как швабра вокруг ведра? Внучек, что ли?»', o: [['Подарить шоколадку', 'choco', 'Она хмыкнула, но шоколадку спрятала в фартук. «Ладно, внучек. На эту неделю считай, что ты мой».', { mood: 4 }, 8], ['Помочь с уборкой коридора', null, 'Ты отдраил коридор. Тамара пожала плечами: «Руки есть. Голова — вопрос».', { energy: -6, mood: 2 }, 6]] },
+      { t: 'Тамара достаёт термос: «Ешь, худоба. Борщ мой, не людкин. Тот — на компоте».', o: [['Есть с аппетитом', null, 'Борщ оказался роскошным. Тамара довольна: «Мужчина должен кушать! И носки носить».', { satiety: 25, mood: 6 }, 8], ['Отказаться вежливо', null, 'Она обиделась на термос, но ненадолго. «Ну хоть пирожок».', { mood: 1 }, 2]] },
+      { t: 'Тамара: «Поедешь на мой огород? Там помидоры, кабачки и кошка. Кошка — главная».', o: [['Съездить и помочь', null, 'Ты копал грядки, пока кошка проверяла качество. Домой уехал с банками огурцов.', { energy: -10, mood: 4 }, 10, { rassol: 2 }], ['Сказать, что занят', null, 'Тамара вздохнула: «Молодёжь… огурцы сами не растут». Но на огурцы не обиделась.', { mood: -1 }, 1]] },
+      { t: 'Тамара достаёт спицы: «Раз уж ты мне как родной — свяжу носки. Размер у тебя какой? Не отвечай, я на глаз».', o: [['Согласиться на носки', null, 'Носки получились огромные, тёплые и немного колючие. Здоровье крепче, настроение выше.', { health: 4, mood: 5 }, 8], ['Поблагодарить и отказаться', null, 'Тамара: «Ну, как знаешь». Но шарф всё равно связала.', { mood: 2 }, 4]] },
+      { t: 'Тамара торжественно опирается на швабру: «Слушай, внучек… ты хороший. Выходи за меня… то есть, тьфу, женись на мне! Хотя я для этого уже стара, а ты — мал. Шучу. Но ключи от каморки возьми».', o: [['Принять ключи от каморки', null, 'Теперь у тебя есть своя каморка со швабрами: можно прилечь на смене. Тамара довольна, коллеги шепчутся про «зятя».', { mood: 8, cool: -2 }, 10, null, 'kam'], ['Вежливо отказаться и обнять', null, 'Тамара прослезилась: «Хороший ты. Пирожок возьми». Ты ушёл с пирожком и чистой совестью.', { mood: 6, cons: 3 }, 6, { bread: 1 }]] }
+    ];
+    G.tamaraArc = function () {
+      const s = G.s, f = F(), st = f.tamStage || 0, rel = G.R('tamara').l;
+      if (st >= TAM.length) { msg('Тамара Ивановна машет тебе из-за швабры: «Заходи, внучек. Борщ на плите».', 'good'); return; }
+      if (f.tamWk === G.week()) { msg('Тамара: «На этой неделе ты уже был. Не мозоль глаза, дай швабре отдохнуть».', 'warn'); return; }
+      const need = [8, 15, 25, 35, 50][st], sh = [3, 10, 20, 35, 60][st];
+      if (rel < need || s.car.shifts < sh) { msg('Тамара Ивановна присматривается: «Рано, милок. Подружись как следует (отношения ' + need + ', смен ' + sh + ')».', 'warn'); return; }
+      const x = TAM[st];
+      G.modal({ title: 'Тамара Ивановна', face: 'tamara', text: x.t, opts: x.o.map(o => ({ t: o[0], dis: o[1] && !G.has(o[1]) ? 'Нет в рюкзаке' : null, fn: () => { if (o[1]) G.give(o[1], -1); f.tamStage = st + 1; f.tamWk = G.week(); G.fx(o[3]); G.relAdd('tamara', o[4]); if (o[5]) Object.keys(o[5]).forEach(k => G.give(k, o[5][k])); if (o[6] === 'kam') { f.kamorka = 1; G.achieve('tamara', 'Любимый внучек Тамары Ивановны'); if (G.boardAdd) G.boardAdd('Обладатель ключей от каморки Тамары Ивановны', 'good'); } msg(o[2], 'good'); G.xp(10); sp(); } })) });
+    };
+    A('gossip', { ph: ['work'], loc: 'shop', g: 'Коллеги и приколюхи', n: 'Тамара Ивановна: сплетни', i: '🧹', menu: true, fn: () => { G.gossipMenu(); return 'custom'; } });
+    // ---------- Алкаш: пьёшь часто — кличка и хуже работаешь
+    const _fx26 = G.fx; G.fx = function (f, ctx) {
+      const s = G.s, before = s && s.st ? s.st.drunk : 0, r = _fx26.apply(this, arguments);
+      try { if (s && s.st && s.st.drunk - before >= 10) { const fl = F(); fl.drinkDays = (fl.drinkDays || []).filter(d => s.t.day - d <= 14); if (fl.drinkDays.indexOf(s.t.day) < 0) fl.drinkDays.push(s.t.day); fl.dry = 0; if (fl.drinkDays.length >= 7 && !hasNick('alkash')) { G.addNick('alkash'); msg('Про тебя говорят: «Алкаш». Кличка прилипла.', 'bad'); } } } catch (e) {}
+      return r;
+    };
+    const _q2 = G.quality; G.quality = function () { const q = _q2.apply(this, arguments); return hasNick('alkash') ? Math.max(0, q - 10) : q; };
+    // Заводчане стучат, если ты пьян на смене
+    const _kh26 = K.hook; K.hook = function () {
+      const r = _kh26.apply(this, arguments);
+      try {
+        const s = G.s; if (s && s.phase !== 'new') {
+          if (!G._dailyDone) { G._dailyDone = 1; dailyBonus(); }
+          if (s.phase === 'work' && s.st.drunk >= 15 && !s.day.snitched && s.t.hour >= 10) {
+            s.day.snitched = 1; const p = C(55 - s.st.coll * 0.5, 10, 60);
+            if (G.chance(p)) { const who = G.pick(['Колян', 'Витёк', 'Серёга', 'Хомяк', 'Соплежуйкин']); s.pay.pen += 1500; G.fx({ boss: -8, mood: -4, coll: -1 }); msg('🐀 ' + who + ' настучал начальству, что ты пьян на смене. Докладная, штраф 1 500 ₽.', 'bad'); if (G.rumor) G.rumor('drunkwork', 'Все знают, что тебя застукали пьяным на смене.', { cool: -2, boss: -2 }, 70); }
+            else if (G.chance(40)) { msg('Коллеги заметили, что ты поддатый, но промолчали. Пока.', 'warn'); }
+          }
+        }
+      } catch (e) {}
+      return r;
+    };
+
+    // ---------- Проходная: взятки, 50/50 через забор, больничный или прогул
+    // (патч расширяет уже существующий G.gate; см. data_actions)
+
+    // ---------- Задержки зарплаты
+    const _pd = G.payday;
+    G.payday = function () {
+      const s = G.s, f = F(), wk = G.week() % 4;
+      if ((wk === 1 || wk === 3) && !f.payLate && s.car.shifts >= 15 && G.chance(12)) {
+        f.payLate = { due: s.t.day + G.ri(3, 6), wk: G.week() }; f.payLateCount = (f.payLateCount || 0) + 1; G.fx({ mood: -6, coll: -1 });
+        G.modal({ title: '⏳ ЗАРПЛАТУ ЗАДЕРЖИВАЮТ', face: 'shurygina', text: 'Бухгалтерия вывесила объявление: «Выплата задерживается по техническим причинам. Причины технические. Технически — нет денег».', opts: [
+          { t: 'Ждать и надеяться', fn: () => { msg('Придётся потерпеть. Коллеги ворчат вполголоса.', 'warn'); } },
+          { t: 'Пойти к Шурыгиной', fn: () => { if (G.chance(45)) { msg('Шурыгина вздохнула и нашла деньги в ящике «на чёрный день».', 'good'); const w = G.week; G.week = () => f.payLate.wk; try { _pd.call(G); } finally { G.week = w; } f.payLate = null; } else { G.fx({ mood: -3 }); msg('«Приходите после обеда. Завтра». Это значит — нескоро.', 'bad'); } } },
+          { t: s.car.union ? 'Позвать Семёныча (профсоюз)' : 'Профсоюза нет — просто ворчать', dis: s.car.union ? null : 'Нет профсоюза', fn: () => { f.payLate.due = s.t.day + 2; G.fx({ boss: -3 }); msg('Семёныч пошёл «строго разговаривать». Выплату обещали через пару дней.', 'warn'); } }] });
+        return;
+      }
+      return _pd.apply(this, arguments);
+    };
+    const payLateTick = () => { const s = G.s, f = F(); if (f.payLate && s.t.day >= f.payLate.due) { const w = G.week; G.week = () => f.payLate.wk; try { _pd.call(G); } finally { G.week = w; } f.payLate = null; msg('💵 Зарплату наконец перечислили. Бухгалтерия приносит извинения (устные).', 'good'); G.fx({ mood: 3 }); } };
+
+    // ---------- Ежедневные расчёты
+    const _dt26 = G.dailyTick; G.dailyTick = function () {
+      const r = _dt26.apply(this, arguments), s = G.s, f = F();
+      try { f.dry = (f.drinkDays || []).indexOf(s.t.day - 1) >= 0 ? 0 : (f.dry || 0) + 1; payLateTick(); if (f.kamorka) s.st.mood = C(s.st.mood + 1.5); G.checkGoals(); G.checkLevel(); } catch (e) {}
       return r;
     };
   })();
