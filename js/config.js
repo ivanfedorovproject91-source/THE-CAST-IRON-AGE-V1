@@ -3,7 +3,7 @@
   const G = (window.G = window.G || {});
   G.CONFIG = {
     // Версия игры (для сохранений и рейтинга). Повышайте при каждом обновлении.
-    VERSION: '3.2.0',
+    VERSION: '3.3.0',
     // Адрес общего рейтинга (Google Apps Script, веб-приложение). Пусто — рейтинг выключен.
     API_URL: 'https://script.google.com/macros/s/AKfycbxYSO78NJv6qclY2jqaXdwU9_fEEbcM496t6vCi_rxKNeNZBIQbfLEmtCPNjE45ftmpvQ/exec',
     // Темп прогрессии: во сколько раз растут требования к стажу и баллам мастерства для повышений.
