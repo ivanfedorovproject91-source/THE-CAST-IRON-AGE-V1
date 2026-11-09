@@ -2220,4 +2220,199 @@
     };
   })();
 
+
+  // ======================= v3.3: метеоризм со звуком, рыбалка, белка-подсказчик, редкий юмор, живой аватар =======================
+  (function () {
+    const D = G.D, C = G.clamp, K = G.career, msg = (t, c) => G.toast(t, c), sp = n => G.spend(n || 1);
+    const F = () => G.s.flags, mon = n => G.rub(Math.round(n)), esc = x => String(x).replace(/[<>&]/g, '');
+    const shuf = a => a.slice().sort(() => Math.random() - 0.5);
+    const hasNick = id => G.s && G.s.nicks && G.s.nicks.indexOf(id) >= 0;
+    D.NICKS.perdun = { n: 'Пердун', fx: { coll: -1 }, bad: 1 };
+
+    // ---------- Звук (синтез): метеоризм
+    let ac2 = null;
+    const actx2 = () => { try { if (!ac2) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ac2 = new AC(); } if (ac2.state === 'suspended') ac2.resume(); return ac2; } catch (e) { return null; } };
+    G.fartSound = function (kind) {
+      if (G.settings && G.settings.sound === false) return;
+      try {
+        const c = actx2(); if (!c) return; const sq = kind === 'squeak', dur = kind === 'loud' ? 1.1 : sq ? 0.28 : 0.5, t = c.currentTime;
+        const o = c.createOscillator(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(sq ? 420 : 150, t); o.frequency.exponentialRampToValueAtTime(sq ? 250 : 52, t + dur);
+        lfo.frequency.value = sq ? 40 : 23; lg.gain.value = sq ? 70 : 30; lfo.connect(lg); lg.connect(o.frequency);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(c.destination); o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+        const nb = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+        const ns = c.createBufferSource(), nf = c.createBiquadFilter(), ng = c.createGain(); ns.buffer = nb; nf.type = 'lowpass'; nf.frequency.value = 700; ng.gain.value = 0.14; ns.connect(nf); nf.connect(ng); ng.connect(c.destination); ns.start(t);
+      } catch (e) {}
+    };
+    const tapOverlay = (o) => { // универсальная тапалка: need тапов за time секунд
+      const root = document.getElementById('app'); if (!root) return o.done(true);
+      const ov = document.createElement('div'); ov.className = 'press-ov'; ov.innerHTML = '<div class="press-box"><div class="big">' + o.emoji + '</div><h3>' + o.title + '</h3><div class="gym-info" style="color:#ffe7d0">' + o.hint + '</div><div class="v-bar red"><i id="tp" style="width:0%"></i></div><div class="gym-rep" id="tt"></div><button class="btn big hazard" id="tb">' + o.btn + '</button></div>'; root.appendChild(ov);
+      let n = 0, t0 = 0, done = false; const fin = ok => { if (done) return; done = true; ov.remove(); o.done(ok); };
+      ov.querySelector('#tb').onclick = () => { n++; ov.querySelector('#tp').style.width = Math.min(100, n / o.need * 100) + '%'; if (G.buzz) G.buzz('light'); if (n >= o.need) fin(true); };
+      const loop = ts => { if (done) return; if (!t0) t0 = ts; const el = (ts - t0) / 1000; ov.querySelector('#tt').textContent = Math.max(0, o.time - el).toFixed(1) + ' с'; if (el >= o.time) fin(false); else requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+    };
+
+    // ---------- Метеоризм после обеда
+    const heard = who => { const f = F(); f.gasHeard = (f.gasHeard || 0) + 1; if (f.gasHeard >= 3 && !hasNick('perdun')) { G.addNick('perdun'); msg('За тобой закрепилась кличка «Пердун». Работа над имиджем провалена.', 'bad'); } };
+    G.gasUrge = function () {
+      const s = G.s, f = F(), near = G.pick(['Серёга', 'Витёк', 'Михалыч', 'Дудукин', 'Щиплен', 'Кулежов', 'Хомяк']), boss = near === 'Дудукин' || near === 'Щиплен' || near === 'Кулежов';
+      G.modal({ title: '💨 ПОЗЫВ', text: 'После обеда живот заурчал, как станок на холостых. Рядом стоит <b>' + near + '</b>. Что делать?', opts: [
+        { t: '🤫 Пустить тихо (рискнуть)', fn: () => { G.fartSound('quiet'); if (G.chance(55 - (boss ? 10 : 0))) { G.fx({ mood: 5 }); msg('Прошло незамеченным. Облегчение — как отпуск.', 'good'); } else { G.fx({ mood: 3, coll: -3 }); if (boss) G.fx({ boss: -2 }); msg(near + ' поморщился: «Кто-то умер…». Запах выдал тебя.', 'bad'); heard(near); if (G.rumor) G.rumor('gas', 'По цеху ходит версия, что «кто-то тут с ароматом».', { coll: -1 }, 60); } } },
+        { t: '📢 Громко и с достоинством', fn: () => { G.fartSound('loud'); G.fx({ mood: 8 }); if (G.chance(50)) { G.fx({ coll: 3, cool: 2 }); msg('Раскат прокатился по цеху. Мужики ржут и аплодируют. Ты — легенда.', 'good'); } else { G.fx({ coll: -3 }); if (boss) G.fx({ boss: -3 }); msg(near + ' сделал вид, что ничего не слышал. Но лицо у него вытянулось.', 'bad'); heard(near); } if (G.rumor) G.rumor('gas', 'Весь цех слышал, как ты «выступил». Звук запомнили.', { cool: 1, coll: -1 }, 70); } },
+        { t: '💪 Сдержаться (тапай!)', fn: () => tapOverlay({ emoji: '😖', title: 'ТЕРПИ!', hint: 'Тапай, чтобы удержать! 10 тапов за 4 секунды.', btn: 'ДЕРЖАТЬ! 😣', need: 10, time: 4, done: ok => { if (ok) { G.fx({ energy: -3, mood: -1 }); msg('Сдержался! Организм злобно урчит, но молчит.', 'good'); } else { G.fartSound('squeak'); G.fx({ mood: 2, coll: -4 }); msg('Не удержал. Раздалось что-то высокое и писклявое. Позор.', 'bad'); heard(near); } } }) },
+        { t: '🚽 Сбегать в туалет (−1 час)', fn: () => { G.fx({ mood: 3 }); msg('Сбегал. В тишине, в кабинке, в покое. Лучше, чем в кино.', 'good'); sp(1); } }
+      ] });
+    };
+
+    // ---------- Рыбалка
+    D.PLACES.push({ id: 'c_pond', n: 'Заводской пруд', i: '🎣', d: 'Рыба, тишина и подозрительные бутылки' });
+    const SPEC = [['Плотва', 40, 30], ['Карась', 25, 45], ['Окунь', 15, 60], ['Лещ', 10, 80], ['Щука', 6, 200], ['Сом', 3, 400], ['Золотая рыбка', 1, 1000]];
+    const pickSpec = () => { let r = Math.random() * 100; for (const x of SPEC) { r -= x[1]; if (r <= 0) return x; } return SPEC[0]; };
+    const fishStat = () => { const f = F(); return f.fish = f.fish || { total: 0, sessions: 0, best: 0, bottles: 0, sp: {} }; };
+    const FRIENDS = ['palych', 'seryoga', 'afonya', 'vityok', 'mikhalych', 'kolyan', 'lyosha', 'khomyak', 'dudukin'];
+    G.fishMenu = function () {
+      const s = G.s;
+      const opts = [{ t: '🎣 Одному — тишина и покой', fn: () => G.fishGame(null) }].concat(FRIENDS.filter(i => D.NPC[i]).slice(0, 8).map(id => ({ t: '🎣 С ' + D.NPC[id].name.split(' ')[0] + ' (отношения ' + Math.round(G.R(id).l) + ')', fn: () => G.fishGame(id) })));
+      opts.push({ t: 'Не сегодня', fn: () => {} });
+      G.modal({ title: 'Рыбалка', text: 'С кем пойдёшь на рыбалку? Совместная ловля сближает. Только не путай рыбу с бутылками.', wide: true, opts });
+    };
+    G.fishGame = function (buddy) {
+      const s = G.s, root = document.getElementById('app'); if (!root) return;
+      const ov = document.createElement('div'); ov.className = 'gym-ov'; ov.style.background = 'linear-gradient(#0b3a55,#12597a)';
+      ov.innerHTML = '<div class="gym-box" style="background:transparent;border:0;max-width:440px"><h3>🎣 ЗАВОДСКОЙ ПРУД</h3><div class="gym-info" style="color:#cfe9f5">Лови 🐟, но не трогай 🍾! Рыба юркая и быстро исчезает. Мимо тапнешь — рыба пугается. <b id="fc">0</b> поймано · <b id="ft">30</b> с</div><div id="fp" style="position:relative;height:300px;background:radial-gradient(circle at 50% 30%,#2a7fa8,#0d4a6a);border:2px solid #000;overflow:hidden;touch-action:manipulation"></div></div>';
+      root.appendChild(ov); const pond = ov.querySelector('#fp'); let caught = [], bottle = 0, scare = 0, t0 = 0, last = 0, next = 0, done = false; const T = 30, targets = [];
+      const spawn = (el) => {
+        const bot = Math.random() < 0.16, d = document.createElement('div'); d.textContent = bot ? '🍾' : '🐟'; d.style.cssText = 'position:absolute;font-size:' + (bot ? 26 : 26) + 'px;cursor:pointer;user-select:none;transition:none';
+        const side = Math.random() < 0.5 ? 0 : 1, y = 30 + Math.random() * 230, sp = (95 + el * 6 + Math.random() * 90) * (side ? -1 : 1), x = side ? 360 : -20, ph = Math.random() * 6;
+        const tg = { d, x, y, sp, ph, bot, born: el, life: Math.max(0.55, 1.1 - el * 0.02), hit: false }; d.onpointerdown = e => { e.stopPropagation(); hit(tg); }; pond.appendChild(d); targets.push(tg);
+      };
+      const hit = tg => { if (done || tg.hit) return; tg.hit = true; tg.d.remove();
+        if (tg.bot) { bottle++; G.fx({ drunk: 35, mood: 3 }); s.day.peak = Math.max(s.day.peak || 0, 70); msg('🍾 Ты схватил бутылку водки и… тут же приложился. Завтра будет похмелье.', 'bad'); }
+        else { const sp = pickSpec(); caught.push(sp); ov.querySelector('#fc').textContent = caught.length; if (G.buzz) G.buzz('success'); } };
+      pond.onpointerdown = () => { scare = 0.8; };
+      const fin = () => { if (done) return; done = true; ov.remove(); results(); };
+      const loop = ts => { if (done) return; if (!t0) { t0 = ts; last = ts; } const dt = Math.min(0.05, (ts - last) / 1000), el = (ts - t0) / 1000; last = ts; scare = Math.max(0, scare - dt); ov.querySelector('#ft').textContent = Math.max(0, T - el).toFixed(0);
+        if (el >= next && scare <= 0 && el < T - 1) { spawn(el); next = el + 0.45 + Math.random() * 0.55; }
+        for (let i = targets.length - 1; i >= 0; i--) { const tg = targets[i]; if (tg.hit || el - tg.born > tg.life + 1.2) { tg.d.remove(); targets.splice(i, 1); continue; } tg.x += tg.sp * dt; const yy = tg.y + Math.sin(el * 7 + tg.ph) * 30; tg.d.style.transform = 'translate(' + tg.x + 'px,' + yy + 'px)'; tg.d.style.opacity = (el - tg.born > tg.life) ? Math.max(0, 1 - (el - tg.born - tg.life) / 1.2) : 1; }
+        if (el >= T) fin(); else requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+      function results() {
+        const st = fishStat(), n = caught.length, money = caught.reduce((a, x) => a + x[2], 0), by = {}; caught.forEach(x => { by[x[0]] = (by[x[0]] || 0) + 1; st.sp[x[0]] = (st.sp[x[0]] || 0) + 1; });
+        st.total += n; st.sessions++; st.best = Math.max(st.best, n); st.bottles += bottle; G.addMoney(money); G.fx({ energy: -5, mood: 3 + Math.min(8, n) });
+        if (buddy) { G.relAdd(buddy, 3 + Math.round(n * 0.6)); if (G.rumor) G.rumor('fish', 'Видели, как ты с ' + D.NPC[buddy].name.split(' ')[0] + ' на пруду рыбачил. Мужики одобряют.', { coll: 1 }, 40); }
+        if (st.total >= 10) G.achieve('fish10', 'Рыбак: поймано 10 рыб'); if (st.total >= 50) G.achieve('fish50', 'Старый рыбак: 50 рыб'); if (st.sp['Золотая рыбка']) G.achieve('fishgold', 'Поймал золотую рыбку (желание не загадал)');
+        G.xp(8 + n);
+        G.modal({ title: '🎣 Улов', text: n ? 'Поймано: <b>' + n + '</b> (' + Object.keys(by).map(k => k + ' ×' + by[k]).join(', ') + ').<br>Продал на рынке: <b>' + mon(money) + '</b>.' + (buddy ? '<br>Вы с ' + D.NPC[buddy].name.split(' ')[0] + ' душевно посидели: отношения выросли.' : '') + (bottle ? '<br><b>Бутылка водки… не рыба. Но ты её поймал.</b>' : '') + '<br><small>Всего за всё время: ' + st.total + ' рыб.</small>' : 'Ни одной рыбы. Зато воздух. И' + (bottle ? ' бутылка.' : ' тишина.'), opts: [{ t: 'Домой', fn: () => {} }] });
+        sp(2);
+      }
+    };
+    A('fish', { ph: ['free'], loc: 'c_pond', g: 'Рыбалка', n: 'Порыбачить (2 ч)', i: '🎣', menu: true, once: 'day', req: s => s.st.energy < 10 ? 'Нет сил' : null, fn: () => { G.fishMenu(); return 'custom'; } });
+    const _pc2 = G.progressCard; G.progressCard = function () {
+      const st = (F().fish || null), base = _pc2.apply(this, arguments); if (!st || !st.sessions) return base;
+      return base + '<div class="card"><h3>🎣 Рыбалка</h3><div>Поймано за всё время: <b>' + st.total + '</b> рыб · выходов: ' + st.sessions + ' · рекорд за раз: ' + st.best + (st.bottles ? ' · бутылок поймано: ' + st.bottles : '') + '</div><div class="note">' + (Object.keys(st.sp).map(k => k + ' ×' + st.sp[k]).join(' · ') || 'Пока без рыбы') + '</div></div>';
+    };
+
+    // ---------- Белка-подсказчик (приходит, когда ты пьян)
+    const TIPS = [
+      'Слышь, чудик… Хочешь повышения? Нужны корочки у Татищевой, план завода и хорошие отношения с начальством. Без корочек — только мечты и ведро.',
+      'Щиплен любит коньяк, но уважение любит больше. Нахамишь — получишь служебку и минус пять тысяч. Проверено на алкашах.',
+      'Дудукин — единственный нормальный человек на заводе. Сообщай ему о проблемах — любит инициативу. Но не стучи: он не любит.',
+      'Егорыч берёт пачку сигарет или бутылку. Полтинник в карман — унижение. Знай: Егорыч — вахтёр, а не нищий.',
+      'Надежда Николаевна берёт конверт на три тысячи. Совесть дешевле. Но слухи ходят — слухи вообще летают быстрее станков.',
+      'Тамара Ивановна, уборщица — главная сплетница. Подружись — расскажет всё. Даже про директора. Особенно про директора.',
+      'Екатерина из ОТК: если вы встречаетесь — она не видит твой брак. Любовь слепа, ОТК — ещё слепее.',
+      'Не пей перед медкомиссией, чудик. Нарколог шуток не любит, а три проваленных кабинета — уже условный вердикт.',
+      'Зарплату иногда задерживают. Копи заначку, а то будешь жить на хлебе и обидах.',
+      'Минералка трезвит лучше всего. Каждая следующая бутылка за день — сильнее. Не спрашивай, как я это знаю.',
+      'Каждый день заходи в игру: бонус дня, серия и награды. Я бы заходила, но у меня только дупло.',
+      'Качалка прибавляет силу. Силач меньше устаёт. Но драться — это выговор. Не дерись с женщинами и котами: совесть не позволит.',
+      'Прогул — это увольнение. Правда, директору можно дать конверт. Не бесплатно и не всегда помогает.',
+      '«Приспичело» бывает 1–3 раза в неделю. Тапай быстро, а то станешь Засранцем. Настроение выше 50 % — недостижимо, как отпуск.',
+      'Кулежов врёт. Всегда. Но один раз из десяти случайно говорит правду. Угадай, когда.',
+      'Кот Чугунок приносит подарки, если его кормить. Деньги, шоколад и мёртвых мышей. Выбирай, что тебе ближе.',
+      'Хочешь денег — становись управляющим: заказы, сырьё, бригады. А пока носи спецовку и мечтай.',
+      'Не пей слишком часто: через неделю станешь Алкашом. Работать будешь хуже, а в рейтинге и уважении — минус.',
+      'Не лезь через забор, если не умеешь. Шанс 50 на 50. Я как-то лазила — теперь белка с высоты боится.',
+      'Рыбалка с коллегой улучшает отношения. Но бутылку водки в пруду не лови — это не рыба, это порок.',
+      'Бригада — до десяти человек. Побеждает та, чьи участники больше работают. Остальные завидуют и бьют морду.',
+      'Главный инженер Рассветов любит расчёты. Притащи рацпредложение — станешь любимчиком. Или хотя бы человеком.',
+      'Директор Труханов никогда не отдаст кресло. Игра обещает 99 %, но это, как у меня с орехами: всегда чуть-чуть не хватает.',
+      'Выше разряд — реже увольняют. Хороший работник на заводе — как хороший орех: берегут.'
+    ];
+    G.belkaTip = function () {
+      const s = G.s, f = F(); if (!D.NPC.belka) return; f.belkaIdx = f.belkaIdx || 0; s.day.belkaN = (s.day.belkaN || 0) + 1; f.belkaN = (f.belkaN || 0) + 1;
+      const tip = TIPS[f.belkaIdx % TIPS.length]; f.belkaIdx++; G.fx({ mood: 2 });
+      if (f.belkaN >= 5) G.achieve('belka5', 'Белая горячка… то есть белочка');
+      G.modal({ title: '🐿 Белка (в каске)', face: 'belka', text: 'Из-за станка вылезла белка в каске и забормотала:<br><i>«' + tip + '»</i>', opts: [(s.day.belkaN < 3 ? { t: 'Ещё одну правду!', fn: () => G.belkaTip() } : { t: 'Хватит, белка', fn: () => {} }), { t: 'Прогнать (ты же пьян)', fn: () => {} }] });
+    };
+
+    // ---------- Редкий производственный юмор (уникальные истории, не чаще раза в неделю)
+    const S = (id, t, x, o) => ({ id, t, x, o });
+    const STORIES = [
+      S('machine3', '⚙ Станок №3 сказал «хватит»', 'Станок №3 внезапно остановился и повесил табличку «Перерыв до среды». Рабочие в замешательстве.', [['Уважить и дать отдых', 'Станок постоял — и заработал бодрее.', { mood: 2 }, 'wear-10'], ['Дать ему пинка', 'Пинок помог… тебе: ты ушиб ногу, станок обиделся.', { health: -2, mood: -2 }, 'wear+6']]),
+      S('gaiki', '🔩 Комиссия из Министерства Гаек', 'Приехала комиссия «проверять наличие гаек». Хомяк прячет единственную гайку на складе.', [['Подыграть Хомяку', 'Комиссия ушла ни с чем. Хомяк плачет от счастья.', { cons: -1, rel: { khomyak: 6 } }], ['Показать гайку комиссии', 'Гайка изъята. Хомяк не разговаривает три дня.', { cons: 2, rel: { khomyak: -6 } }]]),
+      S('meeting', '📣 День без совещаний', 'Директор объявил «день без совещаний». Для этого собрали совещание на три часа.', [['Заснуть на совещании', 'Выспался на сто лет вперёд. Директор не заметил.', { energy: 10, boss: -2 }], ['Конспектировать', 'Ты записал всё. Конспект никому не нужен, знания остались.', { know: 2, mood: -3 }]]),
+      S('lamp', '💡 Лампа-юбиляр', 'Лампочка в цехе отработала десять лет. Устроили торжественное чествование.', [['Произнести тост', 'Тост был трогательным. Лампа моргнула.', { cool: 2, coll: 3 }], ['Выкрутить на память', 'Лампа погасла навсегда, коллеги осуждают.', { cons: -2, coll: -2 }]]),
+      S('tuesday', '📆 Пропал вторник', 'Табельщик заявил, что вторник утерян, а часы работы не засчитаны.', [['Требовать оплату за вторник', 'Бухгалтерия вздохнула и выдала немного денег «за потерю».', { money: 800, boss: -2 }], ['Махнуть рукой', 'Вторник так и не нашёлся. Но спокойствие осталось.', { mood: 2 }]]),
+      S('latin', '📜 Кружок латыни в курилке', 'Тамара подслушала: в курилке по вечерам тайно учат латынь. «Лучше бы работали».', [['Вступить в кружок', 'Ты выучил «карборунд, ваша честь». Знания растут.', { know: 3, cool: -1 }], ['Сделать вид, что не видел', 'Кружок продолжает жить в тени.', { mood: 1 }]]),
+      S('egorcar', '🚗 Егорыч задержал директорскую машину', 'Вахтёр потребовал у директорской машины пропуск. Рафик в шоке.', [['Заступиться за Егорыча', 'Егорыч прослезился. Директор запомнил тебя.', { boss: -2, rel: { egorych: 5 } }], ['Посмеяться со стороны', 'Смех стоил ровно ничего. И принёс удовольствие.', { mood: 4 }]]),
+      S('union', '📋 Профсоюз требует надбавку за слова', 'Профсоюз потребовал надбавку за вредность слов «срочно» и «авральчик».', [['Подписать петицию', 'Подписал. Надбавку, конечно, не дали, зато коллеги благодарны.', { coll: 3 }], ['Посмеяться над требованием', 'Весело, но осуждающие взгляды были.', { coll: -1, mood: 3 }]]),
+      S('portfel', '💼 Портфель Труханова', 'В цехе кто-то забыл портфель с блокнотиком директора.', [['Заглянуть в блокнотик', 'Ты прочитал «Сидорову — не доверять». Но кто-то заметил.', { cons: -3, boss: -5 }], ['Вернуть портфель', 'Труханов поблагодарил кивком. Для него это как орден.', { boss: 4, cons: 2 }]]),
+      S('pigeon', '🕊 Голубь в ЧПУ', 'Голубь свил гнездо в станке с ЧПУ. Станок теперь работает с птичьей точностью.', [['Выгнать голубя', 'Голубь улетел, оставив подарок.', { mood: -1 }], ['Оставить жить', 'Голубь высиживает яйца. Станок греется.', { mood: 4 }, 'wear+3']]),
+      S('hairstyle', '⛑ Конкурс причёсок под каской', 'Профком объявил конкурс на лучшую причёску под каской. Победитель получит «каску года».', [['Участвовать', 'Ты занял призовое место. Каска теперь с автографом.', { cool: 3, coll: 2 }], ['Судить', 'Судьи подкуплены. Ты получил шоколадку.', { cons: -2, mood: 3 }]]),
+      S('coffee', '☕ Кофе закончился навсегда', 'Кофемашина сломалась: «навсегда». Цех в трауре.', [['Организовать сбор на новую', 'Скинулись. Цех обнимается и пьёт кофе.', { money: -300, coll: 4 }], ['Пить чай из заварника Тамары', 'Чай оказался крепче, чем жизнь.', { energy: 4 }]]),
+      S('alarm', '🔔 Сигнализация от курилки', 'Пожарная сигнализация сработала от дыма в курилке. Эвакуировали всех, кроме курильщиков.', [['Выйти со всеми', 'Эвакуация затянулась, зато поговорили по душам.', { mood: 3, coll: 2 }], ['Остаться работать', 'Тебя похвалили за стойкость. И оштрафовали за неэвакуацию.', { boss: 1, mood: -2 }]]),
+      S('blueprints', '📐 Склад мятых чертежей', 'Ебланов нашёл склад мятых чертежей: «Это чертежи века!»', [['Поддержать Ебланова', 'Ебланов расцвёл. Чертежи пошли в дело.', { rel: { eblanov: 6 }, know: 1 }], ['Посоветовать выбросить', 'Ебланов обиделся на вашу честность.', { rel: { eblanov: -3 }, cons: 1 }]]),
+      S('still', '🧪 Аппарат Витька', 'Витёк собрал «научный прибор» и утверждает, что он чистит масло. Пахнет… подозрительно.', [['Доложить мастеру', 'Прибор конфискован. Витёк в слезах.', { boss: 3, rel: { vityok: -5 }, coll: -2 }], ['Закрыть глаза', 'Витёк благодарен. Масло, говорят, и правда чище.', { rel: { vityok: 5 }, cons: -1 }]]),
+      S('ghost', '👻 Табель-призрак', 'В ведомости обнаружили «Петра Сидоровича»: он три года получает зарплату, но никто его не видел.', [['Сообщить в бухгалтерию', 'Призрака уволили задним числом. Бухгалтерия благодарна.', { cons: 3, boss: 2 }], ['Промолчать', 'Пётр Сидорович оставил тебе премию в конверте. Загадка.', { money: 500, cons: -2 }]]),
+      S('hole', '🕳 Дыра в полу', 'В цеху образовалась дыра, ведущая «в соседний цех». Мастер ограничил её лентой.', [['Заглянуть в дыру', 'Там та же дыра, но с другой стороны. Философский момент.', { know: 1, mood: 2 }], ['Заделать самому', 'Заделал плохо, но с душой. Дыра подмигнула.', { energy: -5, boss: 2 }]]),
+      S('ticket', '🎟 Лотерея смены', 'Профком разыграл билет на «бесплатную смену». Выиграл Кулежов, который клянётся, что это победа его таланта.', [['Поздравить', 'Кулежов расцвёл и рассказал про сорок других побед.', { rel: { kulezhov: 4 }, mood: -1 }], ['Усомниться', 'Он обиделся и пообещал «разоблачить заговор».', { rel: { kulezhov: -2 }, mood: 2 }]]),
+      S('fridge', '🧊 Холодильник с компотом', 'В курилке завёлся холодильник. В нём компот. Никто не знает чей. Он пахнет эволюцией.', [['Попробовать', 'Это был компот на вчерашнем борще. Живой.', { satiety: 8, mood: -2 }], ['Выбросить', 'Холодильник поблагодарил тишиной.', { cons: 1 }]])
+    ];
+    const humorTry = () => {
+      const s = G.s, f = F(); f.humorSeen = f.humorSeen || []; let pool = STORIES.filter(x => f.humorSeen.indexOf(x.id) < 0); if (!pool.length) { f.humorSeen = []; pool = STORIES.slice(); }
+      const st = pool[Math.floor(Math.random() * pool.length)]; f.humorSeen.push(st.id); f.humorLast = s.t.day;
+      G.modal({ title: st.t, text: st.x, opts: st.o.map(o => ({ t: o[0], fn: () => { const sp0 = o[2] && o[2].rel; G.fx(o[2] || {}, { npc: sp0 ? Object.keys(sp0)[0] : undefined }); msg(o[1]); if (o[3] === 'wear-10') s.machine.wear = Math.max(0, s.machine.wear - 10); if (o[3] === 'wear+6') s.machine.wear = Math.min(100, s.machine.wear + 6); if (o[3] === 'wear+3') s.machine.wear = Math.min(100, s.machine.wear + 3); G.xp(3); } })) });
+    };
+
+    // ---------- Живой аватар игрока: хмурый, злой, грязный, пьяный, влюблённый
+    const lovers = () => Object.keys(D.NPC).filter(id => D.NPC[id].romance && G.R(id).stage >= 3 && id !== 'tamara');
+    const playerFace27 = function () {
+      const s = G.s, st = s.st, ap = G.playerAp();
+      if (s.phase === 'evening' || s.phase === 'weekend' || s.phase === 'morning') ap.hat = undefined;
+      const angry = st.mood < 30 || st.satiety < 20 || st.energy < 18, sev = (st.mood < 30) + (st.energy < 25) + (st.satiety < 25) + (st.neat < 25);
+      if (angry) ap.brow = 'angry';
+      const o = { mouth: st.mood < 30 || angry ? 'frown' : st.mood > 70 ? 'smile' : 'flat', sad: !angry && st.mood < 30, droop: st.energy < 25 || st.drunk > 15, drunk: st.drunk > 10, bags: st.energy < 30, dirt: st.neat < 35, pale: st.health < 40, sick: s.hang > 0 || st.health < 25, bruise: s.flags.bruise > G.week() };
+      if (st.drunk > 30) { o.mouth = 'open'; ap.extra = (ap.extra || []).concat(['flush']); }
+      let svg = G.avatar(ap, o), x = '';
+      if (st.satiety < 25) x += '<path d="M30 56 Q34 66 41 65 M70 56 Q66 66 59 65" stroke="#000" stroke-width="2" fill="none" opacity=".2"/>' + (st.satiety < 12 ? '<text x="6" y="16" font-size="15">💭🍔</text>' : '');
+      if (st.energy < 20) x += '<text x="72" y="20" font-size="15">💤</text>';
+      if (angry && sev >= 2) x += '<text x="64" y="18" font-size="17">💢</text>';
+      if (st.neat < 20) x += '<path d="M38 12 q-4 -5 0 -9 M50 12 q4 -5 0 -9 M62 12 q-4 -5 0 -9" stroke="#7a9a2a" stroke-width="1.6" fill="none" opacity=".8"/><text x="6" y="30" font-size="13">🪰</text><path d="M28 60 q5 3 9 -1 M60 63 q5 2 9 -2 M44 28 q3 2 6 0" stroke="#3a2a1a" stroke-width="3" opacity=".35" fill="none"/>';
+      if (hasNick('alkash') || st.drunk > 25) x += '<ellipse cx="50" cy="57" rx="5.5" ry="4.5" fill="#e0605a" opacity=".55"/>';
+      if (st.drunk > 45) x += '<text x="6" y="16" font-size="15">🥴</text>';
+      const L = lovers(); if (L.length) { const big = L.some(id => G.R(id).stage >= 5); x += '<text x="' + (big ? 70 : 74) + '" y="' + (big ? 24 : 20) + '" font-size="' + (big ? 22 : 16) + '">❤️</text>'; }
+      svg = svg.replace('</svg>', x + '</svg>');
+      if (st.drunk > 55) svg = svg.replace('<svg ', '<svg style="transform:rotate(6deg)" ');
+      return svg;
+    };
+
+    // avatars.js подключается позже этого файла, поэтому ставим наш аватар после загрузки всех скриптов
+    const installFace = () => { if (G.playerFace !== playerFace27) G.playerFace = playerFace27; };
+    installFace(); window.addEventListener('load', installFace); setTimeout(installFace, 300); setTimeout(installFace, 1500);
+
+    // ---------- Триггеры: после обеда, пьяный, редкий юмор
+    const _kh27 = K.hook; K.hook = function () {
+      const r = _kh27.apply(this, arguments);
+      try {
+        const s = G.s, f = F(); if (!s || s.phase === 'new' || s.end) return r;
+        if (s.phase === 'work' && s.t.hour >= 13 && s.t.hour <= 16 && !s.day.gasDone && s.car.shifts >= 3) { if (s.day.gasRoll === undefined) s.day.gasRoll = Math.random() < 0.3 + 0.08 * Math.min(4, s.day.canteen || 0); if (s.day.gasRoll) { s.day.gasDone = 1; setTimeout(() => G.gasUrge(), 120); } else s.day.gasDone = 1; }
+        if (s.st.drunk >= 30 && !s.day.belkaSeen && !document.getElementById('vomit-ov')) { s.day.belkaSeen = 1; if (Math.random() < 0.7) setTimeout(() => G.belkaTip(), 200); }
+        if (s.phase === 'work' && s.t.hour >= 11 && s.t.hour <= 15 && !s.day.humorDone && s.car.shifts >= 8) { s.day.humorDone = 1; const gap = 6 + Math.floor(G.hash(s.t.day, 2, 9) * 4); if ((f.humorLast === undefined || s.t.day - f.humorLast >= gap) && Math.random() < 0.4) setTimeout(humorTry, 250); }
+      } catch (e) {}
+      return r;
+    };
+  })();
+
 })();
