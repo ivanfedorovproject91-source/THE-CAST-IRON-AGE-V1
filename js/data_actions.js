@@ -79,7 +79,7 @@
   A('courses_w', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Узнать про курсы', i: '🎓', menu: true, fn: () => { G.coursesMenu(); return 'custom'; } });
   A('smoke_yard', { ph: ['work'], loc: 'yard', g: 'Перерыв и здоровье', n: 'Перекур в курилке', i: '🚬', h: 1, lunch: true, cost: 20, fx: { mood: 4, energy: 3, health: -1, coll: 1 }, risk: 4, fine: [50, 150], what: 'Перекур', txt: 'Курилка. Все знают всё про всех.' });
   A('hole', { ph: ['work'], loc: 'yard', g: 'Крайности и криминал', n: 'Вынести через дыру в заборе', i: '🕳️', h: 1, menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? null : 'Нечего выносить', fn: () => { G.carryOut('hole'); return 'custom'; } });
-  A('yard_chat', { ph: ['work'], loc: 'yard', g: 'Общение в цехе', n: 'Потрепаться с мужиками', i: '🗣️', h: 1, lunch: true, fx: { coll: 3, mood: 3 }, risk: 6, fine: [50, 100], what: 'Разговоры в рабочее время', txt: 'Разговор про футбол и начальство.' });
+  A('yard_chat', { ph: ['work'], loc: 'yard', g: 'Перерыв и здоровье', n: 'Потрепаться с мужиками', i: '🗣️', h: 1, lunch: true, fx: { coll: 3, mood: 3 }, risk: 6, fine: [50, 100], what: 'Разговоры в рабочее время', txt: 'Разговор про футбол и начальство.' });
   A('locker_nap', { ph: ['work'], loc: 'locker', g: 'Перерыв и здоровье', n: 'Прикорнуть на лавке', i: '😴', h: 1, lunch: true, fx: { energy: 10, mood: 1 }, risk: 20, fine: [100, 250], what: 'Сон в раздевалке', txt: 'Лавка жёсткая, но сон — сладкий.' });
   A('change', { ph: ['work'], loc: 'locker', g: 'Перерыв и здоровье', n: 'Переодеться в чистую спецовку', i: '🦺', h: 1, lunch: true, req: s => G.has('spare') ? null : 'Нет запасной спецовки (магазин)', fx: { neat: 35, mood: 1 }, txt: 'Чистая спецовка — как новая жизнь.', fn: s => { G.give('spare', -1); } });
   A('hide_loot', { ph: ['work'], loc: 'locker', g: 'Крайности и криминал', n: 'Спрятать добычу в шкафчик', i: '🔒', menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? 'Уже спрятано' : 'Нечего прятать', txt: '' });
@@ -2172,7 +2172,6 @@
       const x = TAM[st];
       G.modal({ title: 'Тамара Ивановна', face: 'tamara', text: x.t, opts: x.o.map(o => ({ t: o[0], dis: o[1] && !G.has(o[1]) ? 'Нет в рюкзаке' : null, fn: () => { if (o[1]) G.give(o[1], -1); f.tamStage = st + 1; f.tamWk = G.week(); G.fx(o[3]); G.relAdd('tamara', o[4]); if (o[5]) Object.keys(o[5]).forEach(k => G.give(k, o[5][k])); if (o[6] === 'kam') { f.kamorka = 1; G.achieve('tamara', 'Любимый внучек Тамары Ивановны'); if (G.boardAdd) G.boardAdd('Обладатель ключей от каморки Тамары Ивановны', 'good'); } msg(o[2], 'good'); G.xp(10); sp(); } })) });
     };
-    A('gossip', { ph: ['work'], loc: 'shop', g: 'Общение в цехе', n: 'Тамара Ивановна: сплетни', i: '🧹', menu: true, fn: () => { G.gossipMenu(); return 'custom'; } });
     // ---------- Алкаш: пьёшь часто — кличка и хуже работаешь
     const _fx26 = G.fx; G.fx = function (f, ctx) {
       const s = G.s, before = s && s.st ? s.st.drunk : 0, r = _fx26.apply(this, arguments);
@@ -2347,7 +2346,7 @@
       const s = G.s, f = F(); if (!D.NPC.belka) return; f.belkaIdx = f.belkaIdx || 0; s.day.belkaN = (s.day.belkaN || 0) + 1; f.belkaN = (f.belkaN || 0) + 1;
       const tip = TIPS[f.belkaIdx % TIPS.length]; f.belkaIdx++; G.fx({ mood: 2 });
       if (f.belkaN >= 5) G.achieve('belka5', 'Белая горячка… то есть белочка');
-      G.modal({ title: '🐿 Белка (в каске)', face: 'belka', text: 'Из-за станка вылезла белка в каске и забормотала:<br><i>«' + tip + '»</i>', opts: [(s.day.belkaN < 3 ? { t: 'Ещё одну правду!', fn: () => G.belkaTip() } : { t: 'Хватит, белка', fn: () => {} }), { t: 'Прогнать (ты же пьян)', fn: () => {} }] });
+      G.modal({ title: '🐿 Белка (в каске)', face: 'belka', text: 'Откуда ни возьмись рядом появилась белка в каске и забормотала:<br><i>«' + tip + '»</i>', opts: [(s.day.belkaN < 3 ? { t: 'Ещё одну правду!', fn: () => G.belkaTip() } : { t: 'Хватит, белка', fn: () => {} }), { t: 'Прогнать (ты же пьян)', fn: () => {} }] });
     };
 
     // ---------- Редкий производственный юмор (уникальные истории, не чаще раза в неделю)

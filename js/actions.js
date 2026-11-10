@@ -189,7 +189,7 @@
     const o = [];
     const stageTxt = n.romance ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '';
     if (here || (n.at && n.at.city && G.isFree() && s.loc === n.at.loc)) {
-      o.push({ t: '💬 Поговорить', fn: () => G.talkTo(id) });
+      o.push({ t: '💬 Поговорить', fn: () => (G.talkMenu ? G.talkMenu(id) : G.talkTo(id)) });
       o.push({ t: '🎁 Подарить', fn: () => G.giftMenu(id) });
       if (n.reliab || ['kolyan', 'vityok', 'semyonych', 'seryoga', 'palych'].indexOf(id) >= 0) o.push({ t: '💸 Деньги в долг', fn: () => G.lendMenu(id) });
       if (G.debtOpts) G.debtOpts(id).forEach(x => o.push(x));
@@ -199,7 +199,7 @@
       o.push({ t: '📞 Позвонить', dis: (G.phoneTier && !G.phoneTier()) ? 'Нет телефона' : r.l < 10 && r.stage < 1 ? 'Нет номера' : null, fn: () => G.callNpc(id) });
     }
     o.push({ t: 'Закрыть', fn: () => {} });
-    G.modal({ title: n.name, face: id, text: '<b>' + n.role + '</b>, ' + n.age + (n.age ? ' лет' : '') + stageTxt + '<br>Отношение: <b>' + Math.round(r.l) + '</b>' + (r.owed ? '<br>Тебе должен: ' + G.rub(r.owed) : '') + (s.flags['debt_' + id] ? '<br>Ты должен: ' + G.rub(s.flags['debt_' + id]) : ''), opts: o });
+    G.modal({ title: n.name, face: id, text: '<b>' + n.role + '</b>, ' + n.age + (n.age ? ' лет' : '') + stageTxt + '<br>' + (G.relBig ? G.relBig(id) : 'Отношение: <b>' + Math.round(r.l) + '</b>') + (r.owed ? '<br>Тебе должен: ' + G.rub(r.owed) : '') + (s.flags['debt_' + id] ? '<br>Ты должен: ' + G.rub(s.flags['debt_' + id]) : ''), opts: o });
   };
   G.callNpc = function (id) {
     const s = G.s, n = D.NPC[id], r = G.R(id);

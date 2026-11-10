@@ -87,7 +87,7 @@
     tamara: {
       name: 'Тамара', full: 'Тамара (уборщица)', age: 55, role: 'Уборщица', color: '#bb7', romance: true,
       ap: { skin: '#e5bea3', shape: 'square', hair: 'kosynka', hc: '#8a7a68', brow: 'thick', eyes: 'norm', nose: 'big', mouth: 'smile', glasses: 'none', hat: 'kosynka', cloth: '#586a8a', collar: 'none', extra: ['flush'] },
-      at: { loc: 'shop', alt: ['locker', 'yard'], days: [0, 1, 2, 3, 4], p: 0.5 }, likes: ['vodka', 'cake', 'choco'], dislikes: [], rel: 3,
+      at: { loc: 'shop', alt: ['locker', 'yard'], days: [0, 1, 2, 3, 4], p: 0.5, morning: true }, likes: ['vodka', 'cake', 'choco'], dislikes: [], rel: 3,
       rom: { speed: 0.8 },
       talk: [
         { t: 'Тамара тащит ведро: «Милок, помоги донести, спина совсем».', o: [['Помочь', '«Золотой ты мой». Она сует тебе пирожок.', { rel: { tamara: 6 }, energy: -3, satiety: 8, cons: 2 }], ['Не могу', '«Ну и ладно». Она вздыхает.', { rel: { tamara: -2 } }]] },

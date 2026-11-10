@@ -193,6 +193,7 @@
     const s = G.s, st = s.st, self = this, args = arguments;
     if (s.day.passRoll === undefined) {
       s.day.passRoll = 1;
+      if (G.isFriend('egorych') && (st.energy < 50 || st.drunk >= 5) && G.chance(85)) { msg('Егорыч видит твою рожу: «Проходи, свой. Пропуск потом покажешь».', 'good'); return _gate.apply(this, args); }
       let p = 0;
       if (st.energy < 20) p = 40; else if (st.energy < 35) p = 22; else if (st.energy < 50) p = 6;
       if (st.drunk >= 15) p += 18; else if (st.drunk >= 5) p += 8;
@@ -301,7 +302,7 @@
   };
   G.friendable = id => !!FR[id] && !!D.NPC[id];
   G.friends = function () {
-    const f = F(); if (!f.friends) f.friends = ['seryoga'];
+    const f = F(); if (!f.friends) f.friends = [];
     return f.friends.filter(id => D.NPC[id]);
   };
   G.isFriend = id => G.friends().indexOf(id) >= 0;
@@ -444,8 +445,8 @@
     ids.forEach(id => {
       const r = G.R(id);
       if (f['shun_' + id]) return G.endFriend(id, 'из-за долгов он(а) больше не хочет тебя знать.');
-      if (r.l < 25) return G.endFriend(id, 'вы отдалились.');
-      if (r.l < 40 && f['warn_' + id] !== G.week()) { f['warn_' + id] = G.week(); msg('⚠ ' + D.NPC[id].name + ' стал(а) холоднее. Дружбе нужно внимание.', 'warn'); }
+      if (r.l < 20) return G.endFriend(id, 'вы поругались, и дружба закончилась.');
+      if (r.l < 45 && f['warn_' + id] !== G.week()) { f['warn_' + id] = G.week(); msg('⚠ ' + D.NPC[id].name + ' стал(а) холоднее. Дружбе нужно внимание.', 'warn'); }
     });
     if (n && (s.car.snitch || 0) > (f.frSnitch || 0)) { f.frSnitch = s.car.snitch; ids.forEach(id => { if (G.chance(60)) { G.relAdd(id, -12); msg(D.NPC[id].name + ' слышал(а), что ты стучишь на своих. Это не по-дружески.', 'bad'); } }); }
     if (n && (s.car.thefts || 0) > (f.frThefts || 0)) { f.frThefts = s.car.thefts; ids.forEach(id => { if (G.chance(50)) { G.relAdd(id, -8); msg(D.NPC[id].name + ' узнал(а) про твои кражи. Лицо — кирпичом.', 'bad'); } }); }
@@ -454,7 +455,7 @@
     const s = G.s, f = F(), ids = G.friends().slice();
     ids.forEach(id => {
       const r = G.R(id);
-      if (G.week() - (r.last || 0) >= 4) { G.relAdd(id, -3); r.last = r.last; msg(D.NPC[id].name + ' давно тебя не видел(а). Дружба ржавеет без общения.', 'warn'); }
+      if (G.week() - (r.last || 0) >= 4 && r.l > 60) { G.relAdd(id, -3); r.last = r.last; msg(D.NPC[id].name + ' давно тебя не видел(а). Дружба ржавеет без общения.', 'warn'); }
       if (s.st.habit >= 60 && G.chance(30)) { G.relAdd(id, -6); msg(D.NPC[id].name + ' переживает за твой запой и всё чаще отворачивается.', 'warn'); }
       if (G.chance(15)) {
         const w = G.pick([() => { G.addMoney(500); msg(D.NPC[id].name + ' угостил(а) тебя обедом и не взял(а) денег: +500 ₽ экономии.', 'good'); }, () => { G.fx({ mood: 6 }); msg(D.NPC[id].name + ' подкинул(а) анекдот про начальство. Полегчало.', 'good'); }, () => { G.fx({ coll: 2 }); msg(D.NPC[id].name + ' замолвил(а) за тебя словечко в курилке.', 'good'); }]);
@@ -466,7 +467,7 @@
   const _ra = G.relAdd;
   G.relAdd = function (id, d) {
     const r = _ra.apply(this, arguments);
-    try { if (d < 0 && G.s.flags.friends && G.isFriend(id) && G.R(id).l < 25) G.endFriend(id, 'после этого дружить уже не получится.'); } catch (e) {}
+    try { if (d < 0 && G.s.flags.friends && G.isFriend(id) && G.R(id).l < 20) G.endFriend(id, 'после этого дружить уже не получится.'); } catch (e) {}
     return r;
   };
   // друзья прикрывают перед начальством

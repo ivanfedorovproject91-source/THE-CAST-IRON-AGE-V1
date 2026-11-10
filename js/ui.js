@@ -46,7 +46,7 @@
     const ids = G.peopleAt(loc);
     ids.forEach(id => { G.R(id).met = true; });
     if (!ids.length) return '';
-    return '<div class="ppl">' + ids.map(id => '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + D.NPC[id].name.split(' ')[0] + '</button>').join('') + '</div>';
+    return '<div class="ppl">' + ids.map(id => '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + D.NPC[id].name.split(' ')[0] + '</button>').join('') + '</div>';
   }
 
   // ---------- Рендер
@@ -144,7 +144,7 @@
       s.loc = p.id;
       const ppl = D.NPC_ORDER.filter(id => D.NPC[id].at && D.NPC[id].at.city && D.NPC[id].at.loc === p.id);
       h += '<div class="card"><button class="chip" onclick="G.ui.openPlace(null)">← Все места</button><h3 style="margin-top:8px">' + p.i + ' ' + p.n + '</h3><div class="note">' + p.d + '. Сейчас ' + G.hourStr() + ' (ночь — после 23:00).</div></div>';
-      if (ppl.length) h += '<div class="ppl">' + ppl.map(id => { G.R(id).met = true; return '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + D.NPC[id].name.split(' ')[0] + '</button>'; }).join('') + '</div>';
+      if (ppl.length) h += '<div class="ppl">' + ppl.map(id => { G.R(id).met = true; return '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + D.NPC[id].name.split(' ')[0] + '</button>'; }).join('') + '</div>';
       h += groupActs(visibleActs(a => a.loc === p.id && (a.ph || []).indexOf('free') >= 0));
       return h;
     }
@@ -163,7 +163,7 @@
     ids.forEach(id => {
       const n = D.NPC[id], r = s.rel[id], l = r.l;
       const loc = G.npcLoc(id);
-      h += '<button class="pcard" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + '<div class="pi"><b>' + n.name + (G.isFriend && G.isFriend(id) ? ' 🤝' : '') + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small><div class="mini-bar ' + (l < 0 ? 'neg' : '') + '"><i style="width:' + Math.min(100, Math.abs(l)) + '%"></i></div></div></button>';
+      h += '<button class="pcard" onclick="G.npcMenu(\'' + id + '\')">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + '<div class="pi"><b>' + n.name + (G.isFriend && G.isFriend(id) ? ' 🤝' : '') + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small></div></button>';
     });
     return h;
   }
