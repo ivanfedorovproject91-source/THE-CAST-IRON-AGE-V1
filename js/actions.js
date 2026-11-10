@@ -175,14 +175,15 @@
   G.lendMenu = function (id) {
     const n = D.NPC[id], s = G.s;
     G.modal({ title: n.name + ': деньги', face: id, text: 'Надёжность: ~' + (n.reliab || 50) + '%', opts: [
-      { t: 'Одолжить 500 ₽', dis: s.money < 500 ? 'Нет денег' : null, fn: () => { G.addMoney(-500); G.R(id).owed = (G.R(id).owed || 0) + 500; G.relAdd(id, 4); G.toast('Одолжил 500 ₽ (' + n.name + ')'); } },
-      { t: 'Одолжить 2 000 ₽', dis: s.money < 2000 ? 'Нет денег' : null, fn: () => { G.addMoney(-2000); G.R(id).owed = (G.R(id).owed || 0) + 2000; G.relAdd(id, 8); G.toast('Одолжил 2 000 ₽ (' + n.name + ')'); } },
+      { t: 'Одолжить 500 ₽', dis: s.money < 500 ? 'Нет денег' : null, fn: () => { G.addMoney(-500); G.R(id).owed = (G.R(id).owed || 0) + 500; G.R(id).help = (G.R(id).help || 0) + 1; G.relAdd(id, 4); G.toast('Одолжил 500 ₽ (' + n.name + ')'); } },
+      { t: 'Одолжить 2 000 ₽', dis: s.money < 2000 ? 'Нет денег' : null, fn: () => { G.addMoney(-2000); G.R(id).owed = (G.R(id).owed || 0) + 2000; G.R(id).help = (G.R(id).help || 0) + 2; G.relAdd(id, 8); G.toast('Одолжил 2 000 ₽ (' + n.name + ')'); } },
       { t: 'Занять у него 1 000 ₽', fn: () => { G.addMoney(1000); s.flags['debt_' + id] = (s.flags['debt_' + id] || 0) + 1000; G.relAdd(id, -2); G.toast('Занял 1 000 ₽. Запомнят.'); } },
       { t: 'Занять 3 000 ₽', fn: () => { G.addMoney(3000); s.flags['debt_' + id] = (s.flags['debt_' + id] || 0) + 3000; G.relAdd(id, -4); G.toast('Занял 3 000 ₽. Теперь отдавай.'); } },
       { t: 'Передумал', fn: () => {} }
     ] });
   };
   G.npcMenu = function (id) {
+    if (G.isShunned && G.isShunned(id)) return G.shunTalk(id);
     const s = G.s, n = D.NPC[id], r = G.R(id), here = G.isPresent(id);
     r.met = true;
     const o = [];
@@ -191,10 +192,11 @@
       o.push({ t: '💬 Поговорить', fn: () => G.talkTo(id) });
       o.push({ t: '🎁 Подарить', fn: () => G.giftMenu(id) });
       if (n.reliab || ['kolyan', 'vityok', 'semyonych', 'seryoga', 'palych'].indexOf(id) >= 0) o.push({ t: '💸 Деньги в долг', fn: () => G.lendMenu(id) });
+      if (G.debtOpts) G.debtOpts(id).forEach(x => o.push(x));
       if (n.romance) o.push({ t: '💘 ' + G.romanceLabel(id), fn: () => G.romanceMove(id) });
       const sp = G.npcSpecial(id); sp.forEach(x => o.push(x));
     } else {
-      o.push({ t: '📞 Позвонить', dis: r.l < 10 && r.stage < 1 ? 'Нет номера' : null, fn: () => G.callNpc(id) });
+      o.push({ t: '📞 Позвонить', dis: (G.phoneTier && !G.phoneTier()) ? 'Нет телефона' : r.l < 10 && r.stage < 1 ? 'Нет номера' : null, fn: () => G.callNpc(id) });
     }
     o.push({ t: 'Закрыть', fn: () => {} });
     G.modal({ title: n.name, face: id, text: '<b>' + n.role + '</b>, ' + n.age + (n.age ? ' лет' : '') + stageTxt + '<br>Отношение: <b>' + Math.round(r.l) + '</b>' + (r.owed ? '<br>Тебе должен: ' + G.rub(r.owed) : '') + (s.flags['debt_' + id] ? '<br>Ты должен: ' + G.rub(s.flags['debt_' + id]) : ''), opts: o });
@@ -491,7 +493,7 @@
     // слухи
     if (G.chance(20)) s.flags.rumor = 1;
     // возврат долгов
-    Object.keys(s.rel).forEach(id => { const r = s.rel[id]; if (r.owed > 0 && G.chance(25)) { const n = D.NPC[id]; if (G.chance(n && n.reliab || 50)) { G.addMoney(r.owed); G.toast(n.name + ' вернул(а) долг: ' + G.rub(r.owed), 'good'); G.relAdd(id, 2); } else { G.toast(n.name + ' «забыл(а)» про долг ' + G.rub(r.owed), 'warn'); G.relAdd(id, -2); } r.owed = 0; } });
+    if (G.owedWeekly) G.owedWeekly(); else Object.keys(s.rel).forEach(id => { const r = s.rel[id]; if (r.owed > 0 && G.chance(25)) { const n = D.NPC[id]; if (G.chance(n && n.reliab || 50)) { G.addMoney(r.owed); G.toast(n.name + ' вернул(а) долг: ' + G.rub(r.owed), 'good'); G.relAdd(id, 2); } else { G.toast(n.name + ' «забыл(а)» про долг ' + G.rub(r.owed), 'warn'); G.relAdd(id, -2); } r.owed = 0; } });
   };
   G.cooksFight = function () {
     const s = G.s;

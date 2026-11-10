@@ -62,8 +62,7 @@
     fn: s => { s.dwg.checked = true; const p = Math.min(95, 70 + s.st.know / 2); if (s.dwg.bad) { if (G.chance(p)) { s.dwg.fixed = true; G.fx({ know: 2, rel: { ekaterina: 1 } }); G.toast('Нашёл ошибку в чертеже и исправил! Качество +10.', 'good'); } else G.toast('Ничего не нашёл… (но чертёж кривой).', 'warn'); } else G.toast('Чертёж в порядке. Редкий случай.'); s.flags.ekDwg = (s.flags.ekDwg || 0) + 1; } });
   A('oil', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Смазать станок', i: '🛢️', h: 1, fx: { wear: -25, know: 2, energy: -3, neat: -3 }, txt: 'Станок скрипит, но дышит.' });
   A('study_ws', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Читать инструкции', i: '📖', h: 1, fx: { know: 6, energy: -3, mood: -1 }, txt: 'Прочитал инструкцию. Выяснил, что всё делал неправильно.' });
-  A('help', { ph: ['work'], loc: 'shop', g: 'Коллеги и приколюхи', n: 'Помочь Серёге', i: '🤝', h: 1, fx: { coll: 4, energy: -5, rel: { seryoga: 3 }, cons: 1 }, txt: 'Подсобил напарнику. Неплохо.' });
-  A('smoke_shop', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Перекур у станка', i: '🚬', h: 1, cost: 20, fx: { mood: 4, energy: 3, health: -1 }, risk: 30, fine: [100, 300], tag: 'risky', what: 'Курение не в курилке', txt: 'Затянулся. Дым смешался с цеховым.' });
+  A('smoke_shop', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Перекур у станка', i: '🚬', h: 1, cost: 20, req: s => s.day.smokedShop ? 'Перекур у станка — 1 раз за смену' : null, fn: s => { s.day.smokedShop = 1; }, fx: { mood: 4, energy: 3, health: -1 }, risk: 30, fine: [100, 300], tag: 'risky', what: 'Курение не в курилке', txt: 'Затянулся. Дым смешался с цеховым.' });
   A('tea', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Чай в каптёрке', i: '🫖', h: 1, lunch: true, fx: { mood: 3, energy: 3 }, risk: 8, fine: [50, 150], what: 'Чаепитие в рабочее время', txt: 'Тёплый чай и тишина.' });
   A('milk', { ph: ['work'], loc: 'shop', anywhere: true, g: 'Перерыв и здоровье', n: 'Выпить заводское молоко', i: '🥛', menu: true, lunch: true, once: 'day', fx: { tox: -8, health: 2, cure: 1 }, txt: 'Заводское молоко. Белое и подозрительное.',
     fn: s => { s.day.milk = true; } });
@@ -80,7 +79,7 @@
   A('courses_w', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Узнать про курсы', i: '🎓', menu: true, fn: () => { G.coursesMenu(); return 'custom'; } });
   A('smoke_yard', { ph: ['work'], loc: 'yard', g: 'Перерыв и здоровье', n: 'Перекур в курилке', i: '🚬', h: 1, lunch: true, cost: 20, fx: { mood: 4, energy: 3, health: -1, coll: 1 }, risk: 4, fine: [50, 150], what: 'Перекур', txt: 'Курилка. Все знают всё про всех.' });
   A('hole', { ph: ['work'], loc: 'yard', g: 'Крайности и криминал', n: 'Вынести через дыру в заборе', i: '🕳️', h: 1, menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? null : 'Нечего выносить', fn: () => { G.carryOut('hole'); return 'custom'; } });
-  A('yard_chat', { ph: ['work'], loc: 'yard', g: 'Коллеги и приколюхи', n: 'Потрепаться с мужиками', i: '🗣️', h: 1, lunch: true, fx: { coll: 3, mood: 3 }, risk: 6, fine: [50, 100], what: 'Разговоры в рабочее время', txt: 'Разговор про футбол и начальство.' });
+  A('yard_chat', { ph: ['work'], loc: 'yard', g: 'Общение в цехе', n: 'Потрепаться с мужиками', i: '🗣️', h: 1, lunch: true, fx: { coll: 3, mood: 3 }, risk: 6, fine: [50, 100], what: 'Разговоры в рабочее время', txt: 'Разговор про футбол и начальство.' });
   A('locker_nap', { ph: ['work'], loc: 'locker', g: 'Перерыв и здоровье', n: 'Прикорнуть на лавке', i: '😴', h: 1, lunch: true, fx: { energy: 10, mood: 1 }, risk: 20, fine: [100, 250], what: 'Сон в раздевалке', txt: 'Лавка жёсткая, но сон — сладкий.' });
   A('change', { ph: ['work'], loc: 'locker', g: 'Перерыв и здоровье', n: 'Переодеться в чистую спецовку', i: '🦺', h: 1, lunch: true, req: s => G.has('spare') ? null : 'Нет запасной спецовки (магазин)', fx: { neat: 35, mood: 1 }, txt: 'Чистая спецовка — как новая жизнь.', fn: s => { G.give('spare', -1); } });
   A('hide_loot', { ph: ['work'], loc: 'locker', g: 'Крайности и криминал', n: 'Спрятать добычу в шкафчик', i: '🔒', menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? 'Уже спрятано' : 'Нечего прятать', txt: '' });
@@ -101,7 +100,7 @@
   // ===== ДОМ (loc home) =====
   A('sleep', { ph: ['free'], loc: 'home', g: 'Дом', n: 'ЛЕЧЬ СПАТЬ', i: '🛌', menu: true, noEvent: true, fn: () => { G.sleep(); G.pump(); return 'custom'; } });
   S('rest', 'home', 'Дом', 'Отдохнуть дома (2 ч)', '🛋️', 2, { energy: 10, mood: 2 }, 'Лежишь, смотришь в потолок. Тихо.');
-  S('cook', 'home', 'Дом', 'Сварить макароны', '🍝', 1, { satiety: 28, mood: 1, energy: -2 }, 'Макароны с кетчупом. Классика общаги.');
+  S('cook', 'home', 'Дом', 'Сварить макароны', '🍝', 1, { satiety: 28, mood: 1, energy: -2 }, 'Макароны с кетчупом. Классика общаги.', { req: s => G.homeMealLeft() <= 0 ? 'Дома уже поел(а)' : null, fn: s => { G.homeMealUsed(); } });
   S('teeth_h', 'home', 'Дом', 'Почистить зубы и умыться', '🪥', 0, { neat: 10, mask: 15, mood: 1 }, 'Прохладная вода и вкус мяты.', { menu: true, req: s => s.flags.teethDay === s.t.day ? 'Сегодня уже чистил(а)' : null, fn: s => { s.flags.teethDay = s.t.day; } });
   S('shower', 'home', 'Дом', 'Помыться и постирать', '🚿', 1, { neat: 45, mood: 2, tox: -2 }, 'Спецовка стирается, ты — тоже.', { fn: s => { s.flags.washDay = s.t.day; } });
   S('study_h', 'home', 'Дом', 'Учить матчасть (2 ч)', '📚', 2, { know: 10, energy: -6, mood: -2 }, 'Учебник и холодный чай.');
@@ -115,8 +114,8 @@
 
   // ===== ГОРОД =====
   S('shop_menu', 'c_shop', 'Магазин', 'Зайти в магазин', '🛒', 0, {}, '', { menu: true, fn: () => { G.shopMenu(); return 'custom'; } });
-  S('rest_eat', 'c_rest', 'Ресторан', 'Поужинать в ресторане (5 000 ₽)', '🍷', 3, { satiety: 45, mood: 20, money: -5000 }, 'Мясо, салат и скатерть. Живут же люди!', { req: s => s.money < 5000 ? 'Нет денег' : null });
-  S('cafe_eat', 'c_cafe', 'Кафе', 'Посидеть в «Вкус очка» (1 000 ₽)', '🍔', 1, { satiety: 32, mood: 6, money: -1000 }, 'Бургер и картошка. Рядом кто-то из знакомых.', { req: s => s.money < 1000 ? 'Нет денег' : null });
+  S('rest_eat', 'c_rest', 'Ресторан', 'Поужинать в ресторане (5 000 ₽)', '🍷', 3, { satiety: 45, mood: 20, money: -5000 }, 'Мясо, салат и скатерть. Живут же люди!', { req: s => s.money < 5000 ? 'Нет денег' : (s.day.restMeals || 0) >= (G.CONFIG.MEALS_REST || 1) ? 'В ресторане уже ужинал(а)' : s.st.satiety >= 85 ? 'Не лезет: ты и так сыт(а)' : null, fn: s => { s.day.restMeals = (s.day.restMeals || 0) + 1; } });
+  S('cafe_eat', 'c_cafe', 'Кафе', 'Посидеть в «Вкус очка» (1 000 ₽)', '🍔', 1, { satiety: 32, mood: 6, money: -1000 }, 'Бургер и картошка. Рядом кто-то из знакомых.', { req: s => s.money < 1000 ? 'Нет денег' : (s.day.cafeMeals || 0) >= (G.CONFIG.MEALS_CAFE || 2) ? 'Сегодня в «Вкус очка» уже хватит' : s.st.satiety >= 85 ? 'Не лезет: ты и так сыт(а)' : null, fn: s => { s.day.cafeMeals = (s.day.cafeMeals || 0) + 1; } });
   S('kino', 'c_kino', 'Кино', 'Сходить на фильм (350 ₽)', '🎬', 2, { mood: 13, energy: 2, money: -350 }, 'Фильм про богатых. Смешной.');
   S('gym_buy', 'c_gym', 'Спортзал', 'Абонемент на месяц (8 000 ₽)', '🎫', 0, {}, 'Абонемент оплачен до ' + '…', { menu: true, req: s => s.money < 8000 ? 'Нет денег' : null, fn: s => { G.addMoney(-8000); s.flags.gym = G.week() + 4; G.toast('Абонемент до недели №' + (s.flags.gym + 1) + '. Вика улыбается.'); G.relAdd('vika', 3); }, txt: '' });
   S('gym_train', 'c_gym', 'Спортзал', 'Тренировка (2 ч)', '🏋️', 2, {}, 'Железо — лучшее лекарство.', { menu: true, req: s => (s.flags.gym || -1) < G.week() ? 'Нужен абонемент' : null, fn: () => { G.gymGame(); return 'custom'; } });
@@ -772,13 +771,14 @@
       ] });
     };
 
-    // ---------- Серёга и Афоня (блок «Коллеги и приколюхи»)
+    // ---------- Серёга и Афоня (меню друзей из блока «Свои люди»)
     const SERY = ['Серёга рассказал, как в детстве пытался продать соседу его же велосипед. Сосед купил.', 'Серёга признался, что боится голубей: «У них взгляд — как у налоговой».', 'Серёга уверен, что у станка №3 есть характер: «Он утром всегда мрачный, а к обеду добреет».', 'Серёга мечтает открыть шашлычную «Три товарища». Товарищей пока двое, и оба — он.', 'Серёга клянётся, что видел в столовой котлету, которая подмигнула.'];
     const PRANK = [['Приклеить Витьку записку «Я ничего не умею»', 'Витёк ходил так до обеда. Все улыбались, он — нет.'], ['Подкрутить будильник в раздевалке', 'Полцеха проснулось в три ночи. Было весело, но недолго.'], ['Спрятать у Михалыча маску', 'Михалыч варил с закрытыми глазами. Шов получился «авангардный».']];
     G.seryogaMenu = function () {
       const s = G.s, face = 'seryoga', back = () => G.seryogaMenu();
       G.modal({ title: 'Серёга', face, text: 'Серёга подмигивает: «Ну, чем займёмся? Только чтоб не по правилам».', opts: [
-        { t: '🗣 Поговорить по душам', fn: () => { G.fx({ mood: 3 }); G.relAdd('seryoga', 4); msg(G.pick(SERY)); sp(); } },
+        { t: '🗣 Поговорить по душам', fn: () => { G.fx({ mood: 3 }); G.relAdd('seryoga', 4); G.R('seryoga').talks++; msg(G.pick(SERY)); sp(); } },
+        { t: '🤝 Помочь Серёге (1 ч)', dis: (s.phase === 'work' || s.phase === 'lunch') ? null : 'Только на смене', fn: () => { G.fx({ coll: 4, energy: -5, rel: { seryoga: 3 }, cons: 1 }); G.R('seryoga').help = (G.R('seryoga').help || 0) + 1; msg('Подсобил напарнику. Неплохо.'); sp(); } },
         { t: '✌ Камень-ножницы-бумага на уборку', fn: () => G.modal({ title: 'КНБ', face, text: 'Проигравший убирает станок. Выбирай:', opts: ['🪨 Камень', '✂ Ножницы', '📄 Бумага'].map((t, i) => ({ t, fn: () => { const e = Math.floor(Math.random() * 3), r = (i - e + 3) % 3; if (r === 0) { msg('Ничья. Оба сделали вид, что убрали.'); } else if (r === 1) { G.fx({ coll: 2, mood: 2 }); G.relAdd('seryoga', 2); msg('Выиграл! Серёга драит станок и обещает «отыграться».', 'good'); } else { G.fx({ energy: -4, mood: -1 }); msg('Проиграл. Убираешь за двоих. Серёга сочувственно пьёт чай.', 'bad'); } sp(); } })) }) },
         { t: '🍻 Скинуться на пиво после смены (300 ₽)', dis: s.money < 300 ? 'Нет денег' : null, fn: () => { G.fx({ money: -300, mood: 4, drunk: 8 }); G.relAdd('seryoga', 6); msg('Скинулись, как положено. Серёга сказал тост про станки — длинный.'); sp(); } },
         { t: '🎭 Подшутить над коллегой', fn: () => { const p = G.pick(PRANK); G.fx({ cool: 2, coll: 3, mood: 3 }); msg(p[1], 'good'); if (G.chance(25)) G.punish({ risk: 100, what: 'Дурацкие шутки в цеху', fine: [100, 300], sev: 0 }); sp(); } },
@@ -798,8 +798,6 @@
         { t: 'Уйти', fn: () => {} }
       ] });
     };
-    A('seryoga_talk', { ph: ['work'], loc: 'shop', g: 'Коллеги и приколюхи', n: 'Серёга: приколы и разговоры', i: '😎', menu: true, fn: () => { G.seryogaMenu(); return 'custom'; } });
-    A('afonya_talk', { ph: ['work'], loc: 'yard', g: 'Коллеги и приколюхи', n: 'Афоня: приколы и песни', i: '🎸', menu: true, lunch: true, fn: () => { G.afonyaMenu(); return 'custom'; } });
 
     // ---------- Особые пункты в меню персонажей
     const SPECIAL = {
@@ -1922,7 +1920,7 @@
     function go(mode, next) {
       const s = G.s, f = F(), st = s.st, c = car$();
       f.commute = { mode }; s.day.commute = mode;
-      if (mode === 'walk') { G.fx({ energy: -8, mood: -1 }); msg('Дошёл пешком. Ноги гудят.'); }
+      if (mode === 'walk') { G.fx({ energy: -8, mood: -1 }); msg('Дошёл пешком. Ноги гудят.'); if (G.walkLateRoll) G.walkLateRoll(); }
       else if (mode === 'scooter') { G.fx({ money: -300, energy: -2, mood: 1 }); msg('Прокатился на электросамокате: ветер, свобода и минус 300 ₽.'); }
       else if (mode === 'bus') { G.fx({ money: -60, mood: -8 }); msg('Автобус: давка, запахи, чужой локоть. Энергия цела, настроение — нет.', 'warn'); }
       else {
@@ -1967,7 +1965,12 @@
 
     // ---------- 7. Засранец: потолок настроения и уважения
     const hasNick = id => G.s && G.s.nicks && G.s.nicks.indexOf(id) >= 0;
-    function capMood() { const s = G.s; if (s && s.st && hasNick('zasranec')) { s.st.mood = Math.min(s.st.mood, 50); s.st.coll = Math.min(s.st.coll, 38); } }
+    function capMood() {
+      const s = G.s;
+      if (s && s.st && hasNick('zasranec')) { s.st.mood = Math.min(s.st.mood, 50); s.st.coll = Math.min(s.st.coll, 38); }
+      // v3.4: пока игрок стажёр (до первого повышения) настроение не поднимается выше потолка (завод — место тяжёлое)
+      if (s && s.st && s.car && s.car.job && s.car.rank === 0 && !(s.flags && s.flags.firstPromo)) s.st.mood = Math.min(s.st.mood, G.CONFIG.MOOD_CAP_TRAINEE || 90);
+    }
 
     // ---------- 8. Рвота при сильном опьянении
     G.vomitGame = function () {
@@ -2169,7 +2172,7 @@
       const x = TAM[st];
       G.modal({ title: 'Тамара Ивановна', face: 'tamara', text: x.t, opts: x.o.map(o => ({ t: o[0], dis: o[1] && !G.has(o[1]) ? 'Нет в рюкзаке' : null, fn: () => { if (o[1]) G.give(o[1], -1); f.tamStage = st + 1; f.tamWk = G.week(); G.fx(o[3]); G.relAdd('tamara', o[4]); if (o[5]) Object.keys(o[5]).forEach(k => G.give(k, o[5][k])); if (o[6] === 'kam') { f.kamorka = 1; G.achieve('tamara', 'Любимый внучек Тамары Ивановны'); if (G.boardAdd) G.boardAdd('Обладатель ключей от каморки Тамары Ивановны', 'good'); } msg(o[2], 'good'); G.xp(10); sp(); } })) });
     };
-    A('gossip', { ph: ['work'], loc: 'shop', g: 'Коллеги и приколюхи', n: 'Тамара Ивановна: сплетни', i: '🧹', menu: true, fn: () => { G.gossipMenu(); return 'custom'; } });
+    A('gossip', { ph: ['work'], loc: 'shop', g: 'Общение в цехе', n: 'Тамара Ивановна: сплетни', i: '🧹', menu: true, fn: () => { G.gossipMenu(); return 'custom'; } });
     // ---------- Алкаш: пьёшь часто — кличка и хуже работаешь
     const _fx26 = G.fx; G.fx = function (f, ctx) {
       const s = G.s, before = s && s.st ? s.st.drunk : 0, r = _fx26.apply(this, arguments);
@@ -2407,7 +2410,7 @@
       const r = _kh27.apply(this, arguments);
       try {
         const s = G.s, f = F(); if (!s || s.phase === 'new' || s.end) return r;
-        if (s.phase === 'work' && s.t.hour >= 13 && s.t.hour <= 16 && !s.day.gasDone && s.car.shifts >= 3) { if (s.day.gasRoll === undefined) s.day.gasRoll = Math.random() < 0.3 + 0.08 * Math.min(4, s.day.canteen || 0); if (s.day.gasRoll) { s.day.gasDone = 1; setTimeout(() => G.gasUrge(), 120); } else s.day.gasDone = 1; }
+        if (s.phase === 'work' && s.t.hour >= 13 && s.t.hour <= 16 && !s.day.gasDone && (s.car.shifts >= 3 || s.day.pea)) { if (s.day.gasRoll === undefined) s.day.gasRoll = s.day.pea ? true : Math.random() < 0.08 + 0.03 * Math.min(4, s.day.canteen || 0); if (s.day.gasRoll) { s.day.gasDone = 1; setTimeout(() => G.gasUrge(), 120); } else s.day.gasDone = 1; }
         if (s.st.drunk >= 30 && !s.day.belkaSeen && !document.getElementById('vomit-ov')) { s.day.belkaSeen = 1; if (Math.random() < 0.7) setTimeout(() => G.belkaTip(), 200); }
         if (s.phase === 'work' && s.t.hour >= 11 && s.t.hour <= 15 && !s.day.humorDone && s.car.shifts >= 8) { s.day.humorDone = 1; const gap = 6 + Math.floor(G.hash(s.t.day, 2, 9) * 4); if ((f.humorLast === undefined || s.t.day - f.humorLast >= gap) && Math.random() < 0.4) setTimeout(humorTry, 250); }
       } catch (e) {}

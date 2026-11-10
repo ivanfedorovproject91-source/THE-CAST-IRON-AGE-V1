@@ -72,7 +72,7 @@
     const nick = G.nickLabel();
     const bars = bar('❤ Здоровье', st.health) + bar('⚡ Энергия', st.energy) + bar('🙂 Настроение', st.mood) + bar('🍲 Сытость', st.satiety)
       + (st.drunk > 2 ? bar('🍺 Опьянение', st.drunk, 'rust', 1) : '') + (s.hang > 0 ? bar('🤕 Похмелье', s.hang * 50, 'bad') : '') + (st.craving >= 40 ? bar('🥃 Тяга', st.craving, '', 1) : '') + (st.neat < 50 ? bar('🧼 Опрятность', st.neat) : '');
-    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + (nick ? ' «' + nick + '»' : '') + '</div><div class="tb-sub">' + G.jobTitle() + ' · ' + G.status() + '</div></div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + ' · ' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
+    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + (nick ? ' «' + nick + '»' : '') + (G.admirerMark ? G.admirerMark() : '') + '</div><div class="tb-sub">' + G.jobTitle() + ' · ' + G.status() + '</div></div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + ' · ' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
   }
   function navHTML() {
     const T = [['shift', '⚙️', 'Смена'], ['city', '🏙️', 'Город'], ['people', '👥', 'Люди'], ['phone', '📱', 'Телефон'], ['rating', '🏆', 'Рейтинг'], ['file', '📋', 'Дело']];
@@ -117,6 +117,7 @@
       h += people(s.loc);
       if (ph === 'lunch') h += '<div class="card note">Обед: осталось действий — <b>' + s.lunchAP + '</b>. Можно поесть, выпить молока, поболтать.</div>';
       const acts = visibleActs(a => a.loc === s.loc && ((a.ph || ['work']).indexOf('work') >= 0));
+      if (G.friendsBlock) h += G.friendsBlock();
       h += groupActs(acts);
       if (s.dwg.none) h += '<div class="card note">⚠ Чертежа нет — Ебланов в запое. Работать нечем.</div>';
       if (ph === 'lunch') h += '<div class="cta"><button class="btn big hazard" onclick="G.endLunch()">ЗАКОНЧИТЬ ОБЕД →</button></div>';
@@ -127,6 +128,7 @@
     h += scene(IMG.gate, ph === 'weekend' ? wd + ' — выходной' : 'Вечер после смены', G.dateStr() + ', ' + G.hourStr() + '. Свободных часов до глубокой ночи: ' + Math.max(0, free) + '. Город — во вкладке «Город».', 'smoke');
     h += people('home');
     if (s.car.sickUntil >= s.t.day) h += '<div class="card note">Ты на больничном/в отпуске до ' + G.dateStrOf(s.car.sickUntil) + '.</div>';
+    if (G.friendsBlock) h += G.friendsBlock();
     h += groupActs(visibleActs(a => a.loc === 'home' && (a.ph || []).indexOf('free') >= 0));
     return h;
   }
@@ -161,13 +163,14 @@
     ids.forEach(id => {
       const n = D.NPC[id], r = s.rel[id], l = r.l;
       const loc = G.npcLoc(id);
-      h += '<button class="pcard" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + '<div class="pi"><b>' + n.name + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small><div class="mini-bar ' + (l < 0 ? 'neg' : '') + '"><i style="width:' + Math.min(100, Math.abs(l)) + '%"></i></div></div></button>';
+      h += '<button class="pcard" onclick="G.npcMenu(\'' + id + '\')">' + G.faceHTML(id) + '<div class="pi"><b>' + n.name + (G.isFriend && G.isFriend(id) ? ' 🤝' : '') + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small><div class="mini-bar ' + (l < 0 ? 'neg' : '') + '"><i style="width:' + Math.min(100, Math.abs(l)) + '%"></i></div></div></button>';
     });
     return h;
   }
 
   // ---------- Телефон
   function phoneTab() {
+    if (G.phoneScreen) return G.phoneScreen();
     const s = G.s;
     const tiles = [['📲', 'Контакты и звонки', 'G.phoneMenu()'], ['🏦', 'Банк', 'G.bankMenu()'], ['🎥', 'Блог «ЧугунTV»', 'G.blogMenu()'], ['🛍️', 'Магазин онлайн', 'G.shopMenu()'], ['🎒', 'Рюкзак', 'G.useMenu()'], ['📓', 'Журнал событий', 'G.ui.openLog()']];
     let h = '<div class="card"><h3>Телефон</h3><div class="note">Заряд 80%. Долг: ' + G.rub(s.debt) + (s.loans.length ? ' · кредитов: ' + s.loans.length : '') + '.</div></div><div class="grid2">';

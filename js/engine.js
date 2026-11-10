@@ -219,6 +219,7 @@
     if (st.coll < 25) q -= 10;
     if (st.boss < 15) q -= 5;
     if (st.satiety < 20) q -= 5;
+    if ((s.flags.starveH || 0) >= (G.CONFIG.HUNGER_H2 || 24)) q -= 25;
     if (s.dwg.fixed) q += 10;
     if (st.neat >= 60) q += 3;
     if (s.day && s.day.fatigue) q -= s.day.fatigue;
@@ -282,7 +283,7 @@
     const s = G.s, st = s.st, ph = s.phase, work = ph === 'work' || ph === 'lunch';
     st.drunk = Math.max(0, st.drunk - 6);
     if (s.smell > 0) s.smell = Math.max(0, s.smell - 4);
-    st.satiety = Math.max(0, st.satiety - (ph === 'work' ? 3.4 : 2.2));
+    { const CF = G.CONFIG || {}; st.satiety = Math.max(0, st.satiety - (ph === 'work' ? (CF.SAT_DRAIN_WORK || 3.4) : (CF.SAT_DRAIN_REST || 2.2))); }
     if (!work) st.energy = C(st.energy - 1.2);
     st.neat = Math.max(0, st.neat - (ph === 'work' ? 1.4 : 0.4));
     if (ph === 'work') { const j = G.job(); if (j) st.tox = C(st.tox + j.harm * 0.35 * (s.car.rank >= 8 ? 0.2 : 1)); }
@@ -598,7 +599,7 @@
     // слухи Людки
     if (s.flags.rumor) { delete s.flags.rumor; const r = G.pick(D.RUMORS); G.toast('По заводу ходит слух: «' + r + '»', 'warn'); G.fx({ coll: G.ri(-3, 2) }); }
     // долги друзьям
-    Object.keys(s.flags).filter(k => k.indexOf('debt_') === 0 && s.flags[k] > 0).forEach(k => { if (G.chance(8)) G.friendDebt(k.slice(5), k); });
+    Object.keys(s.flags).filter(k => k.indexOf('debt_') === 0 && s.flags[k] > 0).forEach(k => { if ((s.flags[k + '_until'] || 0) > s.t.day) return; if (G.chance(8 + 7 * (s.flags[k + '_lvl'] || 0))) G.friendDebt(k.slice(5), k); });
     if (G.extraDaily) G.extraDaily();
     if (s.flags.lent_vityok && G.chance(5)) { s.flags.lent_vityok = 0; if (G.chance(40)) { G.addMoney(500); G.toast('Витёк вернул 500 ₽. Чудо!', 'good'); } else G.toast('Витёк «забыл» про долг.', 'warn'); }
   };
