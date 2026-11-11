@@ -7,7 +7,7 @@
     // Версия для игроков (показывается в игре) и дата последнего обновления. Меняйте при каждом обновлении: V1 → V2 → V3…
     GAME_VER: 'V1', GAME_DATE: '10.11.2026',
     // Адрес общего чата (Google Apps Script из server/chat_gas.gs). Пусто — чат работает только на этом устройстве.
-    CHAT_URL: '',
+    CHAT_URL: 'https://script.google.com/macros/s/AKfycby8CGh1v7S0zR1MG1QZaNhdiRHjztVcanx0OY86BgLhiQWYXpEfjhEE9-jpuApuC9Pn/exec',
     // Адрес общего рейтинга (Google Apps Script, веб-приложение). Пусто — рейтинг выключен.
     API_URL: 'https://script.google.com/macros/s/AKfycbxYSO78NJv6qclY2jqaXdwU9_fEEbcM496t6vCi_rxKNeNZBIQbfLEmtCPNjE45ftmpvQ/exec',
     // Темп прогрессии: во сколько раз растут требования к стажу и баллам мастерства для повышений.
