@@ -239,7 +239,7 @@
         G.modal({ title: '🏅 НАЧАЛЬНИК ЦЕХА', vib: 'success', bg: 'gate', text: 'Ты стал начальником цеха — честный потолок. Выше — только директорское кресло, но «Путь к креслу» застыл на 99%.<br>Труханов: «Я ещё лет 30 буду работать!»', opts: [{ t: 'Завершить карьеру (концовка)', fn: () => G.end('head') }, { t: 'Продолжить без роста', fn: () => { s.flags.headDone = 1; } }] });
       }
     };
-    G.modal({ title: 'ПОЗДРАВЛЯЕМ!', face: 'tatishcheva', bg: 'checkpoint', vib: 'success', cls: 'good', text: 'Теперь ты — <b>' + D.RANKS[to] + '</b>. Новый оклад ≈ ' + G.rub(wage) + '.<br><i>«Я знала, что вы справитесь», — шепчет Татищева.</i> Знания ×0.5.', opts: [{ t: 'Ура', fn: finish }] });
+    K.promoScreen(to, 'Теперь ты — <b>' + D.RANKS[to] + '</b>. Новый оклад ≈ ' + G.rub(wage) + '.<br><i>«Я знала, что вы справитесь», — шепчет Татищева.</i> Знания ×0.5.', finish);
     if (to >= 6 && !s.flags.mgmtHint) { s.flags.mgmtHint = 1; G.toast('Теперь меньше физического труда и больше бумаг — и больше давления сверху.', 'tip'); }
   };
 
@@ -266,9 +266,9 @@
   K.probationEnd = function () {
     const s = G.s, c = s.car, st = s.st;
     if (c.rank !== 0 || c.probShifts < 20) return;
-    const p = C(Math.round(50 + st.know * 0.6 + st.boss * 0.3 + (s.instr.perv != null ? 8 : -20) - c.rep * 15), 25, 95);
+    const p = C(Math.round(50 + st.know * 0.6 + st.boss * 0.3 + (s.instr.perv != null ? 8 : -20) - c.rep * 15 - (G.docsUnsigned ? G.docsUnsigned() * 6 : 0)), 25, 95);
     G.modal({ title: 'Допуск к самостоятельной работе', face: 'tatishcheva', bg: 'checkpoint', text: 'Комиссия: Татищева + мастер + инспектор ОТ. Итоги испытательного срока. (Шанс ~' + p + '%.)', opts: [{ t: 'Ждать решения', fn: () => {
-      if (G.chance(p)) { c.rank = 1; G.fx({ mood: 15, boss: 3, coll: 2 }); G.achieve('rank1', 'Прошёл стажировку'); G.modal({ title: 'ДОПУЩЕН', cls: 'good', vib: 'success', face: 'tatishcheva', bg: 'checkpoint', text: 'Ты переходишь в «Разряд 1» с полным окладом ≈ ' + G.rub(G.monthlyPay()) + '. Профсоюз уже тянет к тебе руки.', opts: [{ t: 'Наконец-то', fn: () => {} }] }); }
+      if (G.chance(p)) { c.rank = 1; G.fx({ mood: 15, boss: 3, coll: 2 }); G.achieve('rank1', 'Прошёл стажировку'); K.promoScreen(1, 'Ты переходишь в «Разряд 1» с полным окладом ≈ ' + G.rub(G.monthlyPay()) + '. Профсоюз уже тянет к тебе руки.', () => {}); }
       else { c.probShifts = 16; c.probFail++; G.fx({ mood: -6, boss: -2 }); G.modal({ title: 'ПРОДЛЕНИЕ СТАЖИРОВКИ', vib: 'error', face: 'tatishcheva', bg: 'checkpoint', text: 'Не прошёл. Стажировка продлена на неделю (4 смены). Оплата — стажёрская.', opts: [{ t: 'Эх', fn: () => {} }] }); if (c.probFail >= 3) G.modal({ title: 'ПРИКАЗ', text: 'Трижды не пройден допуск. Тебя отчисляют.', opts: [{ t: '…', fn: () => G.end('fired') }] }); }
     } }] });
   };

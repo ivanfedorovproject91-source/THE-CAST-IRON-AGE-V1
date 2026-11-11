@@ -2388,6 +2388,7 @@
       const o = { mouth: st.mood < 30 || angry ? 'frown' : st.mood > 70 ? 'smile' : 'flat', sad: !angry && st.mood < 30, droop: st.energy < 25 || st.drunk > 15, drunk: st.drunk > 10, bags: st.energy < 30, dirt: st.neat < 35, pale: st.health < 40, sick: s.hang > 0 || st.health < 25, bruise: s.flags.bruise > G.week() };
       if (st.drunk > 30) { o.mouth = 'open'; ap.extra = (ap.extra || []).concat(['flush']); }
       let svg = G.avatar(ap, o), x = '';
+      if (ap.hat === 'helmet' && s.car.rank >= 6) svg = svg.replace(/#f2c200/g, '#f6f6f2').replace(/#d9a900/g, '#c9c9c2');
       if (st.satiety < 25) x += '<path d="M30 56 Q34 66 41 65 M70 56 Q66 66 59 65" stroke="#000" stroke-width="2" fill="none" opacity=".2"/>' + (st.satiety < 12 ? '<text x="6" y="16" font-size="15">💭🍔</text>' : '');
       if (st.energy < 20) x += '<text x="72" y="20" font-size="15">💤</text>';
       if (angry && sev >= 2) x += '<text x="64" y="18" font-size="17">💢</text>';

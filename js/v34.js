@@ -770,7 +770,7 @@
   // ---------- Экран вкладки «Телефон»
   G.phoneScreen = function () {
     const s = G.s, t = G.phoneTier(), p = G.phoneItem();
-    const util = '<div class="grp">Не телефон</div><div class="grid2"><button class="tile" onclick="G.useMenu()"><b>🎒</b>Рюкзак</button><button class="tile" onclick="G.ui.openLog()"><b>📓</b>Журнал событий</button></div>';
+    const util = '';
     if (!t) return '<div class="phone off"><div class="ph-status"><span>📵 Нет сети</span><span>—</span></div><div class="ph-lock"><b>📵</b><div>У тебя нет телефона</div><small>Звонки, сообщения, игры и приложения недоступны. Купи аппарат в ТЦ «Золотой Чугун» (вкладка «Город»): кнопочный — от 1 500 ₽.</small></div></div>' + util;
     const b = Math.round(bat()), dead = b <= 0;
     let h = '<div class="phone' + (dead ? ' off' : '') + '"><div class="ph-status"><span>📶 ' + esc(p.n) + '</span><span>🔋 ' + b + '%</span></div>';

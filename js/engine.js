@@ -90,7 +90,7 @@
     if (G.ui && G.ui.toast) G.ui.toast(text, cls);
   };
   G.fmt = function (t, ctx) {
-    const s = G.s;
+    const s = G.s || { name: 'Новичок' };
     return String(t).replace(/\{name\}/g, s.name).replace(/\{tn\}/g, () => G.pick(D.TRUH_NAMES)).replace(/\{boss\}/g, 'Труханов');
   };
   G.buzz = function (kind) {

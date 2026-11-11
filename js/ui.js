@@ -72,15 +72,22 @@
     const nick = G.nickLabel();
     const bars = bar('❤ Здоровье', st.health) + bar('⚡ Энергия', st.energy) + bar('🙂 Настроение', st.mood) + bar('🍲 Сытость', st.satiety)
       + (st.drunk > 2 ? bar('🍺 Опьянение', st.drunk, 'rust', 1) : '') + (s.hang > 0 ? bar('🤕 Похмелье', s.hang * 50, 'bad') : '') + (st.craving >= 40 ? bar('🥃 Тяга', st.craving, '', 1) : '') + (st.neat < 50 ? bar('🧼 Опрятность', st.neat) : '');
-    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + (nick ? ' «' + nick + '»' : '') + (G.admirerMark ? G.admirerMark() : '') + '</div><div class="tb-sub">' + G.jobTitle() + ' · ' + G.status() + '</div></div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + ' · ' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
+    const ri = G.rankInfo ? G.rankInfo() : { stars: 0, mgmt: false, line: '' };
+    let starsH = '';
+    for (let k = 1; k <= 5; k++) starsH += '<i class="' + (k <= ri.stars ? (ri.mgmt ? 'sw' : 'sy') : 'sg') + '">★</i>';
+    const rankH = '<div class="tb-rank"><b>' + esc(G.jobTitle()) + '</b>' + (ri.noStars ? '' : '<span class="stars">' + starsH + '</span>') + '</div>';
+    const subH = '<div class="tb-prog">' + ri.line + '</div>';
+    const nickH = '<div class="tb-nick">' + (nick ? '<span class="nk">«' + esc(nick) + '»</span> ' : '') + esc(G.status()) + (G.admirerMark ? G.admirerMark() : '') + '</div>';
+    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + '</div>' + rankH + subH + nickH + '</div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + '</div><div class="tb-time">' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
   }
   function navHTML() {
-    const T = [['shift', '⚙️', 'Смена'], ['city', '🏙️', 'Город'], ['people', '👥', 'Люди'], ['phone', '📱', 'Телефон'], ['rating', '🏆', 'Рейтинг'], ['file', '📋', 'Дело']];
+    const ph = G.s && G.s.phase, home = !(ph === 'locker' || ph === 'work' || ph === 'lunch');
+    const T = [['shift', home ? '🏠' : '⚙️', home ? 'Дом' : 'Смена'], ['city', '🏙️', 'Город'], ['people', '👥', 'Люди'], ['phone', '📱', 'Телефон'], ['rating', '🏆', 'Рейтинг'], ['file', '📋', 'Дело']];
     return T.map(t => '<button class="' + (UI.tab === t[0] ? 'on' : '') + '" onclick="G.ui.setTab(\'' + t[0] + '\')"><b>' + t[1] + '</b>' + t[2] + '</button>').join('');
   }
   UI.setTab = function (t) { UI.tab = t; if (t !== 'city') UI.place = null; UI.render(); };
   function gameScreen() {
-    switch (UI.tab) { case 'city': return cityTab(); case 'people': return peopleTab(); case 'phone': return phoneTab(); case 'file': return fileTab(); case 'rating': return ratingTab(); default: return shiftTab(); }
+    switch (UI.tab) { case 'city': return cityTab(); case 'people': return peopleTab(); case 'phone': return phoneTab(); case 'file': return fileTab(); case 'rating': return ratingTab(); default: return (G.shiftTop ? G.shiftTop() : '') + shiftTab() + (G.shiftExtras ? G.shiftExtras() : ''); }
   }
 
   // ---------- Вкладка СМЕНА
@@ -115,6 +122,7 @@
       h += scene(s.loc === 'yard' ? IMG.gate : s.loc === 'locker' ? IMG.checkpoint : null, L.i + ' ' + L.n, L.d + ' ' + (ph === 'lunch' ? 'Обеденный перерыв.' : 'Слотов до конца смены: ' + G.slotsLeft() + '.'), s.loc === 'yard' ? 'smoke' : 'sm');
       h += '<div class="chips">' + chips.map(c => '<button class="chip ' + (s.loc === c ? 'on' : '') + '" onclick="G.ui.go(\'' + c + '\')">' + LOCS[c].i + ' ' + LOCS[c].n + '</button>').join('') + '</div>';
       h += people(s.loc);
+      if (s.loc === 'admin' && G.adminCard) h += G.adminCard();
       if (ph === 'lunch') h += '<div class="card note">Обед: осталось действий — <b>' + s.lunchAP + '</b>. Можно поесть, выпить молока, поболтать.</div>';
       const acts = visibleActs(a => a.loc === s.loc && ((a.ph || ['work']).indexOf('work') >= 0));
       if (G.friendsBlock) h += G.friendsBlock();
@@ -291,6 +299,7 @@
       + (G.hasSave() ? '<button class="btn big hazard" onclick="G.ui.continueGame()">ПРОДОЛЖИТЬ</button>' : '')
       + '<button class="btn big ' + (G.hasSave() ? '' : 'hazard') + '" onclick="G.ui.newGame()">НОВАЯ СМЕНА</button>'
       + '<button class="btn" onclick="G.ui.help()">Как играть</button>'
+      + '<button class="btn" onclick="G.showChangelog()">Что нового</button>'
       + (rec.runs ? '<div class="note" style="text-align:center;margin-top:10px">Забегов: ' + rec.runs + ' · Рекорд очков жизни: ' + (rec.best || 0) + '</div>' : '') + '</div></div>';
   }
   UI.continueGame = function () {
