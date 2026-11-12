@@ -10,8 +10,8 @@
   };
   function init(){
     const f=F();
-    // Старые сохранения: catFed записывался только при фактическом переезде кота.
-    if(f.cat && f.catFed != null && f.catHome == null) f.catHome=1;
+    // Старые сохранения не отличают дружбу с котом от переезда. Наличие Чугуна — надёжный признак, что Чугунок уже уехал домой.
+    if(f.dog && f.catHome == null) f.catHome=1;
     if((f.cat || f.catHome) && !f.petCat) f.petCat={satiety:75,mood:70,trust:Math.max(15,f.catLove||10),health:90,energy:75,lastFed:f.catFed||G.s.t.day,lastCare:G.s.t.day};
     if(f.catHome) f.cat=1;
     if(f.dog&&!f.petDog)f.petDog={satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:G.s.t.day,lastCare:G.s.t.day,lastWalk:G.s.t.day};
