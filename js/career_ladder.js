@@ -81,7 +81,7 @@
     const c = G.s.car;
     if (c.rank === 0) return { key:'worker-1', kind:'worker', nextRank:1, label:'Разряд 1', need:WORK_NEED[0], since:c.ladderStepAt || 0 };
     if (c.rank < 5) return { key:'worker-'+(c.rank+1), kind:'worker', nextRank:c.rank+1, label:'Разряд '+(c.rank+1), need:WORK_NEED[c.rank], since:c.ladderStepAt == null ? c.shifts : c.ladderStepAt };
-    if (c.rank === 5) return { key:'role-6', kind:'management', nextRank:6, nextStage:1, label:'Бригадир · ступень 1', need:WORK_NEED[5], since:c.ladderStepAt == null ? c.shifts : c.ladderStepAt };
+    if (c.rank === 5) return { key:'role-6', kind:'management', nextRank:6, nextStage:1, label:'Мастер участка · ступень 1', need:WORK_NEED[5], since:c.ladderStepAt == null ? c.shifts : c.ladderStepAt };
     const stage = Math.max(1, Math.min(5, c.mgmtStage || 1));
     if (stage < 5) return { key:'mgmt-'+c.rank+'-'+(stage+1), kind:'management', nextRank:c.rank, nextStage:stage+1, label:stageTitle(c.rank)+' · ступень '+(stage+1), need:MGMT_NEED[stage], since:c.ladderStepAt == null ? c.shifts : c.ladderStepAt };
     if (c.rank < 10) return { key:'role-'+(c.rank+1), kind:'management', nextRank:c.rank+1, nextStage:1, label:stageTitle(c.rank+1)+' · ступень 1', need:MGMT_NEED[5], since:c.ladderStepAt == null ? c.shifts : c.ladderStepAt };
@@ -127,11 +127,7 @@
         startQuiz();
       }});
     }
-    const startQuiz=()=>{
-      if(target.bribeBonus){correct=1;target.bribeBonus=0;}
-      if(target.bribePenalty){correct=Math.max(0,correct-1);target.bribePenalty=0;}
-      ask();
-    };
+    const startQuiz=()=>{ ask(); };
     G.modal({title:'Экзамен перед повышением',face:'soplezhuykin',bg:'checkpoint',text:'«Пять вопросов. Нужно ответить правильно хотя бы на три. Попытка '+attempt+' из 4. Вопросы сегодня новые — не надейтесь выучить один и тот же билет».',opts:bribeOpts.concat([{t:'Начать экзамен',fn:startQuiz}])});
   }
   function promote(target) {
