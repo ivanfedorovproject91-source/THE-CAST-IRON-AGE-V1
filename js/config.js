@@ -3,9 +3,9 @@
   const G = (window.G = window.G || {});
   G.CONFIG = {
     // Версия игры (для сохранений и рейтинга). Повышайте при каждом обновлении.
-    VERSION: '3.8.1',
+    VERSION: '3.8.2',
     // Версия для игроков (показывается в игре) и дата последнего обновления. Меняйте при каждом обновлении: V1 → V2 → V3…
-    GAME_VER: 'V3.1', GAME_DATE: '12.11.2026',
+    GAME_VER: 'V3.2', GAME_DATE: '12.11.2026',
     // Адрес общего чата (Google Apps Script из server/chat_gas.gs). Пусто — чат работает только на этом устройстве.
     CHAT_URL: 'https://script.google.com/macros/s/AKfycby8CGh1v7S0zR1MG1QZaNhdiRHjztVcanx0OY86BgLhiQWYXpEfjhEE9-jpuApuC9Pn/exec',
     // Адрес общего рейтинга (Google Apps Script, веб-приложение). Пусто — рейтинг выключен.

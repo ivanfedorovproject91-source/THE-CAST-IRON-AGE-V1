@@ -106,7 +106,15 @@
   const oldAt=G.npcLoc;
   G.npcLoc=function(id){
     const f=F();
-    if(id==='chugunok'&&f.catHome)return null;
+    if(id==='chugunok'){
+      if(f.catHome)return null;
+      // Чугунок — постоянный заводской кот: не исчезает из-за случайного расписания NPC.
+      if(G.s.phase==='work')return 'shop';
+      if(G.s.phase==='lunch')return 'canteen';
+      if(G.s.phase==='locker')return 'locker';
+      if(G.s.phase==='morning'||G.s.phase==='checkpoint')return 'locker';
+      return null;
+    }
     if(id==='chugun')return f.dog?'yard':null;
     return oldAt.apply(this,arguments);
   };
