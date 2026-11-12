@@ -43,7 +43,7 @@
   }
   UI.act = id => G.runAction(id);
   function people(loc) {
-    const ids = G.peopleAt(loc);
+    const ids = G.peopleAt(loc).filter(id => id !== 'chugunok' || !G.s.flags.cat);
     ids.forEach(id => { G.R(id).met = true; });
     if (!ids.length) return '';
     return '<div class="ppl">' + ids.map(id => '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + D.NPC[id].name.split(' ')[0] + '</button>').join('') + '</div>';
@@ -165,11 +165,11 @@
   // ---------- Люди
   function peopleTab() {
     const s = G.s;
-    const ids = D.NPC_ORDER.filter(id => s.rel[id] && s.rel[id].met);
+    const ids = D.NPC_ORDER.filter(id => (s.rel[id] && s.rel[id].met) || (id === 'chugun' && s.flags.dog) || (id === 'chugunok' && s.flags.cat));
     let h = '<div class="card"><h3>Знакомые</h3><div class="note">Тапни, чтобы поговорить (если человек рядом) или позвонить.</div></div>';
     if (!ids.length) h += '<div class="card note">Пока никого не знаешь. Выйди на смену — познакомишься.</div>';
     ids.forEach(id => {
-      const n = D.NPC[id], r = s.rel[id], l = r.l;
+      const n = D.NPC[id], r = s.rel[id] || {l:0,stage:0}, l = r.l;
       const loc = G.npcLoc(id);
       h += '<button class="pcard" onclick="G.npcMenu(\'' + id + '\')">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + '<div class="pi"><b>' + n.name + (G.isFriend && G.isFriend(id) ? ' 🤝' : '') + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small></div></button>';
     });
