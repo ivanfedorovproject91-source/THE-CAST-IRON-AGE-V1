@@ -253,7 +253,7 @@
       name: 'Чугунок', full: 'Заводской кот Чугунок', age: 5, role: 'Рыжий кот', color: '#f93',
       ap: { cat: true, skin: '#e8943c', cloth: '#e8943c' },
       at: { loc: 'shop', alt: ['canteen', 'yard'], days: [0, 1, 2, 3, 4], p: 0.35 }, likes: [], dislikes: [], rel: 0,
-      talk: [{ t: 'Чугунок трётся о ногу и мурлычет.', o: [['Погладить', '+12 настроения. Кот — лучшее, что есть на заводе.', { mood: 12, rel: { chugunok: 6 }, flag: { cat: 1 } }], ['Дать кусочек котлеты', 'Теперь ты — друг навсегда.', { mood: 8, rel: { chugunok: 12 }, satiety: -3 }]] }]
+      talk: []
     },
     chugun: {
       name: 'Чугун', full: 'Дворовая собака Чугун', age: 4, role: 'Добрая дворняга', color: '#a76',
