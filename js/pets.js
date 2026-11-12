@@ -22,7 +22,9 @@
   }
   function result(type,title,text,fx,delta){
     const p=petState(type);Object.keys(delta||{}).forEach(k=>p[k]+=delta[k]);clampPet(p);
+    if(/Уход/.test(title))p.lastCare=G.s.t.day;
     if(fx)G.fx(fx);
+    G.spend(1);
     G.modal({title,face:type==='cat'?'chugunok':'chugun',bg:'checkpoint',text:text+'<br><br>'+bars(p),opts:[{t:'Хорошо',fn:()=>{}}]});
   }
   function catMenu(){
@@ -41,6 +43,7 @@
   }
   function dogBite(p,reason){
     p.mood=C(p.mood-12);p.trust=C(p.trust-16);
+    G.spend(1);
     const hurt=G.chance(12);
     if(hurt){G.fx({health:-3,mood:-3});G.modal({title:'Чугун прихватил зубами',face:'chugun',vib:'warning',text:'Пёс предупредительно прихватил за руку. Это редкая защитная реакция, а не случайная агрессия. '+reason+'<br>Нужно дать ему пространство и не навязывать контакт.',opts:[{t:'Отойти и успокоиться',fn:()=>{}}]});}
     else G.modal({title:'Чугун предупредил',face:'chugun',text:'Пёс отстранился и тихо рыкнул. '+reason+' Он не хочет продолжать контакт. Дай ему пространство.',opts:[{t:'Понял',fn:()=>{}}]});
