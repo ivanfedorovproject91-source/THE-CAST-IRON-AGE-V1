@@ -132,7 +132,7 @@
     const r = _advPea.apply(this, arguments);
     try {
       const s = G.s;
-      if (s && s.day && s.day.pea && s.phase === 'work' && s.t.hour >= 14 && s.t.hour <= 17 && (s.day.peaGas || 0) < 2 && s.day.gasDone && !G.modalOpen) {
+      if (s && s.day && s.day.pea && s.phase === 'work' && s.t.hour >= 14 && s.t.hour <= 17 && (s.day.peaGas || 0) < 2 && s.day.gasDone && !G.cur && !G.mq.length) {
         s.day.peaGas = (s.day.peaGas || 0) + 1;
         setTimeout(() => { if (G.s && !G.s.end) G.gasUrge(); }, 150);
       }

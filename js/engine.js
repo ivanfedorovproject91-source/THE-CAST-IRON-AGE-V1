@@ -284,7 +284,7 @@
     st.drunk = Math.max(0, st.drunk - 6);
     if (s.smell > 0) s.smell = Math.max(0, s.smell - 4);
     { const CF = G.CONFIG || {}; st.satiety = Math.max(0, st.satiety - (ph === 'work' ? (CF.SAT_DRAIN_WORK || 3.4) : (CF.SAT_DRAIN_REST || 2.2))); }
-    if (!work) st.energy = C(st.energy - 1.2);
+    if (!work) st.energy = C(st.energy - 0.7);
     st.neat = Math.max(0, st.neat - (ph === 'work' ? 1.4 : 0.4));
     if (ph === 'work') { const j = G.job(); if (j) st.tox = C(st.tox + j.harm * 0.35 * (s.car.rank >= 8 ? 0.2 : 1)); }
     if (st.satiety < 20) { st.energy = C(st.energy - 1); st.mood = C(st.mood - 0.8); }
@@ -655,7 +655,7 @@
     for (let i = 0; i < n && s.phase === 'work'; i++) {
       const q = G.quality() * (0.5 + G.rnd() * 0.35);
       s.day.ops++; s.day.qsum += q; s.stats.ops++; totalOps++;
-      G.fx({ energy: -(j ? 2 + j.load * 1.2 : 3), bm: 0, know: 0.4, wear: 1.2, mood: -(j ? 0.2 + j.nerves * 0.15 : 0.6) });
+      G.fx({ energy: -(j ? 2 + j.load * 1.2 : 3) * ((G.CONFIG && G.CONFIG.OP_ENERGY_MULT) || 1), bm: 0, know: 0.4, wear: 1.2, mood: -(j ? 0.2 + j.nerves * 0.15 : 0.6) });
       G.addMoney(Math.round((20 + s.car.rank * 5) * q / 100 * (s.car.rank === 0 ? 0.5 : 1)));
       s.st.bm += 1.2 * q / 100;
       G.advance(1); const hr = Math.floor(s.t.hour);

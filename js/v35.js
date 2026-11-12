@@ -48,10 +48,11 @@
   G.relAdd = function (id, d) {
     const s = G.s, r = G.R(id);
     if (d > 0) {
-      if (r.l > 75) d *= 0.5; else if (r.l > 50) d *= 0.7;
+      const CF = G.CONFIG || {};
+      if (r.l > 75) d *= (CF.REL_TAPER_HIGH || 0.5); else if (r.l > 50) d *= (CF.REL_TAPER_MID || 0.7);
       if (s.st.coll < 30) d *= 0.8;
       if (r.gDay !== s.t.day) { r.gDay = s.t.day; r.g = 0; }
-      d = Math.min(d, Math.max(0, 9 - r.g)); r.g += d;
+      d = Math.min(d, Math.max(0, (CF.REL_DAILY_CAP || 9) - r.g)); r.g += d;
     }
     const out = _ra.call(this, id, d);
     const cap = G.relCap(id); if (r.l > cap) r.l = cap;

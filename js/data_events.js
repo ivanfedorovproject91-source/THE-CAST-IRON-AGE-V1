@@ -58,15 +58,15 @@
     };
     G.modal({ title: pee ? '🚽 Невыносимо хочется в туалет!' : '💩 Живот скрутило!', vib: 'warning', text: pee ? 'Мочевой пузырь сигналит красным. До туалета — пара шагов, но станок не ждёт.' : 'Шум в животе. Надо СРОЧНО.', opts: [
       { t: 'Терпеть (мини-игра)', fn: () => G.mini('mash', { title: pee ? 'Держи!' : 'ДЕРЖИСЬ!', hint: 'Жми кнопку, чтобы шкала не упала до нуля', time: pee ? 6 : 5, rate: pee ? 1 : 1.3 }, r => { if (r.score >= 0.7) { G.toast('Выдержал! Чуть не лопнул.', 'good'); G.fx({ mood: 2 }); } else fail(); }) },
-      { t: 'Бежать в туалет (1 час)', fn: () => { G.toast('Побежал. Зато чисто.'); G.fx({ mood: 3 }); if (G.chance(8)) { G.toast('Туалет закрыт на ремонт!', 'bad'); fail(); } else G.spend(1); } },
-      { t: 'Отпроситься у мастера', fn: () => { if (G.chance(55)) { G.toast('Степаныч махнул рукой: «Иди».'); G.spend(1); } else { G.toast('«Потерпишь». Отказали.', 'bad'); fail(); } } }
+      { t: 'Бежать в туалет (1 час)', dis: (s.day.wcVisits || 0) >= 2 ? 'Сегодня уже хватит' : null, fn: () => { s.day.wcVisits = (s.day.wcVisits || 0) + 1; s.day.peaGas = 99; G.toast('Побежал. Зато чисто.'); G.fx({ mood: 3 }); if (G.chance(8)) { G.toast('Туалет закрыт на ремонт!', 'bad'); fail(); } else G.spend(1); } },
+      { t: 'Отпроситься у мастера', fn: () => { if (G.chance(55)) { s.day.wcVisits = (s.day.wcVisits || 0) + 1; s.day.peaGas = 99; G.toast('Степаныч махнул рукой: «Иди».'); G.spend(1); } else { G.toast('«Потерпишь». Отказали.', 'bad'); fail(); } } }
     ] });
   }
   G.endShiftEarly = function () { const s = G.s; s.phase = 'work'; s.t.hour = G.shiftEnd(); G.endShift(); };
 
   // ---------- Реестр событий
-  E('pee', { where: ['work'], w: 3, cd: 2, cond: s => s.day.slots >= 1, w2: s => 1 + s.st.drunk / 10 + (s.st.satiety > 70 ? 1 : 0), fn: () => emergency('pee') });
-  E('poop', { where: ['work'], w: 1.2, cd: 4, cond: s => s.day.slots >= 2 && s.car.shifts >= 4, fn: () => emergency('poop') });
+  E('pee', { where: ['work'], w: 3, cd: 2, cond: s => s.day.slots >= 1 && (s.day.wcVisits || 0) < 2, w2: s => 1 + s.st.drunk / 10 + (s.st.satiety > 70 ? 1 : 0), fn: () => emergency('pee') });
+  E('poop', { where: ['work'], w: 1.2, cd: 4, cond: s => s.day.slots >= 2 && s.car.shifts >= 4 && (s.day.wcVisits || 0) < 2, fn: () => emergency('poop') });
   E('fart', { where: ['work'], w: 1.5, cd: 4, cond: s => s.day.slots >= 1, fn: () => G.modal({ title: 'Нечаянный звук', text: 'Живот предательски сработал в самый тихий момент. Рядом слышали.', opts: [
     { t: 'Сделать вид, что это станок', fn: () => { if (G.chance(50)) { G.toast('Прокатило!', 'good'); G.fx({ cool: 2 }); } else { G.addNick(G.pick(FART_NICKS)); G.fx({ mood: -4, coll: -2 }); } } },
     { t: 'Покраснеть и извиниться', fn: () => { G.fx({ mood: -3, coll: -1 }); if (G.chance(35)) G.addNick(G.pick(FART_NICKS)); } },

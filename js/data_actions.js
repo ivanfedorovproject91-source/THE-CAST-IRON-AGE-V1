@@ -50,7 +50,7 @@
     const cash = Math.round((20 + c.rank * 5) * qop / 100 * (c.rank === 0 ? 0.5 : 1));
     G.addMoney(cash); s.stats.earned;
     s.st.bm += (c.rank >= 8 ? 3.5 : c.rank >= 6 ? 2.5 : 1.6) * qop / 100;
-    G.fx({ energy: -(2 + heavy * 1.4), mood: -(0.15 + (j.nerves || 2) * 0.12), know: 0.6, wear: 0.9 });
+    G.fx({ energy: -(2 + heavy * 1.4) * ((G.CONFIG && G.CONFIG.OP_ENERGY_MULT) || 1), mood: -(0.15 + (j.nerves || 2) * 0.12), know: 0.6, wear: 0.9 });
     G.toast('Операция: качество ' + Math.round(qop) + '% (+' + G.rub(cash) + ')' + (score >= 0.8 ? ' — отлично!' : score < 0.35 ? ' — криво.' : ''), score >= 0.8 ? 'good' : score < 0.35 ? 'warn' : '');
     if (G.chance(s.machine.wear / 14)) G.machineIncident();
     G.spend(1);
@@ -89,7 +89,7 @@
   A('med_visit', { ph: ['work'], loc: 'med', g: 'Перерыв и здоровье', n: 'Посидеть в медпункте', i: '⚕️', h: 1, lunch: true, fx: { mood: 2, health: 2, energy: 3 }, txt: 'В медпункте тихо. И пахнет зелёнкой.' });
 
   // ===== УТРО / РАЗДЕВАЛКА =====
-  A('coffee_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Кофе по дороге (50 ₽)', i: '☕', cost: 50, menu: true, once: 'day', fx: { energy: 6, mask: 20 }, txt: 'Кофе из автомата у ворот.' });
+  A('coffee_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Кофе по дороге (50 ₽)', i: '☕', cost: 50, menu: true, once: 'day', fx: { energy: 20, mood: 2, mask: 20 }, txt: 'Двойной кофе из автомата у ворот. Бодрит так, что станок кажется другом.' });
   A('wash_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Умыться и почистить зубы', i: '🪥', menu: true, once: 'day', req: s => s.flags.teethDay === s.t.day ? 'Сегодня уже чистил(а)' : null, fx: { neat: 10, mask: 15, mood: 1 }, txt: 'Прохладная вода и вкус мяты.', fn: s => { s.flags.teethDay = s.t.day; } });
   A('use_m', { ph: ['morning', 'locker'], loc: 'home', anywhere: true, g: 'Утро', n: 'Рюкзак: рассол, жвачка, лекарства', i: '🎒', menu: true, fn: () => { G.useMenu(); return 'custom'; } });
   A('sick_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Купить больничный (2 000 ₽)', i: '🩹', menu: true, noTrainee: true, req: s => s.money < 2000 ? 'Нет денег' : null, fn: () => { G.buySick(); return 'custom'; } });
@@ -2264,12 +2264,18 @@
     // ---------- Метеоризм после обеда
     const heard = who => { const f = F(); f.gasHeard = (f.gasHeard || 0) + 1; if (f.gasHeard >= 3 && !hasNick('perdun')) { G.addNick('perdun'); msg('За тобой закрепилась кличка «Пердун». Работа над имиджем провалена.', 'bad'); } };
     G.gasUrge = function () {
+      if (!G.s || (G.s.day.wcVisits || 0) >= 2 || (G.cur && G.cur.title === '💨 ПОЗЫВ') || G.mq.some(m => m && m.title === '💨 ПОЗЫВ')) return; // не плодим одинаковые окна подряд
       const s = G.s, f = F(), near = G.pick(['Серёга', 'Витёк', 'Михалыч', 'Дудукин', 'Щиплен', 'Кулежов', 'Хомяк']), boss = near === 'Дудукин' || near === 'Щиплен' || near === 'Кулежов';
       G.modal({ title: '💨 ПОЗЫВ', text: 'После обеда живот заурчал, как станок на холостых. Рядом стоит <b>' + near + '</b>. Что делать?', opts: [
         { t: '🤫 Пустить тихо (рискнуть)', fn: () => { G.fartSound('quiet'); if (G.chance(55 - (boss ? 10 : 0))) { G.fx({ mood: 5 }); msg('Прошло незамеченным. Облегчение — как отпуск.', 'good'); } else { G.fx({ mood: 3, coll: -3 }); if (boss) G.fx({ boss: -2 }); msg(near + ' поморщился: «Кто-то умер…». Запах выдал тебя.', 'bad'); heard(near); if (G.rumor) G.rumor('gas', 'По цеху ходит версия, что «кто-то тут с ароматом».', { coll: -1 }, 60); } } },
         { t: '📢 Громко и с достоинством', fn: () => { G.fartSound('loud'); G.fx({ mood: 8 }); if (G.chance(50)) { G.fx({ coll: 3, cool: 2 }); msg('Раскат прокатился по цеху. Мужики ржут и аплодируют. Ты — легенда.', 'good'); } else { G.fx({ coll: -3 }); if (boss) G.fx({ boss: -3 }); msg(near + ' сделал вид, что ничего не слышал. Но лицо у него вытянулось.', 'bad'); heard(near); } if (G.rumor) G.rumor('gas', 'Весь цех слышал, как ты «выступил». Звук запомнили.', { cool: 1, coll: -1 }, 70); } },
         { t: '💪 Сдержаться (тапай!)', fn: () => tapOverlay({ emoji: '😖', title: 'ТЕРПИ!', hint: 'Тапай, чтобы удержать! 10 тапов за 4 секунды.', btn: 'ДЕРЖАТЬ! 😣', need: 10, time: 4, done: ok => { if (ok) { G.fx({ energy: -3, mood: -1 }); msg('Сдержался! Организм злобно урчит, но молчит.', 'good'); } else { G.fartSound('squeak'); G.fx({ mood: 2, coll: -4 }); msg('Не удержал. Раздалось что-то высокое и писклявое. Позор.', 'bad'); heard(near); } } }) },
-        { t: '🚽 Сбегать в туалет (−1 час)', fn: () => { G.fx({ mood: 3 }); msg('Сбегал. В тишине, в кабинке, в покое. Лучше, чем в кино.', 'good'); sp(1); } }
+        { t: '🚽 Сбегать в туалет (−1 час)', dis: (s.day.wcVisits || 0) >= 2 ? 'Сегодня уже хватит' : null, fn: () => {
+          // защита от «бесконечного нажатия»: не больше двух забегов в день, и после туалета позывы на сегодня прекращаются
+          if (G.s !== s || s.day.wcVisits >= 2) return;
+          s.day.wcVisits = (s.day.wcVisits || 0) + 1; s.day.peaGas = 99; s.day.gasDone = 1;
+          G.fx({ mood: 3 }); msg('Сбегал. В тишине, в кабинке, в покое. Лучше, чем в кино.', 'good'); sp(1);
+        } }
       ] });
     };
 

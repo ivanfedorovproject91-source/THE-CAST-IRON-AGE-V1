@@ -242,7 +242,7 @@
     if (id === 'truhanov') {
       o.push({ t: '📅 Записаться на приём', dis: c.rank === 0 ? 'Стажёрам нельзя' : c.appointment ? 'Запись уже есть' : null, fn: () => { c.appointment = s.t.day + G.ri(3, 6); G.toast('Аллочка записала тебя на ' + G.dateStrOf(c.appointment) + '.'); G.spend(1); } });
     }
-    if (id === 'palych') o.push({ t: '🎣 Рыбалка в выходные', fn: () => G.toast('Палыч: «В субботу — на рыбалку. Ищи в городе «Рыбалка».»') });
+    if (id === 'palych') o.push({ t: '🎣 Договориться на рыбалку', fn: () => { G.fishPlanSet('palych'); G.toast('Палыч: «Давай после смены к пруду. Удочки у меня». Кнопка рыбалки появится после работы.', 'good'); } });
     if (id === 'alla' || id === 'allochka') o.push({ t: '📅 Записаться к директору', dis: c.rank === 0 ? 'Стажёрам нельзя' : c.appointment ? 'Запись уже есть' : null, fn: () => { c.appointment = s.t.day + G.ri(3, 6); G.toast('Аллочка записала тебя на ' + G.dateStrOf(c.appointment) + '.'); G.spend(1); } });
     return o;
   };
