@@ -42,6 +42,7 @@
     return Object.values(G.ACT).filter(a => filter(a)).filter(a => { const w = G.avail(a); return w !== 'Сейчас недоступно' && w !== 'Не здесь'; });
   }
   UI.act = id => G.runAction(id);
+  function petClick(id) { return id === 'chugunok' ? "G.petMenu('cat')" : id === 'chugun' ? "G.petMenu('dog')" : "G.npcMenu('" + id + "')"; }
   function people(loc) {
     const ids = G.peopleAt(loc);
     ids.forEach(id => { G.R(id).met = true; });
@@ -165,7 +166,7 @@
   // ---------- Люди
   function peopleTab() {
     const s = G.s;
-    const ids = D.NPC_ORDER.filter(id => (s.rel[id] && s.rel[id].met) || (id === 'chugun' && s.flags.dog) || (id === 'chugunok' && (s.flags.catHome || (s.rel[id] && s.rel[id].met))));
+    const ids = D.NPC_ORDER.filter(id => (s.rel[id] && s.rel[id].met) || (id === 'chugun' && s.flags.dog) || (id === 'chugunok' && !s.flags.catHome));
     let h = '<div class="card"><h3>Знакомые</h3><div class="note">Тапни, чтобы поговорить (если человек рядом) или позвонить.</div></div>';
     if (!ids.length) h += '<div class="card note">Пока никого не знаешь. Выйди на смену — познакомишься.</div>';
     ids.forEach(id => {
