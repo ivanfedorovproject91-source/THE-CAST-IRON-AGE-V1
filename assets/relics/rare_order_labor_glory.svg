@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" width="256" height="256"><defs>
+<linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#fff2b8"/><stop offset=".28" stop-color="#e9c45a"/>
+  <stop offset=".6" stop-color="#b88626"/><stop offset="1" stop-color="#6b4710"/>
+</linearGradient>
+<linearGradient id="brassH" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#fff0b0"/><stop offset=".35" stop-color="#d9ae45"/>
+  <stop offset=".7" stop-color="#9a6d1c"/><stop offset="1" stop-color="#5e3d0c"/>
+</linearGradient>
+<radialGradient id="enamel" cx=".35" cy=".3" r=".9">
+  <stop offset="0" stop-color="#f0584a"/><stop offset=".45" stop-color="#c8231a"/><stop offset="1" stop-color="#7c0e0a"/>
+</radialGradient>
+<linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#f4f6f7"/><stop offset=".25" stop-color="#b9c1c5"/>
+  <stop offset=".6" stop-color="#78828a"/><stop offset="1" stop-color="#363d42"/>
+</linearGradient>
+<filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="0" dy="5" result="o"/>
+  <feComponentTransfer><feFuncA type="linear" slope=".55"/></feComponentTransfer>
+  <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<filter id="grain" x="0" y="0" width="100%" height="100%">
+  <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/>
+  <feColorMatrix type="matrix" values="0 0 0 0 .1  0 0 0 0 .07  0 0 0 0 .03  0 0 0 -1.1 .62"/>
+</filter>
+<pattern id="hz" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="22" height="22" fill="#f2b705"/><rect width="11" height="22" fill="#17140f"/></pattern></defs>
+<g filter="url(#sh)">
+  <!-- колодка и лента -->
+  <path d="M100 0 H156 V50 H100 Z" fill="url(#hz)" stroke="#000" stroke-width="2"/>
+  <path d="M100 0 H156" stroke="#000" stroke-width="3"/>
+  <rect x="106" y="0" width="5" height="50" fill="#fff" opacity=".18"/>
+  <rect x="110" y="46" width="36" height="24" rx="6" fill="url(#brassH)" stroke="#4d330a" stroke-width="2"/>
+  <rect x="121" y="52" width="14" height="9" rx="4.5" fill="#241a08"/>
+  <!-- лучи -->
+  <path d="M120.08 74.45 L128.00 36.00 L135.92 74.45 Z M138.35 74.77 L151.29 57.07 L153.66 78.87 Z M155.91 79.81 L182.00 50.47 L169.64 87.73 Z M171.58 89.22 L191.64 80.36 L182.78 100.42 Z M184.27 102.36 L221.53 90.00 L192.19 116.09 Z M193.13 118.34 L214.93 120.71 L197.23 133.65 Z M197.55 136.08 L236.00 144.00 L197.55 151.92 Z M197.23 154.35 L214.93 167.29 L193.13 169.66 Z M192.19 171.91 L221.53 198.00 L184.27 185.64 Z M182.78 187.58 L191.64 207.64 L171.58 198.78 Z M169.64 200.27 L182.00 237.53 L155.91 208.19 Z M153.66 209.13 L151.29 230.93 L138.35 213.23 Z M135.92 213.55 L128.00 252.00 L120.08 213.55 Z M117.65 213.23 L104.71 230.93 L102.34 209.13 Z M100.09 208.19 L74.00 237.53 L86.36 200.27 Z M84.42 198.78 L64.36 207.64 L73.22 187.58 Z M71.73 185.64 L34.47 198.00 L63.81 171.91 Z M62.87 169.66 L41.07 167.29 L58.77 154.35 Z M58.45 151.92 L20.00 144.00 L58.45 136.08 Z M58.77 133.65 L41.07 120.71 L62.87 118.34 Z M63.81 116.09 L34.47 90.00 L71.73 102.36 Z M73.22 100.42 L64.36 80.36 L84.42 89.22 Z M86.36 87.73 L74.00 50.47 L100.09 79.81 Z M102.34 78.87 L104.71 57.07 L117.65 74.77 Z " fill="url(#brass)" stroke="#5a3d0e" stroke-width="1.6" stroke-linejoin="round"/>
+  <!-- звезда -->
+  <polygon points="128.00,54.00 153.86,108.40 213.60,116.19 169.85,157.60 180.90,216.81 128.00,188.00 75.10,216.81 86.15,157.60 42.40,116.19 102.14,108.40" fill="url(#brassH)" stroke="#4d330a" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="128.00,64.00 150.92,112.45 204.08,119.28 165.09,156.05 175.02,208.72 128.00,183.00 80.98,208.72 90.91,156.05 51.92,119.28 105.08,112.45" fill="url(#enamel)" stroke="#5e1008" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="126.00,79.00 143.63,116.73 184.97,121.84 154.53,150.27 162.44,191.16 126.00,171.00 89.56,191.16 97.47,150.27 67.03,121.84 108.37,116.73" fill="#ffd5cc" opacity=".16"/>
+  <circle cx="128" cy="144" r="39" fill="url(#brass)" stroke="#4d330a" stroke-width="2.4"/>
+  <circle cx="128" cy="144" r="33" fill="#1b0f0d" stroke="#4d330a" stroke-width="1.6"/>
+  <path d="M147.98 143.07 L152.99 144.54 L152.60 148.44 L147.39 148.88 A20.00 20.00 0 0 1 145.77 153.18 L149.38 156.96 L147.09 160.15 L142.36 157.93 A20.00 20.00 0 0 1 138.80 160.84 L140.03 165.91 L136.46 167.53 L133.47 163.24 A20.00 20.00 0 0 1 128.93 163.98 L127.46 168.99 L123.56 168.60 L123.12 163.39 A20.00 20.00 0 0 1 118.82 161.77 L115.04 165.38 L111.85 163.09 L114.07 158.36 A20.00 20.00 0 0 1 111.16 154.80 L106.09 156.03 L104.47 152.46 L108.76 149.47 A20.00 20.00 0 0 1 108.02 144.93 L103.01 143.46 L103.40 139.56 L108.61 139.12 A20.00 20.00 0 0 1 110.23 134.82 L106.62 131.04 L108.91 127.85 L113.64 130.07 A20.00 20.00 0 0 1 117.20 127.16 L115.97 122.09 L119.54 120.47 L122.53 124.76 A20.00 20.00 0 0 1 127.07 124.02 L128.54 119.01 L132.44 119.40 L132.88 124.61 A20.00 20.00 0 0 1 137.18 126.23 L140.96 122.62 L144.15 124.91 L141.93 129.64 A20.00 20.00 0 0 1 144.84 133.20 L149.91 131.97 L151.53 135.54 L147.24 138.53 A20.00 20.00 0 0 1 147.98 143.07 Z" fill="url(#brassH)" stroke="#4d330a" stroke-width="1.6" stroke-linejoin="round"/>
+  <circle cx="128" cy="144" r="13" fill="url(#enamel)" stroke="#4d330a" stroke-width="1.6"/>
+  <polygon points="128.00,135.50 130.12,141.09 136.08,141.37 131.42,145.11 133.00,150.88 128.00,147.60 123.00,150.88 124.58,145.11 119.92,141.37 125.88,141.09" fill="#ffe9a0" stroke="#4d330a" stroke-width="1"/>
+</g>
+<g fill="#fff" opacity=".22"><ellipse cx="96" cy="112" rx="30" ry="9" transform="rotate(-48 96 112)"/></g>
+</svg>

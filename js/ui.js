@@ -250,8 +250,9 @@
   // ---------- Дело (досье)
   function fileTab() {
     const s = G.s, st = s.st, c = s.car;
-    const subs = [['file', 'Досье'], ['career', 'Карьера'], ['bag', 'Рюкзак'], ['log', 'Журнал']];
+    const subs = [['file', 'Досье'], ['career', 'Карьера'], ['bag', 'Рюкзак'], ['relics', 'Коллекция' + (G.relics && G.relics.newCount() ? ' <b class="rl-badge">' + G.relics.newCount() + '</b>' : '')], ['log', 'Журнал']];
     let h = '<div class="sub">' + subs.map(x => '<button class="' + (UI.sub === x[0] ? 'on' : '') + '" onclick="G.ui.setSub(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
+    if (UI.sub === 'relics') return h + (G.relics ? G.relics.tabHTML() : '');
     if (UI.sub === 'career') {
       h += '<div class="card"><h3>' + G.jobTitle() + '</h3>';
       h += '<div class="kv"><span>Оклад (≈/мес)</span><span>' + G.rub(G.monthlyPay()) + '</span></div><div class="kv"><span>Смен отработано</span><span>' + c.shifts + '</span></div><div class="kv"><span>Баллы мастерства</span><span>' + Math.floor(st.bm) + '</span></div><div class="kv"><span>Выговоры</span><span>' + c.rep + ' / 3</span></div><div class="kv"><span>Записи в блокнотике</span><span>' + G.noteCount() + '</span></div><div class="kv"><span>Риск увольнения</span><span>' + G.fireRisk() + '%</span></div><div class="kv"><span>Профсоюз</span><span>' + (c.union ? 'да' : 'нет') + '</span></div></div>';

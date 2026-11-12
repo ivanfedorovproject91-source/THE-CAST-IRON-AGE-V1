@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" width="256" height="256"><defs>
+<linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#fff2b8"/><stop offset=".28" stop-color="#e9c45a"/>
+  <stop offset=".6" stop-color="#b88626"/><stop offset="1" stop-color="#6b4710"/>
+</linearGradient>
+<linearGradient id="brassH" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#fff0b0"/><stop offset=".35" stop-color="#d9ae45"/>
+  <stop offset=".7" stop-color="#9a6d1c"/><stop offset="1" stop-color="#5e3d0c"/>
+</linearGradient>
+<radialGradient id="enamel" cx=".35" cy=".3" r=".9">
+  <stop offset="0" stop-color="#f0584a"/><stop offset=".45" stop-color="#c8231a"/><stop offset="1" stop-color="#7c0e0a"/>
+</radialGradient>
+<linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#f4f6f7"/><stop offset=".25" stop-color="#b9c1c5"/>
+  <stop offset=".6" stop-color="#78828a"/><stop offset="1" stop-color="#363d42"/>
+</linearGradient>
+<filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="0" dy="5" result="o"/>
+  <feComponentTransfer><feFuncA type="linear" slope=".55"/></feComponentTransfer>
+  <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<filter id="grain" x="0" y="0" width="100%" height="100%">
+  <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/>
+  <feColorMatrix type="matrix" values="0 0 0 0 .1  0 0 0 0 .07  0 0 0 0 .03  0 0 0 -1.1 .62"/>
+</filter>
+<linearGradient id="wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c58a4a"/><stop offset=".5" stop-color="#9a6531"/><stop offset="1" stop-color="#5c3818"/></linearGradient></defs>
+<g transform="translate(130 132) rotate(-40) scale(1.0) translate(-126 -145)" filter="url(#sh)">
+  <path d="M106 52 L134 52 L131 222 Q120 232 109 222 Z" fill="url(#wood)" stroke="#2a160a" stroke-width="2"/>
+  <path d="M112 75 C 114 110 110 150 113 215" stroke="#4a2a12" stroke-width="1" fill="none" opacity=".45"/><path d="M117 75 C 119 110 115 150 118 215" stroke="#4a2a12" stroke-width="1" fill="none" opacity=".45"/><path d="M122 75 C 124 110 120 150 123 215" stroke="#4a2a12" stroke-width="1" fill="none" opacity=".45"/><path d="M127 75 C 129 110 125 150 128 215" stroke="#4a2a12" stroke-width="1" fill="none" opacity=".45"/><path d="M132 75 C 134 110 130 150 133 215" stroke="#4a2a12" stroke-width="1" fill="none" opacity=".45"/>
+  <path d="M110 60 L113 220" stroke="#e0a868" stroke-width="2" opacity=".5"/>
+  <rect x="107" y="170" width="26" height="5.5" rx="2" fill="#17130f"/><rect x="107" y="170" width="26" height="1.6" fill="#4a423a" opacity=".8"/><rect x="107" y="177" width="26" height="5.5" rx="2" fill="#17130f"/><rect x="107" y="177" width="26" height="1.6" fill="#4a423a" opacity=".8"/><rect x="107" y="184" width="26" height="5.5" rx="2" fill="#17130f"/><rect x="107" y="184" width="26" height="1.6" fill="#4a423a" opacity=".8"/><rect x="107" y="191" width="26" height="5.5" rx="2" fill="#17130f"/><rect x="107" y="191" width="26" height="1.6" fill="#4a423a" opacity=".8"/><rect x="107" y="198" width="26" height="5.5" rx="2" fill="#17130f"/><rect x="107" y="198" width="26" height="1.6" fill="#4a423a" opacity=".8"/><rect x="107" y="206" width="26" height="5.5" rx="2" fill="#17130f"/><rect x="107" y="206" width="26" height="1.6" fill="#4a423a" opacity=".8"/><rect x="107" y="213" width="26" height="5.5" rx="2" fill="#17130f"/><rect x="107" y="213" width="26" height="1.6" fill="#4a423a" opacity=".8"/>
+  <path d="M105 224 Q120 242 135 224 L133 218 L107 218 Z" fill="url(#wood)" stroke="#2a160a" stroke-width="2"/>
+  <rect x="112" y="128" width="16" height="24" rx="2" fill="url(#brassH)" stroke="#4d330a" stroke-width="1.4"/>
+  <polygon points="120.00,133.00 121.76,137.57 126.66,137.84 122.85,140.93 124.11,145.66 120.00,143.00 115.89,145.66 117.15,140.93 113.34,137.84 118.24,137.57" fill="#7c0e0a"/>
+  <path d="M52 62 Q66 52 92 51 L186 49 Q198 49 200 54 L200 84 Q198 90 186 90 L92 89 Q66 88 52 80 Z" fill="url(#steel)" stroke="#1c2125" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M60 62 Q74 56 94 55 L186 53" stroke="#fff" stroke-width="2" fill="none" opacity=".75"/>
+  <path d="M58 79 Q72 84 94 85 L186 86" stroke="#1c2125" stroke-width="2" fill="none" opacity=".5"/>
+  <rect x="98" y="48" width="44" height="44" rx="3" fill="none" stroke="#1c2125" stroke-width="2" opacity=".6"/>
+  <path d="M196 54 L196 86" stroke="#1c2125" stroke-width="2.5" opacity=".7"/>
+  <g font-family="Impact,'Arial Black',sans-serif" font-size="14" letter-spacing="3" text-anchor="middle">
+    <text x="150" y="76" fill="#fff" opacity=".55" transform="translate(.8 1)">ПАЛЫЧ</text>
+    <text x="150" y="76" fill="#262d32">ПАЛЫЧ</text>
+  </g>
+  <ellipse cx="190" cy="60" rx="4" ry="2.4" fill="#2b3338"/><ellipse cx="78" cy="70" rx="3.5" ry="2" fill="#2b3338" opacity=".8"/>
+  <circle cx="72" cy="66" r="2.2" fill="#b5532a" opacity=".7"/><circle cx="170" cy="84" r="2.6" fill="#b5532a" opacity=".6"/><circle cx="186" cy="52" r="1.8" fill="#b5532a" opacity=".7"/>
+</g>
+</svg>
