@@ -256,8 +256,8 @@
     if (UI.sub === 'career') {
       h += '<div class="card"><h3>' + G.jobTitle() + '</h3>';
       h += '<div class="kv"><span>Оклад (≈/мес)</span><span>' + G.rub(G.monthlyPay()) + '</span></div><div class="kv"><span>Смен отработано</span><span>' + c.shifts + '</span></div><div class="kv"><span>Баллы мастерства</span><span>' + Math.floor(st.bm) + '</span></div><div class="kv"><span>Выговоры</span><span>' + c.rep + ' / 3</span></div><div class="kv"><span>Записи в блокнотике</span><span>' + G.noteCount() + '</span></div><div class="kv"><span>Риск увольнения</span><span>' + G.fireRisk() + '%</span></div><div class="kv"><span>Профсоюз</span><span>' + (c.union ? 'да' : 'нет') + '</span></div></div>';
-      if (c.rank === 0) h += '<div class="card"><h3>Испытательный срок</h3><div class="note">Отработано ' + c.probShifts + ' / 20 смен. Пройди инструктажи, не пей, не воруй.</div></div>';
-      else if (c.rank < 9) {
+      if (c.rank === 0) h += '<div class="card"><h3>Испытательный срок</h3><div class="note">Отработано ' + c.probShifts + ' / 5 смен. После пяти смен — экзамен у Соплежуйкина; наставник после допуска больше не закрепляется.</div></div>';
+      else if (c.rank < 10) {
         const L = K.reqLines(c.rank + 1);
         h += '<div class="card"><h3>До «' + D.RANKS[c.rank + 1] + '»</h3>' + L.map(x => '<div class="req ' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✅ ' : '❌ ') + x.t + '</div>').join('') + '<div class="note" style="margin-top:6px">Заявление подаётся у Татищевой (кадры) за взнос.</div></div>';
       }
