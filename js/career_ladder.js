@@ -95,7 +95,9 @@
     resetAttempts(c,target.key);
     c.ladderPending=1;
     const attempt=++c.ladderAttempts;
-    const unseen=bank.filter(q=>!(c.ladderSeen||[]).includes(q[0]));\n    const questions=shuffle(unseen.length>=5?unseen:bank).slice(0,5);\n    c.ladderSeen=(c.ladderSeen||[]).concat(questions.map(q=>q[0]));
+    const unseen=bank.filter(q=>!(c.ladderSeen||[]).includes(q[0]));
+    const questions=shuffle(unseen.length>=5?unseen:bank).slice(0,5);
+    c.ladderSeen=(c.ladderSeen||[]).concat(questions.map(q=>q[0]));
     let idx=0, correct=0;
     const ask=()=>{
       if (idx>=questions.length) { finishExam(); return; }
@@ -103,7 +105,9 @@
       G.modal({title:(target.kind==='management'?'Аттестация руководителя':'Квалификационный экзамен')+' · вопрос '+idx+'/5',face:'soplezhuykin',bg:'checkpoint',text:'<i>Соплежуйкин прищуривается:</i> «'+(idx===1?'Ну-с, посмотрим, чему вас жизнь и завод научили.':'Не торопитесь. Ошибка в ответе — не конец света. Хотя для карьеры…')+'»<br><br><b>'+q[0]+'</b>',opts:opts.map(o=>({t:o.label,fn:()=>{if(o.right)correct++;ask();}}))});
     };
     const finishExam=()=>{
-      const finalScore=Math.max(0,correct+(target.bribeBonus||0)-(target.bribePenalty||0));\n      target.bribeBonus=0; target.bribePenalty=0;\n      const passed=finalScore>=3;
+      const finalScore=Math.max(0,correct+(target.bribeBonus||0)-(target.bribePenalty||0));
+      target.bribeBonus=0; target.bribePenalty=0;
+      const passed=finalScore>=3;
       if(passed){ c.ladderPending=0; c.ladderAttempts=0; c.ladderRetryAt=0; promote(target); return; }
       G.fx({mood:-4,boss:-1});
       if(attempt>=4){
