@@ -88,14 +88,14 @@
     return null;
   }
   function resetAttempts(c, key) {
-    if (c.ladderExamKey !== key) { c.ladderExamKey=key; c.ladderAttempts=0; c.ladderRetryAt=0; }
+    if (c.ladderExamKey !== key) { c.ladderExamKey=key; c.ladderAttempts=0; c.ladderRetryAt=0; c.ladderSeen=[]; }
   }
   function runExam(target) {
     const s=G.s, c=s.car, st=s.st, bank=target.kind==='management'?MGMT_Q:WORK_Q;
     resetAttempts(c,target.key);
     c.ladderPending=1;
     const attempt=++c.ladderAttempts;
-    const questions=shuffle(bank).slice(0,5);
+    const unseen=bank.filter(q=>!(c.ladderSeen||[]).includes(q[0]));\n    const questions=shuffle(unseen.length>=5?unseen:bank).slice(0,5);\n    c.ladderSeen=(c.ladderSeen||[]).concat(questions.map(q=>q[0]));
     let idx=0, correct=0;
     const ask=()=>{
       if (idx>=questions.length) { finishExam(); return; }
@@ -103,15 +103,15 @@
       G.modal({title:(target.kind==='management'?'Аттестация руководителя':'Квалификационный экзамен')+' · вопрос '+idx+'/5',face:'soplezhuykin',bg:'checkpoint',text:'<i>Соплежуйкин прищуривается:</i> «'+(idx===1?'Ну-с, посмотрим, чему вас жизнь и завод научили.':'Не торопитесь. Ошибка в ответе — не конец света. Хотя для карьеры…')+'»<br><br><b>'+q[0]+'</b>',opts:opts.map(o=>({t:o.label,fn:()=>{if(o.right)correct++;ask();}}))});
     };
     const finishExam=()=>{
-      const passed=correct>=3;
+      const finalScore=Math.max(0,correct+(target.bribeBonus||0)-(target.bribePenalty||0));\n      target.bribeBonus=0; target.bribePenalty=0;\n      const passed=finalScore>=3;
       if(passed){ c.ladderPending=0; c.ladderAttempts=0; c.ladderRetryAt=0; promote(target); return; }
       G.fx({mood:-4,boss:-1});
       if(attempt>=4){
         c.ladderPending=0; c.ladderAttempts=0; c.ladderRetryAt=c.shifts+5;
-        G.modal({title:'Соплежуйкин: «Четыре раза — и всё мимо»',face:'soplezhuykin',vib:'error',bg:'checkpoint',text:'Верных ответов: '+correct+'/5. «Приказ о повышении пока не подпишем. Отработайте ещё неделю — пять смен. Потом начнём новую серию попыток. И почитайте что-нибудь, кроме графика отпусков».',opts:[{t:'Отработать неделю',fn:()=>{}}]});
+        G.modal({title:'Соплежуйкин: «Четыре раза — и всё мимо»',face:'soplezhuykin',vib:'error',bg:'checkpoint',text:'Верных ответов: '+finalScore+'/5. «Приказ о повышении пока не подпишем. Отработайте ещё неделю — пять смен. Потом начнём новую серию попыток. И почитайте что-нибудь, кроме графика отпусков».',opts:[{t:'Отработать неделю',fn:()=>{}}]});
       } else {
         c.ladderPending=0; c.ladderRetryAt=c.shifts+1;
-        G.modal({title:'Экзамен не сдан · '+attempt+'/4',face:'soplezhuykin',vib:'warning',text:'Верных ответов: '+correct+'/5. «Три ошибки — это уже почти стабильность. Но у вас ещё есть '+(4-attempt)+' попытки».',opts:[{t:'Попробовать снова',fn:()=>{c.ladderRetryAt=c.shifts; runExam(target); }},{t:'Вернуться к работе',fn:()=>{}}]});
+        G.modal({title:'Экзамен не сдан · '+attempt+'/4',face:'soplezhuykin',vib:'warning',text:'Верных ответов: '+finalScore+'/5. «Три ошибки — это уже почти стабильность. Но у вас ещё есть '+(4-attempt)+' попытки».',opts:[{t:'Попробовать снова',fn:()=>{c.ladderRetryAt=c.shifts; runExam(target); }},{t:'Вернуться к работе',fn:()=>{}}]});
       }
     };
     const bribeOpts=[];
