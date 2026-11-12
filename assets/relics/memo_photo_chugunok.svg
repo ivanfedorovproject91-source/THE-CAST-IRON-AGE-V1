@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" width="256" height="256"><defs>
+<linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#fff2b8"/><stop offset=".28" stop-color="#e9c45a"/>
+  <stop offset=".6" stop-color="#b88626"/><stop offset="1" stop-color="#6b4710"/>
+</linearGradient>
+<linearGradient id="brassH" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#fff0b0"/><stop offset=".35" stop-color="#d9ae45"/>
+  <stop offset=".7" stop-color="#9a6d1c"/><stop offset="1" stop-color="#5e3d0c"/>
+</linearGradient>
+<radialGradient id="enamel" cx=".35" cy=".3" r=".9">
+  <stop offset="0" stop-color="#f0584a"/><stop offset=".45" stop-color="#c8231a"/><stop offset="1" stop-color="#7c0e0a"/>
+</radialGradient>
+<linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#f4f6f7"/><stop offset=".25" stop-color="#b9c1c5"/>
+  <stop offset=".6" stop-color="#78828a"/><stop offset="1" stop-color="#363d42"/>
+</linearGradient>
+<filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="0" dy="5" result="o"/>
+  <feComponentTransfer><feFuncA type="linear" slope=".55"/></feComponentTransfer>
+  <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<filter id="grain" x="0" y="0" width="100%" height="100%">
+  <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/>
+  <feColorMatrix type="matrix" values="0 0 0 0 .1  0 0 0 0 .07  0 0 0 0 .03  0 0 0 -1.1 .62"/>
+</filter>
+<linearGradient id="sep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9a47a"/><stop offset="1" stop-color="#6f5c3e"/></linearGradient>
+<radialGradient id="vig" cx=".5" cy=".5" r=".75"><stop offset=".55" stop-color="#2a1d0e" stop-opacity="0"/><stop offset="1" stop-color="#1a1008" stop-opacity=".62"/></radialGradient></defs>
+<g transform="rotate(-5 128 128)" filter="url(#sh)">
+  <rect x="26" y="22" width="204" height="212" rx="2" fill="#e8e0c8" stroke="#a89c7a" stroke-width="1.5"/>
+  <rect x="26" y="22" width="204" height="212" rx="2" fill="none" stroke="#fff" stroke-width="1" opacity=".5" transform="translate(1 1)"/>
+  <clipPath id="ph"><rect x="44" y="40" width="168" height="136"/></clipPath>
+  <g clip-path="url(#ph)">
+<rect x="44" y="40" width="168" height="136" fill="url(#sep)"/>
+<g opacity=".9">
+  <rect x="56" y="50" width="62" height="54" fill="#d9c9a4"/>
+  <path d="M87 50 V104 M56 77 H118" stroke="#4a3d2a" stroke-width="4"/>
+  <rect x="56" y="50" width="62" height="54" fill="none" stroke="#3a2f20" stroke-width="4"/>
+  <path d="M56 104 L118 50 L118 70 L80 104 Z" fill="#fff" opacity=".13"/>
+</g>
+<g fill="#4a3d2a" opacity=".85">
+  <path d="M213.63 107.80 L219.87 109.18 L219.87 114.82 L213.63 116.20 A24.00 24.00 0 0 1 211.59 122.49 L215.82 127.27 L212.50 131.84 L206.65 129.29 A24.00 24.00 0 0 1 201.30 133.17 L201.91 139.53 L196.54 141.28 L193.31 135.77 A24.00 24.00 0 0 1 186.69 135.77 L183.46 141.28 L178.09 139.53 L178.70 133.17 A24.00 24.00 0 0 1 173.35 129.29 L167.50 131.84 L164.18 127.27 L168.41 122.49 A24.00 24.00 0 0 1 166.37 116.20 L160.13 114.82 L160.13 109.18 L166.37 107.80 A24.00 24.00 0 0 1 168.41 101.51 L164.18 96.73 L167.50 92.16 L173.35 94.71 A24.00 24.00 0 0 1 178.70 90.83 L178.09 84.47 L183.46 82.72 L186.69 88.23 A24.00 24.00 0 0 1 193.31 88.23 L196.54 82.72 L201.91 84.47 L201.30 90.83 A24.00 24.00 0 0 1 206.65 94.71 L212.50 92.16 L215.82 96.73 L211.59 101.51 A24.00 24.00 0 0 1 213.63 107.80 Z"/><circle cx="196" cy="68" r="5" fill="#d9c9a4"/>
+</g>
+<g stroke="#3a2f20" stroke-width="7" fill="none" opacity=".9"><path d="M150 40 V86 H212"/><path d="M168 40 V70 H212"/></g>
+<g fill="#cdbd98" opacity=".35"><circle cx="150" cy="90" r="9"/><circle cx="162" cy="82" r="7"/><circle cx="176" cy="88" r="10"/></g>
+<rect x="44" y="150" width="168" height="26" fill="#2c241a"/>
+<rect x="44" y="146" width="168" height="8" fill="#5c4d38"/>
+<path d="M44 154 H212" stroke="#8c7a58" stroke-width="1.5" opacity=".7"/>
+<rect x="52" y="116" width="36" height="32" fill="#3d3326"/><rect x="52" y="116" width="36" height="6" fill="#6b5a41"/>
+<circle cx="70" cy="136" r="9" fill="#2a2218" stroke="#7a6848" stroke-width="2"/>
+
+    <g transform="translate(0 2) scale(1 1)" clip-path="url(#ph)">
+<g transform="translate(128 150)">
+  <!-- хвост -->
+  <path d="M38 40 C 74 44 82 4 62 -14 C 56 -20 50 -12 56 -6 C 64 6 56 22 34 22 Z" fill="#cf7a2c" stroke="#5a2f0f" stroke-width="2"/>
+  <path d="M70 6 C 74 -2 66 -12 60 -12" stroke="#f4c78a" stroke-width="3" fill="none" opacity=".6"/>
+  <!-- тело -->
+  <path d="M-42 46 C -52 6 -34 -24 0 -26 C 34 -24 52 6 42 46 Z" fill="#d88532" stroke="#5a2f0f" stroke-width="2.2"/>
+  <path d="M-12 -22 C -6 8 -8 30 -10 46 L 10 46 C 8 30 6 8 12 -22 Z" fill="#f6e3c3" opacity=".92"/>
+  <path d="M-34 10 L-24 14 M-36 24 L-24 26 M34 10 L24 14 M36 24 L24 26" stroke="#8a4a14" stroke-width="3.2" stroke-linecap="round"/>
+  <!-- лапы -->
+  <ellipse cx="-17" cy="46" rx="13" ry="7" fill="#f6e3c3" stroke="#5a2f0f" stroke-width="2"/>
+  <ellipse cx="17" cy="46" rx="13" ry="7" fill="#f6e3c3" stroke="#5a2f0f" stroke-width="2"/>
+  <!-- голова -->
+  <path d="M-34 -50 L-30 -76 L-12 -62 L12 -62 L30 -76 L34 -50 C 40 -38 30 -22 0 -22 C -30 -22 -40 -38 -34 -50 Z" fill="#df8c36" stroke="#5a2f0f" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M-27 -58 L-26 -69 L-17 -62 Z M27 -58 L26 -69 L17 -62 Z" fill="#f2a9a0"/>
+  <path d="M-8 -60 L-6 -50 M0 -62 L0 -48 M8 -60 L6 -50" stroke="#8a4a14" stroke-width="3.2" stroke-linecap="round"/>
+  <ellipse cx="0" cy="-30" rx="16" ry="10" fill="#f6e3c3"/>
+  <ellipse cx="-14" cy="-42" rx="7" ry="8" fill="#e9f06a" stroke="#3b200a" stroke-width="1.6"/>
+  <ellipse cx="14" cy="-42" rx="7" ry="8" fill="#e9f06a" stroke="#3b200a" stroke-width="1.6"/>
+  <ellipse cx="-14" cy="-42" rx="2.4" ry="6.5" fill="#1a0e05"/><ellipse cx="14" cy="-42" rx="2.4" ry="6.5" fill="#1a0e05"/>
+  <circle cx="-16" cy="-45" r="1.6" fill="#fff"/><circle cx="12" cy="-45" r="1.6" fill="#fff"/>
+  <path d="M-4 -33 L4 -33 L0 -28 Z" fill="#d9706a" stroke="#5a2f0f" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M0 -28 Q -6 -22 -11 -26 M0 -28 Q 6 -22 11 -26" stroke="#3b200a" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M-20 -32 L-44 -37 M-20 -28 L-44 -26 M20 -32 L44 -37 M20 -28 L44 -26" stroke="#f6e3c3" stroke-width="1.6" stroke-linecap="round" opacity=".9"/>
+</g>
+</g>
+    <rect x="44" y="40" width="168" height="136" fill="url(#vig)"/>
+    <rect x="44" y="40" width="168" height="136" filter="url(#grain)" opacity=".55"/>
+  </g>
+  <rect x="44" y="40" width="168" height="136" fill="none" stroke="#3a2f20" stroke-width="1.5" opacity=".7"/>
+  <path d="M44 40 L62 40 L44 58 Z M212 40 L194 40 L212 58 Z M44 176 L62 176 L44 158 Z M212 176 L194 176 L212 158 Z" fill="#1d1812" opacity=".9"/>
+  <text x="128" y="204" text-anchor="middle" font-family="'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive" font-style="italic" font-size="17" fill="#24224a">Чугунок. Цех №3</text>
+  <path d="M70 212 Q128 218 186 211" stroke="#24224a" stroke-width="1.4" fill="none" opacity=".6"/>
+  <path d="M60 222 L196 222" stroke="#a89c7a" stroke-width=".8" opacity=".5"/>
+  <path d="M30 26 L60 22 L28 56 Z" fill="#fff" opacity=".25"/>
+  <path d="M206 214 Q214 230 226 232 L226 218 Z" fill="#cfc4a2" opacity=".6"/>
+</g>
+<g transform="translate(210 14) rotate(18)" fill="none" stroke="#8d949a" stroke-width="3" stroke-linecap="round">
+  <path d="M0 0 V34 a8 8 0 0 0 16 0 V-6 a5 5 0 0 0 -10 0 V28"/>
+</g>
+</svg>

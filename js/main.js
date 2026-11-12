@@ -23,7 +23,7 @@
       if (sc && sc.innerHTML.length > 50) return;
       const d = document.createElement('div');
       d.style.cssText = 'position:fixed;inset:0;z-index:999;background:#121110;color:#eee;padding:24px;font-family:sans-serif;overflow:auto';
-      d.innerHTML = '<h2>Игра не смогла запуститься</h2><p>Нажми «Перезапустить». Если не помогло — «Сбросить сохранение» (прогресс этого устройства будет стёрт).</p><p style="font-size:12px;color:#aaa">Диагностика: ' + (window.__errs || []).slice(0, 5).join(' | ').replace(/</g, '&lt;') + '<br>' + (navigator.userAgent || '') + '</p><button style="font-size:18px;padding:12px 18px;margin:6px" onclick="location.reload()">Перезапустить</button><button style="font-size:18px;padding:12px 18px;margin:6px" onclick="try{localStorage.clear()}catch(e){};location.reload()">Сбросить сохранение</button>';
+      d.innerHTML = '<h2>Игра не смогла запуститься</h2><p>Нажми «Перезапустить». Если не помогло — «Сбросить сохранение» (прогресс этого устройства будет стёрт).</p><p style="font-size:12px;color:#aaa">Диагностика: ' + (window.__errs || []).slice(0, 5).join(' | ').replace(/</g, '&lt;') + '<br>' + (navigator.userAgent || '') + '</p><button style="font-size:18px;padding:12px 18px;margin:6px" onclick="location.reload()">Перезапустить</button><button style="font-size:18px;padding:12px 18px;margin:6px" onclick="try{var ks=[];for(var i=0;i<localStorage.length;i++){var n=localStorage.key(i);if(n.indexOf(\'chugunny_vek_relics\')!==0)ks.push(n)}ks.forEach(function(n){localStorage.removeItem(n)})}catch(e){};location.reload()">Сбросить сохранение</button>';
       document.body.appendChild(d);
     } catch (e) {}
   }, 3000);
