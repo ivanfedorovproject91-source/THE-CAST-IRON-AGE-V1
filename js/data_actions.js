@@ -133,7 +133,7 @@
   S('bank', 'c_bank', 'Банк', 'Поговорить с менеджером', '🏦', 0, {}, '', { menu: true, fn: () => { G.bankMenu(); return 'custom'; } });
   S('lombard', 'c_lombard', 'Ломбард', 'Заложить вещь (40%)', '🦷', 0, {}, '', { menu: true, fn: () => { G.lombardMenu(); return 'custom'; } });
   S('mall', 'c_mall', 'ТЦ', 'Электроника и часы', '🛍️', 0, {}, '', { menu: true, fn: () => { G.statusMenu(['phone', 'watch', 'laptop', 'clothes'], 'ТЦ «Золотой Чугун»'); return 'custom'; } });
-  S('autosalon', 'c_auto', 'Автосалон', 'Посмотреть машины', '🚗', 0, {}, '', { menu: true, fn: () => { G.statusMenu(['car'], 'Автосалон «Лада и К»'); return 'custom'; } });
+  S('autosalon', 'c_auto', 'Автосалон', 'Посмотреть машины', '🚗', 0, {}, '', { menu: true, fn: () => { G.cars.showroom(); return 'custom'; } });
   S('gigs', 'c_jobs', 'Подработки', 'Выбрать подработку', '📌', 0, {}, '', { menu: true, fn: () => { G.gigMenu(); return 'custom'; } });
   S('fishing', 'c_nature', 'Природа', 'Рыбалка с Палычем (4 ч)', '🎣', 4, { mood: 20, energy: -4, rel: { palych: 5 }, coll: 2 }, 'Тишина, поплавок, Палыч с термосом.', { fn: s => { if (G.chance(25)) { G.toast('Поймал сапог. Зато свой!'); } else if (G.chance(50)) { G.give('bread', 1); G.toast('Поймал рыбу! Сытный ужин.'); } } });
   S('dacha', 'c_nature', 'Природа', 'Огород у бабы Нюры', '🥔', 3, { satiety: 25, health: 2, energy: -10, mood: 2, rel: { nyura: 4 } }, 'Картошка и ломота в пояснице.');
@@ -216,7 +216,7 @@
   G.lombardMenu = function () {
     const s = G.s, ids = Object.keys(s.own).filter(k => D.STATUS[k].tier !== 'flat');
     if (!ids.length) { G.info('Ломбард «Золотой Зуб»', 'Закладывать нечего. Могу принять ваш скепсис в залог — но не дорого.'); return; }
-    G.modal({ title: 'Ломбард', text: 'Принимают на 40% стоимости.', opts: ids.map(k => ({ t: D.STATUS[k].e + ' ' + D.STATUS[k].n + ' — ' + G.rub(D.STATUS[k].p * 0.4), fn: () => { G.addMoney(Math.round(D.STATUS[k].p * 0.4)); delete s.own[k]; G.toast('Заложено: ' + D.STATUS[k].n, 'warn'); } })).concat([{ t: 'Уйти', fn: () => {} }]), wide: true });
+    G.modal({ title: 'Ломбард', text: 'Принимают на 40% стоимости.', opts: ids.map(k => ({ t: D.STATUS[k].e + ' ' + D.STATUS[k].n + ' — ' + G.rub(Math.round(G.pawnVal(k))), fn: () => { G.addMoney(Math.round(G.pawnVal(k))); delete s.own[k]; G.toast('Заложено: ' + D.STATUS[k].n, 'warn'); } })).concat([{ t: 'Уйти', fn: () => {} }]), wide: true });
   };
   G.casino = function () {
     const s = G.s;
@@ -1916,12 +1916,11 @@
     });
     D.NICKS.zasranec = { n: 'Засранец', fx: { coll: -1 }, bad: 1 };
     const carOwned = () => { const k = Object.keys(G.s.own || {}).find(x => D.STATUS[x] && D.STATUS[x].tier === 'car'); return k ? { key: k, v: D.STATUS[k].v, n: D.STATUS[k].n } : null; };
-    const fuelCost = v => Math.round((500 + 1100 * v + 300 * v * v) / 100) * 100, svcCost = v => Math.round((900 + 1800 * v + 500 * v * v) / 100) * 100;
     G.carInfo = carOwned;
-    const car$ = () => { const f = F(), c = carOwned(); if (!c) return null; if (!f.car || f.car.key !== c.key) f.car = { key: c.key, cond: 100, fuelWk: -1, broken: -1 }; return Object.assign(f.car, { v: c.v, n: c.n }); };
+    const car$ = () => G.cars.state();
     const MODES = { walk: '🚶 Пешком', scooter: '🛴 Электросамокат', bus: '🚌 Автобус', car: '🚗 Своя машина' };
-    const carBlock = () => { const c = car$(); if (!c) return 'Нет машины'; if (c.broken >= G.s.t.day) return 'Машина в ремонте до дня ' + c.broken; const need = c.fuelWk !== G.week() ? fuelCost(c.v) : 0; return need > G.s.money ? 'Нет денег на бензин (' + mon(need) + ')' : null; };
-    const modeInfo = m => { const c = car$(); return ({ walk: 'сильнее устанешь (−8 энергии)', scooter: '300 ₽, почти не устаёшь', bus: '60 ₽, энергия цела, но настроение падает (−8)', car: c ? c.n + (c.fuelWk !== G.week() ? ' · заправка ' + mon(fuelCost(c.v)) : ' · бак полон') : '' })[m]; };
+    const carBlock = () => { const c = car$(); return c ? G.cars.blockReason(c) : 'Нет машины'; };
+    const modeInfo = m => { const c = car$(); return ({ walk: 'сильнее устанешь (−8 энергии)', scooter: '300 ₽, почти не устаёшь', bus: '60 ₽, энергия цела, но настроение падает (−8)', car: c ? c.n + ' · бак ' + Math.floor(c.fuel) + ' л (на день ≈' + Math.ceil(G.cars.dayFuel(c)) + ' л)' : '' })[m]; };
     const canMode = m => { const s = G.s; if (m === 'scooter' && s.money < 300) return 'Нет денег'; if (m === 'bus' && s.money < 60) return 'Нет денег'; if (m === 'car') return carBlock(); return null; };
     function go(mode, next) {
       const s = G.s, f = F(), st = s.st, c = car$();
@@ -1930,10 +1929,9 @@
       else if (mode === 'scooter') { G.fx({ money: -300, energy: -2, mood: 1 }); msg('Прокатился на электросамокате: ветер, свобода и минус 300 ₽.'); }
       else if (mode === 'bus') { G.fx({ money: -60, mood: -8 }); msg('Автобус: давка, запахи, чужой локоть. Энергия цела, настроение — нет.', 'warn'); }
       else {
-        if (c.fuelWk !== G.week()) { G.addMoney(-fuelCost(c.v)); c.fuelWk = G.week(); G.toast('Заправился на неделю: −' + mon(fuelCost(c.v)), 'warn'); }
-        const p = Math.max(0.02, (0.03 + (100 - c.cond) * 0.0015) * Math.max(0.6, 1.6 - 0.25 * c.v)); c.cond = Math.max(0, c.cond - 2.5);
+        const r = G.cars.trip(c);
         G.fx({ mood: 2 + Math.round(c.v * 1.5), cool: Math.round(c.v) });
-        if (G.chance(p * 100)) { c.broken = s.t.day + (c.v < 2 ? 3 : 2); const rc = Math.min(s.money, Math.round(svcCost(c.v) * 0.5)); G.addMoney(-rc); G.fx({ energy: -6, mood: -5, boss: -1 }); msg('🔧 Машина сломалась по дороге! Эвакуатор и ремонт: −' + mon(rc) + '. Опоздал и вымотался. Пару дней она в сервисе.', 'bad'); }
+        if (r.broke) { G.fx({ energy: -6, mood: -5, boss: -1 }); msg('🔧 Машина сломалась по дороге! Эвакуатор и ремонт: −' + mon(r.cost) + '. Опоздал и вымотался. Пару дней она в сервисе.', 'bad'); }
         else msg('Приехал на ' + c.n + '. Сидеть в тепле — уже счастье.', 'good');
       }
       next();
@@ -1942,6 +1940,7 @@
       const f = F(), opts = [];
       if (f.commute && f.commute.mode && !canMode(f.commute.mode)) opts.push({ t: '↩ Как обычно: ' + MODES[f.commute.mode], fn: () => go(f.commute.mode, next) });
       Object.keys(MODES).forEach(m => { if (m === 'car' && !carOwned()) return; opts.push({ t: MODES[m] + ' — ' + modeInfo(m), dis: canMode(m), fn: () => go(m, next) }); });
+      if (carOwned()) opts.push({ t: '⛽ Заправить / осмотреть машину', fn: () => G.cars.open({ back: () => G.commuteChoose(next) }) });
       G.modal({ title: 'Как добираешься на работу?', text: 'Утро. Смена с 8:00.', opts });
     };
     function homeTrip() {
@@ -1949,7 +1948,7 @@
       if (m === 'walk') { G.fx({ energy: -4 }); msg('Домой пешком: устал, но дошёл.'); }
       else if (m === 'scooter') { if (s.money >= 150) { G.fx({ money: -150, energy: -1 }); msg('Домой на самокате: −150 ₽.'); } else { G.fx({ energy: -4 }); msg('Самокат не оплатить — пошёл пешком.', 'warn'); } }
       else if (m === 'bus') { G.fx({ money: -Math.min(60, Math.max(0, s.money)), mood: -4 }); msg('Домой на автобусе: давка и тоска.', 'warn'); }
-      else { const c = car$(); if (c && c.broken < s.t.day) { G.fx({ mood: 1 }); c.cond = Math.max(0, c.cond - 1.5); msg('Домой на машине: тепло и музыка.'); } else { G.fx({ energy: -4 }); } }
+      else { const c = car$(); if (c && c.broken < s.t.day && c.fuel >= G.cars.tripFuel(c)) { const r = G.cars.trip(c); if (r.broke) { G.fx({ energy: -5, mood: -4 }); msg('🔧 Машина встала по дороге домой! Эвакуатор: −' + mon(r.cost) + '.', 'bad'); } else { G.fx({ mood: 1 }); msg('Домой на машине: тепло и музыка.'); } } else { G.fx({ energy: -4 }); } }
     }
     const _es2 = G.endShift; G.endShift = function () { try { homeTrip(); } catch (e) {} return _es2.apply(this, arguments); };
     const wrapCommute = () => {
@@ -1961,7 +1960,7 @@
       };
     };
     window.addEventListener('load', wrapCommute); setTimeout(wrapCommute, 50);
-    A('car_service', { ph: ['free'], loc: 'home', g: 'Быт', n: 'Техобслуживание машины', i: '🛠️', menu: true, req: s => { const c = car$(); return !c ? 'Нет машины' : c.cond >= 98 && c.broken < s.t.day ? 'Машина в порядке' : s.money < svcCost(c.v) ? 'Нет денег (' + mon(svcCost(c.v)) + ')' : null; }, fn: () => { const c = car$(), p = svcCost(c.v); G.addMoney(-p); c.cond = 100; c.broken = -1; G.fx({ mood: 2 }); msg('ТО пройдено (' + mon(p) + '): масло, колодки, фильтры. Машина как новая.', 'good'); sp(); return 'custom'; } });
+    A('car_service', { ph: ['free'], loc: 'home', g: 'Быт', n: 'Автомобиль: заправка, ремонт, ТО', i: '🛠️', menu: true, req: () => (car$() ? null : 'Нет машины'), fn: () => { G.cars.open(); return 'custom'; } });
     // Машина — постоянный плюс к энергии, настроению, уважению
     const _dt25 = G.dailyTick; G.dailyTick = function () {
       const r = _dt25.apply(this, arguments), s = G.s, st = s.st, c = car$();

@@ -79,7 +79,7 @@
     const rankH = '<div class="tb-rank"><b>' + esc(G.jobTitle()) + '</b>' + (ri.noStars ? '' : '<span class="stars">' + starsH + '</span>') + '</div>';
     const subH = '<div class="tb-prog">' + ri.line + '</div>';
     const nickH = '<div class="tb-nick">' + (nick ? '<span class="nk">«' + esc(nick) + '»</span> ' : '') + esc(G.status()) + (G.admirerMark ? G.admirerMark() : '') + '</div>';
-    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div><div class="tb-info"><div class="tb-name">' + esc(s.name) + '</div>' + rankH + subH + nickH + '</div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + '</div><div class="tb-time">' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
+    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div>' + (G.cars ? G.cars.topIcon() : '') + '<div class="tb-info"><div class="tb-name">' + esc(s.name) + '</div>' + rankH + subH + nickH + '</div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + '</div><div class="tb-time">' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
   }
   function navHTML() {
     const ph = G.s && G.s.phase, home = !(ph === 'locker' || ph === 'work' || ph === 'lunch');
@@ -278,6 +278,7 @@
     if (UI.sub === 'log') return h + s.log.slice(0, 60).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('');
     // досье
     h += '<div class="card" style="display:flex;gap:12px;align-items:center"><div class="prev" style="margin:0;flex:none;width:96px;height:96px">' + G.playerFace() + '</div><div><b style="font-family:var(--f-head);font-size:17px">' + esc(s.name) + '</b><div class="note">' + G.status() + '</div><div class="note">Очки жизни: <b style="color:var(--haz)">' + G.ojScore() + '</b></div>' + (s.nicks.length ? '<div class="note">Клички: ' + s.nicks.map(n => '«' + D.NICKS[n].n + '»').join(', ') + '</div>' : '') + '</div></div>';
+    if (G.cars) h += G.cars.dossierCard();
     h += '<div class="card"><h3>Показатели</h3><div class="bars" style="grid-template-columns:1fr">' + [['❤ Здоровье', st.health], ['⚡ Энергия', st.energy], ['🙂 Настроение', st.mood], ['🍲 Сытость', st.satiety], ['🧼 Опрятность', st.neat], ['👔 Начальство', st.boss, 'blue'], ['🤝 Коллеги', st.coll, 'blue'], ['💪 Сила', (G.s.flags.str || 0), 'blue'], ['😎 Крутизна', st.cool, 'blue'], ['⚖ Совесть', st.cons, 'blue'], ['📘 Знания', st.know, 'blue'], ['☣ Токсичность', st.tox, '', 1], ['🥃 Тяга', st.craving, '', 1], ['🍾 Привычка', st.habit, '', 1], ['🍺 Опьянение', st.drunk, 'rust', 1]].map(x => bar(x[0], x[1], x[2], x[3])).join('') + '</div></div>';
     if (G.plantStats) { const ps = G.plantStats(); h += '<div class="card"><h3>🏭 Завод</h3><div class="bars" style="grid-template-columns:1fr">' + [['🏭 Состояние завода', ps.plant, 'blue'], ['📊 Выполнение плана', ps.plan, 'blue'], ['🎵 Настроение цеха', ps.morale, 'blue']].map(x => bar(x[0], x[1], x[2])).join('') + '</div></div>'; }
     if (G.progressCard) h += G.progressCard();
