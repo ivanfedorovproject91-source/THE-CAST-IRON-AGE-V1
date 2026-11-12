@@ -10,12 +10,18 @@
   };
   function init(){
     const f=F();
-    if(!f.petCat)f.petCat={satiety:75,mood:70,trust:Math.max(15,f.catLove||10),health:90,energy:75,lastFed:f.catFed||G.s.t.day,lastCare:G.s.t.day};
+    // Старые сохранения: catFed записывался только при фактическом переезде кота.
+    if(f.cat && f.catFed != null && f.catHome == null) f.catHome=1;
+    if((f.cat || f.catHome) && !f.petCat) f.petCat={satiety:75,mood:70,trust:Math.max(15,f.catLove||10),health:90,energy:75,lastFed:f.catFed||G.s.t.day,lastCare:G.s.t.day};
+    if(f.catHome) f.cat=1;
     if(f.dog&&!f.petDog)f.petDog={satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:G.s.t.day,lastCare:G.s.t.day,lastWalk:G.s.t.day};
-    if(f.petCat)f.cat=1;
-    if(f.petDog)f.dog=1;
   }
-  function petState(type){init();return F()[SPEC[type].key];}
+  function petState(type){
+    init();
+    const f=F(),key=SPEC[type].key;
+    if(!f[key])f[key]=type==='cat'?{satiety:75,mood:70,trust:Math.max(15,f.catLove||10),health:90,energy:75,lastFed:f.catFed||G.s.t.day,lastCare:G.s.t.day}:{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:G.s.t.day,lastCare:G.s.t.day,lastWalk:G.s.t.day};
+    return f[key];
+  }
   function clampPet(p){['satiety','mood','trust','health','energy'].forEach(k=>p[k]=C(Math.round(p[k]),0,100));}
   function bars(p){
     return ['satiety','mood','trust','health','energy'].map((k)=>'<div class="kv"><span>'+({satiety:'Сытость',mood:'Настроение',trust:'Доверие',health:'Здоровье',energy:'Энергия'}[k])+'</span><b>'+Math.round(p[k])+'/100</b></div>').join('');
@@ -37,7 +43,7 @@
       {t:'🧶 Поиграть',dis:p.energy<15?'Кот устал':null,fn:()=>result('cat','Охота на верёвочку','Чугунок крадётся, прыгает за игрушкой и в конце победно валится на бок.',{mood:3},{mood:12,trust:5,energy:-18,satiety:-7})},
       {t:'👀 Наблюдать за поведением',fn:()=>{const mood=p.mood>70?'довольно мурлычет и ищет компанию':p.mood<30?'прячется и просит оставить его в покое':'умывается и внимательно следит за происходящим';G.modal({title:'Наблюдение за Чугунком',face:'chugunok',text:'Чугунок '+mood+'.<br><br>'+bars(p),opts:[{t:'Продолжить',fn:()=>{}}]});}},
       {t:'🧼 Ухаживать',fn:()=>result('cat','Уход за котом','Ты проверил воду, чистоту места отдыха и шерсть. Чугунок доволен спокойным уходом.',{mood:2},{health:5,mood:5,trust:4,energy:3})},
-      {t:'🏠 Забрать домой (500 ₽)',dis:!G.isFree()?'Забрать домой можно после смены':F().cat?'Уже дома':s.money<500?'Нет денег':null,fn:()=>{G.addMoney(-500);F().cat=1;F().petCat=p;G.fx({mood:8});G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осмотрел комнату, выбрал самое тёплое место и улёгся. На заводе теперь появится новый хвостатый знакомый — пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:s.t.day,lastCare:s.t.day,lastWalk:s.t.day};G.R('chugun').met=true;}}]});}}
+      {t:'🏠 Забрать домой (500 ₽)',dis:!G.isFree()?'Забрать домой можно после смены':F().catHome?'Уже дома':s.money<500?'Нет денег':null,fn:()=>{G.addMoney(-500);F().cat=1;F().catHome=1;F().petCat=p;G.fx({mood:8});G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осмотрел комнату, выбрал самое тёплое место и улёгся. На заводе теперь появится новый хвостатый знакомый — пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:s.t.day,lastCare:s.t.day,lastWalk:s.t.day};G.R('chugun').met=true;}}]});}}
     ];
     G.modal({title:'🐈 Чугунок — заводской кот',face:'chugunok',text:'Рыжий кот — самостоятельное животное. Не разговаривает как человек, а отвечает позой, мурлыканьем и поведением.<br><br>'+bars(p),opts:opts.concat([{t:'Закрыть',fn:()=>{}}]),wide:true});
   }
@@ -76,14 +82,14 @@
       if(p.health<25)G.toast((type==='cat'?'Чугунок':'Чугун')+' выглядит нездоровым. Не забудь об уходе.', 'warn');
       clampPet(p);
     });
-    if(f.cat){f.catLove=f.petCat.trust;f.catFed=f.petCat.lastFed;}
+    if(f.catHome && f.petCat){f.catLove=f.petCat.trust;f.catFed=f.petCat.lastFed;}
     return r;
   };
   const oldCatTake=G.ACT.cat_take;
   if(oldCatTake){
-    oldCatTake.req=s=>s.flags.cat?'Уже дома':s.car.shifts<8?'Пока не знакомы':s.money<500?'Нет денег':null;
+    oldCatTake.req=s=>s.flags.catHome?'Уже дома':s.car.shifts<8?'Пока не знакомы':s.money<500?'Нет денег':null;
     oldCatTake.fn=function(){
-      G.addMoney(-500);F().cat=1;F().catLove=5;F().catFed=G.s.t.day;init();
+      G.addMoney(-500);F().cat=1;F().catHome=1;F().catLove=5;F().catFed=G.s.t.day;init();
       G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осторожно осмотрел комнату, выбрал тёплый угол и свернулся клубком. На заводе появился новый хвостатый знакомый — добрый пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:G.s.t.day,lastCare:G.s.t.day,lastWalk:G.s.t.day};G.R('chugun').met=true;G.toast('Чугун теперь живёт во дворе завода.','good');}}]});
       G.spend(1); return 'custom';
     };
@@ -98,9 +104,14 @@
   const _special=G.npcSpecial;
   G.npcSpecial=function(id){const o=_special.apply(this,arguments);if(id==='chugunok')o.push({t:'🐈 Уход и общение с Чугунком',fn:()=>G.petMenu('cat')});if(id==='chugun')o.push({t:'🐕 Уход и общение с Чугуном',fn:()=>G.petMenu('dog')});return o;};
   const oldAt=G.npcLoc;
-  G.npcLoc=function(id){const f=F();if(id==='chugunok'&&f.cat)return null;if(id==='chugun'&&f.dog)return 'yard';return oldAt.apply(this,arguments);};
+  G.npcLoc=function(id){
+    const f=F();
+    if(id==='chugunok'&&f.catHome)return null;
+    if(id==='chugun')return f.dog?'yard':null;
+    return oldAt.apply(this,arguments);
+  };
   const oldPeople=G.peopleAt;
-  G.peopleAt=loc=>{const ids=oldPeople(loc);if(F().dog&&loc==='yard'&&ids.indexOf('chugun')<0)ids.push('chugun');return ids;};
+  G.peopleAt=loc=>oldPeople(loc).filter(id=>id!=='chugun'||!!F().dog);
   const oldJob=G.jobTitle;
   G.sanitizePet=function(){init();};
 })();
