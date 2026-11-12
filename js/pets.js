@@ -82,7 +82,7 @@
     oldCatTake.fn=function(){
       G.addMoney(-500);F().cat=1;F().catLove=5;F().catFed=G.s.t.day;init();
       G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осторожно осмотрел комнату, выбрал тёплый угол и свернулся клубком. На заводе появился новый хвостатый знакомый — добрый пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:G.s.t.day,lastCare:G.s.t.day,lastWalk:G.s.t.day};G.R('chugun').met=true;G.toast('Чугун теперь живёт во дворе завода.','good');}}]});
-      return 'custom';
+      G.spend(1); return 'custom';
     };
   }
   ['cat_feed','cat_play'].forEach(id=>{const a=G.ACT[id];if(a){a.once=null;a.fx=null;a.txt='';a.menu=true;a.fn=()=>{G.petMenu('cat');return 'custom';};}});
