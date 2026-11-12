@@ -10,7 +10,7 @@
   };
   function init(){
     const f=F();
-    if(f.cat&&!f.petCat)f.petCat={satiety:75,mood:70,trust:Math.max(15,f.catLove||10),health:90,energy:75,lastFed:f.catFed||G.s.t.day,lastCare:G.s.t.day};
+    if(!f.petCat)f.petCat={satiety:75,mood:70,trust:Math.max(15,f.catLove||10),health:90,energy:75,lastFed:f.catFed||G.s.t.day,lastCare:G.s.t.day};
     if(f.dog&&!f.petDog)f.petDog={satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:G.s.t.day,lastCare:G.s.t.day,lastWalk:G.s.t.day};
     if(f.petCat)f.cat=1;
     if(f.petDog)f.dog=1;
@@ -35,7 +35,7 @@
       {t:'🧶 Поиграть',dis:p.energy<15?'Кот устал':null,fn:()=>result('cat','Охота на верёвочку','Чугунок крадётся, прыгает за игрушкой и в конце победно валится на бок.',{mood:3},{mood:12,trust:5,energy:-18,satiety:-7})},
       {t:'👀 Наблюдать за поведением',fn:()=>{const mood=p.mood>70?'довольно мурлычет и ищет компанию':p.mood<30?'прячется и просит оставить его в покое':'умывается и внимательно следит за происходящим';G.modal({title:'Наблюдение за Чугунком',face:'chugunok',text:'Чугунок '+mood+'.<br><br>'+bars(p),opts:[{t:'Продолжить',fn:()=>{}}]});}},
       {t:'🧼 Ухаживать',fn:()=>result('cat','Уход за котом','Ты проверил воду, чистоту места отдыха и шерсть. Чугунок доволен спокойным уходом.',{mood:2},{health:5,mood:5,trust:4,energy:3})},
-      {t:'🏠 Забрать домой (500 ₽)',dis:F().cat?'Уже дома':s.money<500?'Нет денег':null,fn:()=>{G.addMoney(-500);F().cat=1;F().petCat=p;G.fx({mood:8});G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осмотрел комнату, выбрал самое тёплое место и улёгся. На заводе теперь появится новый хвостатый знакомый — пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:s.t.day,lastCare:s.t.day,lastWalk:s.t.day};G.R('chugun').met=true;}}]});}}
+      {t:'🏠 Забрать домой (500 ₽)',dis:!G.isFree()?'Забрать домой можно после смены':F().cat?'Уже дома':s.money<500?'Нет денег':null,fn:()=>{G.addMoney(-500);F().cat=1;F().petCat=p;G.fx({mood:8});G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осмотрел комнату, выбрал самое тёплое место и улёгся. На заводе теперь появится новый хвостатый знакомый — пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:s.t.day,lastCare:s.t.day,lastWalk:s.t.day};G.R('chugun').met=true;}}]});}}
     ];
     G.modal({title:'🐈 Чугунок — заводской кот',face:'chugunok',text:'Рыжий кот — самостоятельное животное. Не разговаривает как человек, а отвечает позой, мурлыканьем и поведением.<br><br>'+bars(p),opts:opts.concat([{t:'Закрыть',fn:()=>{}}]),wide:true});
   }
@@ -86,6 +86,8 @@
     };
   }
   ['cat_feed','cat_play'].forEach(id=>{const a=G.ACT[id];if(a){a.once=null;a.fx=null;a.txt='';a.menu=true;a.fn=()=>{G.petMenu('cat');return 'custom';};}});
+  if(G.ACT.cat_feed){G.ACT.cat_feed.n='Уход и общение с Чугунком';G.ACT.cat_feed.i='🐈';G.ACT.cat_feed.req=s=>!s.flags.cat?'Кот пока не дома':null;}
+  if(G.ACT.cat_play)G.ACT.cat_play.ph=[];
   const _npcMenu=G.npcMenu;
   G.npcMenu=function(id){if(id==='chugunok')return G.petMenu('cat');if(id==='chugun')return G.petMenu('dog');return _npcMenu.apply(this,arguments);};
   const _talk=G.talkTo;
