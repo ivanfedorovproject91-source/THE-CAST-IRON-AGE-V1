@@ -22,14 +22,19 @@
     const c = ap.skin;
     return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20 30 L30 8 L44 24Z M80 30 L70 8 L56 24Z" fill="' + c + '"/><ellipse cx="50" cy="56" rx="34" ry="30" fill="' + c + '"/><path d="M36 34 q4 6 0 12 M64 34 q-4 6 0 12 M50 28 v10" stroke="' + shade(c, 0.7) + '" stroke-width="3" fill="none"/><ellipse cx="38" cy="54" rx="5" ry="6" fill="#ffe27a"/><ellipse cx="62" cy="54" rx="5" ry="6" fill="#ffe27a"/><ellipse cx="38" cy="55" rx="1.6" ry="5" fill="#222"/><ellipse cx="62" cy="55" rx="1.6" ry="5" fill="#222"/><path d="M46 66 h8 l-4 5z" fill="#e8808a"/><path d="M50 71 q-6 6 -12 2 M50 71 q6 6 12 2" stroke="#222" fill="none" stroke-width="1.6"/><path d="M14 64 h14 M14 70 h14 M86 64 h-14 M86 70 h-14" stroke="#fff" stroke-width="1" opacity=".8"/></svg>';
   }
-  function dog(ap) {\n    const c=ap.skin||'#b8895b';\n    return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M22 34 Q4 20 10 56 Q14 76 34 64Z" fill="'+shade(c,0.78)+'"/><path d="M78 34 Q96 20 90 56 Q86 76 66 64Z" fill="'+shade(c,0.78)+'"/><ellipse cx="50" cy="56" rx="34" ry="31" fill="'+c+'"/><ellipse cx="50" cy="70" rx="17" ry="12" fill="#ead5bd"/><circle cx="38" cy="52" r="5" fill="#fff"/><circle cx="62" cy="52" r="5" fill="#fff"/><circle cx="39" cy="52" r="2.3" fill="#222"/><circle cx="61" cy="52" r="2.3" fill="#222"/><ellipse cx="50" cy="66" rx="5" ry="3.5" fill="#292421"/><path d="M50 69 q-6 7 -12 1 M50 69 q6 7 12 1" stroke="#51382b" fill="none" stroke-width="1.8"/><path d="M28 82 Q50 92 72 82" stroke="#ead5bd" stroke-width="4" fill="none"/></svg>';\n  }\n  function squirrel(ap) {
+  function dog(ap) {
+    const c=ap.skin||'#b8895b';
+    return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M22 34 Q4 20 10 56 Q14 76 34 64Z" fill="'+shade(c,0.78)+'"/><path d="M78 34 Q96 20 90 56 Q86 76 66 64Z" fill="'+shade(c,0.78)+'"/><ellipse cx="50" cy="56" rx="34" ry="31" fill="'+c+'"/><ellipse cx="50" cy="70" rx="17" ry="12" fill="#ead5bd"/><circle cx="38" cy="52" r="5" fill="#fff"/><circle cx="62" cy="52" r="5" fill="#fff"/><circle cx="39" cy="52" r="2.3" fill="#222"/><circle cx="61" cy="52" r="2.3" fill="#222"/><ellipse cx="50" cy="66" rx="5" ry="3.5" fill="#292421"/><path d="M50 69 q-6 7 -12 1 M50 69 q6 7 12 1" stroke="#51382b" fill="none" stroke-width="1.8"/><path d="M28 82 Q50 92 72 82" stroke="#ead5bd" stroke-width="4" fill="none"/></svg>';
+  }
+  function squirrel(ap) {
     const c = ap.skin;
     return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="30" r="9" fill="' + c + '"/><circle cx="76" cy="30" r="9" fill="' + c + '"/><ellipse cx="50" cy="58" rx="30" ry="28" fill="' + c + '"/><ellipse cx="50" cy="66" rx="16" ry="14" fill="#f3d9b8"/><circle cx="39" cy="52" r="5" fill="#fff"/><circle cx="61" cy="52" r="5" fill="#fff"/><circle cx="40" cy="53" r="2.4" fill="#111"/><circle cx="60" cy="53" r="2.4" fill="#111"/><ellipse cx="50" cy="63" rx="3.5" ry="2.5" fill="#333"/><path d="M50 66 q-4 6 -8 3 M50 66 q4 6 8 3" stroke="#222" fill="none" stroke-width="1.5"/><rect x="45" y="68" width="4" height="7" fill="#fff" stroke="#999" stroke-width=".6"/><rect x="51" y="68" width="4" height="7" fill="#fff" stroke="#999" stroke-width=".6"/><path d="M22 36 Q50 -2 78 36 Z" fill="#f2c200"/><rect x="18" y="34" width="64" height="6" rx="3" fill="#d9a900"/></svg>';
   }
 
   G.avatar = function (ap, o) {
     o = o || {};
-    if (ap.cat) return cat(ap);\n    if (ap.dog) return dog(ap);
+    if (ap.cat) return cat(ap);
+    if (ap.dog) return dog(ap);
     if (ap.squirrel) return squirrel(ap);
     let skin = ap.skin;
     if (o.pale) skin = shade(skin, 0.9);
