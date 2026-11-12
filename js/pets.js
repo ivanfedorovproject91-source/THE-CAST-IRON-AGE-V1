@@ -112,7 +112,8 @@
       if(G.s.phase==='work')return 'shop';
       if(G.s.phase==='lunch')return 'canteen';
       if(G.s.phase==='locker')return 'locker';
-      if(G.s.phase==='morning'||G.s.phase==='checkpoint')return 'locker';
+      if(G.s.phase==='morning')return 'shop';
+      if(G.s.phase==='checkpoint')return 'locker';
       return null;
     }
     if(id==='chugun')return f.dog?'yard':null;
