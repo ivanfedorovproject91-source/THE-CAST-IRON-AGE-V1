@@ -1130,6 +1130,12 @@
     A('cat_feed', { ph: ['free'], loc: 'home', g: 'Чугунок', n: 'Покормить Чугунка (100 ₽)', i: '🥫', once: 'day', fx: { mood: 2, money: -100 }, txt: 'Чугунок ел так, будто это его последний завтрак перед командировкой.', fn: s => { s.flags.catFed = s.t.day; s.flags.catLove = Math.min(100, (s.flags.catLove || 0) + 3); }, req: s => !s.flags.cat ? 'Нет кота' : s.money < 100 ? 'Нет денег' : null });
     A('cat_play', { ph: ['free'], loc: 'home', g: 'Чугунок', n: 'Поиграть с Чугунком', i: '🧶', h: 1, once: 'day', fx: { mood: 6, energy: 1 }, txt: 'Чугунок ловил твой шнурок, потом твоё внимание, потом тебя.', fn: s => { s.flags.catLove = Math.min(100, (s.flags.catLove || 0) + 2); }, req: s => !s.flags.cat ? 'Нет кота' : null });
 
+    // ---------- Старые «разговоры» с котом заменены на уход и поведение
+    const _petNpcMenu = G.npcMenu;
+    G.npcMenu = function (id) { if (id === 'chugunok' || id === 'chugun') { G.petMenu(id === 'chugunok' ? 'cat' : 'dog'); return; } return _petNpcMenu.apply(this, arguments); };
+    const _petTalk = G.talkTo;
+    G.talkTo = function (id) { if (id === 'chugunok' || id === 'chugun') { G.petMenu(id === 'chugunok' ? 'cat' : 'dog'); return; } return _petTalk.apply(this, arguments); };
+
     // ---------- Сюжетные арки с абсурдом
     const ARCS = {
       lyudka: { title: 'Борщ с последствиями', need: 25, steps: [
