@@ -259,7 +259,7 @@
       if (c.rank === 0) h += '<div class="card"><h3>Испытательный срок</h3><div class="note">Отработано ' + c.probShifts + ' / 5 смен. После пяти смен — экзамен у Соплежуйкина; наставник после допуска больше не закрепляется.</div></div>';
       else if (c.rank < 10) {
         const L = K.reqLines(c.rank + 1);
-        h += '<div class="card"><h3>До «' + D.RANKS[c.rank + 1] + '»</h3>' + L.map(x => '<div class="req ' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✅ ' : '❌ ') + x.t + '</div>').join('') + '<div class="note" style="margin-top:6px">Заявление подаётся у Татищевой (кадры) за взнос.</div></div>';
+        h += '<div class="card"><h3>Следующая цель: ' + K.nextRankName() + '</h3>' + L.map(x => '<div class="req ' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✅ ' : '❌ ') + x.t + '</div>').join('') + '<div class="note" style="margin-top:6px">Заявление подаётся у Татищевой (кадры) за взнос.</div></div>';
       }
       h += '<div class="card"><h3>Корочки</h3><div class="note">' + (c.certs.length ? c.certs.map(x => D.COURSES[x] ? D.COURSES[x].name : x).join('; ') : 'нет') + '</div><button class="btn" onclick="G.coursesMenu()">🎓 Курсы</button></div>';
       h += '<div class="card"><h3>Инструктажи</h3><div class="note">Вводный: ' + (s.instr.vvod != null ? '✅' : '❌') + ' · Первичный: ' + (s.instr.perv != null ? '✅' : '❌') + ' · Повторный: ' + (s.instr.povt != null ? 'нед.' + s.instr.povt : s.flags.povtDue ? '⚠ просрочен' : '—') + '</div></div>';
