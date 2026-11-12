@@ -47,7 +47,7 @@
     const ids = G.peopleAt(loc);
     ids.forEach(id => { G.R(id).met = true; });
     if (!ids.length) return '';
-    return '<div class="ppl">' + ids.map(id => '<button class="pp" onclick="G.npcMenu(\'' + id + '\')">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + D.NPC[id].name.split(' ')[0] + '</button>').join('') + '</div>';
+    return '<div class="ppl">' + ids.map(id => '<button class="pp" onclick="' + petClick(id) + '">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + D.NPC[id].name.split(' ')[0] + '</button>').join('') + '</div>';
   }
 
   // ---------- Рендер
@@ -172,7 +172,7 @@
     ids.forEach(id => {
       const n = D.NPC[id], r = s.rel[id] || {l:0,stage:0}, l = r.l;
       const loc = G.npcLoc(id);
-      h += '<button class="pcard" onclick="G.npcMenu(\'' + id + '\')">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + '<div class="pi"><b>' + n.name + (G.isFriend && G.isFriend(id) ? ' 🤝' : '') + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small></div></button>';
+      h += '<button class="pcard" onclick="' + petClick(id) + '">' + (G.relFace ? G.relFace(id) : G.faceHTML(id)) + '<div class="pi"><b>' + n.name + (G.isFriend && G.isFriend(id) ? ' 🤝' : '') + '</b><small>' + n.role + (n.romance && r.stage ? ' · ' + D.ROM_STAGES[Math.min(7, r.stage)] : '') + (loc && G.isPresent(id) ? ' · 📍здесь' : '') + '</small></div></button>';
     });
     return h;
   }
