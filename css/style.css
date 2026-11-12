@@ -298,3 +298,27 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 @keyframes rlsheen { from { background-position: 150% 0; } to { background-position: -100% 0; } }
 @keyframes rlspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .rl-tile, .rl-gift, .rl-empty .rl-gear, .rl-r-legendary.rl-tile::after, .rl-r-legendary .rl-frame::after { animation: none !important; } }
+
+/* ===== v3.10: автомобили ===== */
+.tb-car { flex: none; position: relative; width: 44px; height: 34px; margin: 0 6px 0 -2px; padding: 0; background: #24211e; border: 2px solid #000; border-radius: 6px; align-self: center; overflow: visible; }
+.tb-car-img { display: block; width: 100%; height: 100%; border-radius: 4px; pointer-events: none; }
+.tb-car i { position: absolute; right: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #000; background: var(--green, #6fb06a); }
+.tb-car.warn i { background: #e8b030; } .tb-car.bad i { background: var(--red, #d9534f); animation: cwpulse 1s infinite; }
+@keyframes cwpulse { 50% { opacity: .35 } }
+.cw { padding: 2px 0 4px; }
+.cw-img { display: block; width: 100%; max-height: 150px; object-fit: contain; background: #1b1917; border: 2px solid #000; border-radius: 6px; margin-bottom: 6px; }
+.cw-sub { font-size: 13px; color: var(--dim, #aaa); margin: 2px 0 8px; font-style: italic; }
+.cw-h { font-family: var(--f-head); color: var(--haz); font-size: 14px; letter-spacing: .5px; margin: 10px 0 2px; }
+.cw-bars { display: grid; gap: 5px; margin: 6px 0; }
+.cw-bar { position: relative; height: 24px; background: #0c0b0a; border: 1px solid #000; border-radius: 3px; overflow: hidden; }
+.cw-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green, #6fb06a); opacity: .75; }
+.cw-bar.warn i { background: #e8b030; } .cw-bar.bad i { background: var(--red, #d9534f); }
+.cw-bar span { position: relative; display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 8px; font-size: 12.5px; text-shadow: 0 1px 2px #000; }
+.cw-bar span em { font-style: normal; }
+.cw-svc { font-size: 13px; padding: 3px 0; } .cw-svc.warn { color: #e8b080; } .cw-svc.bad { color: #f0a090; }
+.cw .kv small, .cw-card .kv small { color: var(--dim, #aaa); font-size: 11.5px; }
+.cw-card .cw-top { display: flex; gap: 10px; align-items: center; }
+.cw-card .cw-img { width: 46%; margin: 0; flex: none; }
+.cw-name { display: flex; flex-direction: column; min-width: 0; } .cw-name b { font-family: var(--f-head); font-size: 17px; } .cw-name small { color: var(--dim, #aaa); font-size: 12px; margin-top: 2px; }
+.cw-card .btn { margin-top: 8px; }
+.m-opts .btn small { display: block; color: var(--dim, #aaa); font-size: 11.5px; font-weight: normal; }
