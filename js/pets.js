@@ -50,7 +50,7 @@
     const opts=[
       {t:'🐾 Погладить',fn:()=>{if(p.trust<15&&G.chance(10))return dogBite(p,'Ты подошёл слишком резко.');result('dog','Чугун рад','Добрый дворняга виляет хвостом и с удовольствием подставляет бок.',{mood:2},{mood:9,trust:5,energy:-2});}},
       {t:'🧡 Потискать',fn:()=>{if(p.trust<40||p.mood<25)return dogBite(p,'Псу не понравилось, что его крепко удерживают.');result('dog','Чугун обнимается','Чугун радостно прижимается и лижет руку.',{mood:3},{mood:11,trust:5,energy:-5});}},
-      {t:'🥣 Покормить (150 ₽)',dis:s.money<150?'Нет денег':p.satiety>92?'Пёс пока сыт':null,fn:()=>{G.addMoney(-150);p.lastFed=s.t.day;const over=p.satiety<45?0:p.satiety>70?1:0;result('dog','Миска Чугуна','Пёс съел свою порцию. Кормление по режиму помогает ему чувствовать себя хорошо.',{mood:2},{satiety:35,mood:5,trust:3,energy:3});}},
+      {t:'🥣 Покормить (150 ₽)',dis:s.money<150?'Нет денег':p.satiety>98?'Пёс совсем сыт':null,fn:()=>{if(p.satiety>90&&G.chance(8))return dogBite(p,'Ты снова предлагаешь еду, хотя Чугун уже наелся.');G.addMoney(-150);p.lastFed=s.t.day;if(p.satiety>85){result('dog','Чугун переел','Пёс съел лишнее и теперь тяжело вздыхает. Лучше соблюдать режим кормления.',{mood:-2},{satiety:15,mood:-3,health:-2,trust:-1});return;}G.addMoney(0);result('dog','Миска Чугуна','Пёс съел свою порцию. Кормление по режиму помогает ему чувствовать себя хорошо.',{mood:2},{satiety:35,mood:5,trust:3,energy:3});}},
       {t:'🎾 Поиграть',dis:p.energy<20?'Чугун устал':null,fn:()=>result('dog','Игра с Чугуном','Чугун носится за мячом и возвращает его, гордо виляя хвостом.',{mood:3},{mood:13,trust:5,energy:-22,satiety:-8})},
       {t:'🦮 Погулять',dis:!G.isFree()?'Прогулка возможна после смены':p.energy<15?'Пёс слишком устал':null,fn:()=>{p.lastWalk=s.t.day;result('dog','Прогулка','Вы прошлись по двору. Чугун обнюхал кусты, познакомился с запахами и вернулся довольным.',{mood:4},{mood:12,trust:6,energy:-16,satiety:-9,health:2});}},
       {t:'🧼 Ухаживать',fn:()=>result('dog','Уход за Чугуном','Ты проверил воду, лапы и шерсть, устроил ему чистое место отдыха.',{mood:2},{health:6,mood:5,trust:4,energy:3})},
@@ -77,7 +77,15 @@
     return r;
   };
   const oldCatTake=G.ACT.cat_take;
-  if(oldCatTake)oldCatTake.req=s=>s.flags.cat?'Уже дома':s.car.shifts<8?'Пока не знакомы':s.money<500?'Нет денег':null;
+  if(oldCatTake){
+    oldCatTake.req=s=>s.flags.cat?'Уже дома':s.car.shifts<8?'Пока не знакомы':s.money<500?'Нет денег':null;
+    oldCatTake.fn=function(){
+      G.addMoney(-500);F().cat=1;F().catLove=5;F().catFed=G.s.t.day;init();
+      G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осторожно осмотрел комнату, выбрал тёплый угол и свернулся клубком. На заводе появился новый хвостатый знакомый — добрый пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:G.s.t.day,lastCare:G.s.t.day,lastWalk:G.s.t.day};G.R('chugun').met=true;G.toast('Чугун теперь живёт во дворе завода.','good');}}]});
+      return 'custom';
+    };
+  }
+  ['cat_feed','cat_play'].forEach(id=>{const a=G.ACT[id];if(a){a.once=null;a.fx=null;a.txt='';a.menu=true;a.fn=()=>{G.petMenu('cat');return 'custom';};}});
   const _npcMenu=G.npcMenu;
   G.npcMenu=function(id){if(id==='chugunok')return G.petMenu('cat');if(id==='chugun')return G.petMenu('dog');return _npcMenu.apply(this,arguments);};
   const _talk=G.talkTo;
