@@ -255,6 +255,11 @@
       at: { loc: 'shop', alt: ['canteen', 'yard'], days: [0, 1, 2, 3, 4], p: 0.35 }, likes: [], dislikes: [], rel: 0,
       talk: [{ t: 'Чугунок трётся о ногу и мурлычет.', o: [['Погладить', '+12 настроения. Кот — лучшее, что есть на заводе.', { mood: 12, rel: { chugunok: 6 }, flag: { cat: 1 } }], ['Дать кусочек котлеты', 'Теперь ты — друг навсегда.', { mood: 8, rel: { chugunok: 12 }, satiety: -3 }]] }]
     },
+    chugun: {
+      name: 'Чугун', full: 'Дворовая собака Чугун', age: 4, role: 'Добрая дворняга', color: '#a76',
+      ap: { dog: true, skin: '#b8895b', cloth: '#b8895b' },
+      at: { loc: 'yard', days: [0,1,2,3,4,5,6], p: 1 }, likes: [], dislikes: [], rel: 0, talk: []
+    },
     belka: {
       name: 'Белка', full: 'Белка в каске', age: 0, role: '???', color: '#fa5',
       ap: { squirrel: true, skin: '#b66a30', cloth: '#b66a30' },
@@ -262,7 +267,7 @@
     }
   };
 
-  D.NPC_ORDER = ['tatishcheva', 'palych', 'seryoga', 'vityok', 'mikhalych', 'stepanych', 'lyosha', 'gosha', 'pelageya', 'nadezhda', 'ekaterina', 'eblanov', 'shurygina', 'soplezhuykin', 'truhanov', 'allochka', 'lyudka', 'tatyana', 'tamara', 'lidiya', 'alevtina', 'semyonych', 'khomyak', 'rafik', 'zahar', 'chugunok', 'kolyan', 'nyura', 'rublev', 'vika'];
+  D.NPC_ORDER = ['tatishcheva', 'palych', 'seryoga', 'vityok', 'mikhalych', 'stepanych', 'lyosha', 'gosha', 'pelageya', 'nadezhda', 'ekaterina', 'eblanov', 'shurygina', 'soplezhuykin', 'truhanov', 'allochka', 'lyudka', 'tatyana', 'tamara', 'lidiya', 'alevtina', 'semyonych', 'khomyak', 'rafik', 'zahar', 'chugunok', 'chugun', 'kolyan', 'nyura', 'rublev', 'vika'];
 
   // Слухи Людки применяются при flag.rumor
   D.ROM_STAGES = ['Не знакомы', 'Знакомство', 'Симпатия', 'Флирт', 'Свидания', 'Отношения', 'Близость', 'Глубокие отношения'];
