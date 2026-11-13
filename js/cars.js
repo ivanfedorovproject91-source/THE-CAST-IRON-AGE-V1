@@ -230,6 +230,10 @@
     '⛽ Бензин теперь тратится на каждой поездке (а не «слитной» заправкой на неделю). Расход, бак, надёжность, износ и цена ремонта зависят от модели.',
     '😎 Чем дороже и престижнее машина, тем выше статус — но запущенная и сломанная машина даёт меньше. В ломбарде цена зависит от состояния.'
   ] });
+  if (G.CHANGELOG) G.CHANGELOG.unshift({ v: 'V3.6', date: G.CONFIG.GAME_DATE, items: [
+    '📻 Радиоточка внизу экрана: «Маяк», «Ретро FM», «Радио 7». Играет только по вашей кнопке; выключается в «Дело → Настройки».',
+    '🛡 Серверная модерация чата: баны и муты, удаление сообщений. Вход в игру по подписи Telegram.'
+  ] });
 
   G.cars = { CAT, ORDER, KM, state, owned: () => { const k = ownedKey(); return k ? { key: k, v: CAT[k].v, n: CAT[k].n } : null; }, effV, prestige, tripFuel, dayFuel, blockReason, trip, refuel, repair, service, repairCost, svcCost, svcStatus, towCost, fuelPrice, pawnValue, open, showroom, topIcon, dossierCard, atHome };
 })();
