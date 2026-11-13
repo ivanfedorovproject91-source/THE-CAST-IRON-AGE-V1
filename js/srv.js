@@ -45,8 +45,10 @@
     try { p = { name: G.s.name, job: G.jobTitle(), rank: G.s.car.rank, shifts: G.s.car.shifts, oj: G.ojScore(), money: Math.round(G.s.money), days: G.s.t.day, v: CFG.VERSION }; } catch (e) {}
     S.post(Object.assign({ action: 'ping' }, p)).then(j => {
       if (!j || !j.ok) { S.status = !j ? 'пустой ответ' : j.error === 'auth' ? 'сервер не принял подпись Telegram (проверьте BOT_TOKEN и что игра открыта через того же бота)' : j.error === 'unknown action' ? 'на сервере старая версия скрипта (нужна новая версия развёртывания)' : 'ошибка сервера: ' + j.error; return; }
+      const previousRole = S.role;
       S.status = j.role ? 'связь есть, роль: ' + (j.role === 'owner' ? 'владелец' : 'администратор') : 'связь есть, вы не администратор (проверьте OWNER_ID)';
       S.role = j.role || ''; S.perms = j.perms || []; S.ban = j.ban || null; S.mute = j.mute || null;
+      if (previousRole !== S.role && G.ui && G.ui.render && G.s && G.s.phase !== 'new') G.ui.render();
       applyCfg(j.cfg); try { localStorage.setItem(KEY, JSON.stringify(j.cfg)); } catch (e) {}
       banScreen();
       if (j.forceName && G.s && G.s.name !== j.forceName) { G.s.name = j.forceName; G.save && G.save(); G.ui && G.ui.render(); S.last = 0; }
