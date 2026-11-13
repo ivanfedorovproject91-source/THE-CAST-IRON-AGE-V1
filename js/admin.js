@@ -53,6 +53,7 @@
 
   // ---- каркас
   A.open = async function () {
+    if (!G.srv || G.srv.role !== 'owner') { G.toast && G.toast('⛔ Админ-кабинет доступен только владельцу игры.', 'warn'); return; }
     if (!G.srv || !G.srv.available()) { G.toast && G.toast('Админ-кабинет работает только из Telegram.'); return; }
     if (!A.root) { A.root = document.createElement('div'); A.root.className = 'adm-root'; document.getElementById('app').appendChild(A.root); A.root.addEventListener('click', onClick); }
     A.root.innerHTML = '<div class="adm-top"><b>🛡 Админ-кабинет</b><button class="btn" data-a="close">✕</button></div><div class="adm-body"><div class="note" style="padding:14px">Проверка полномочий на сервере…</div></div>';
