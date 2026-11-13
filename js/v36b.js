@@ -97,7 +97,7 @@
   G.adminCard = function () {
     const left = G.docsUnsigned();
     return '<div class="card"><h3>📚 Справочный центр заводоуправления</h3><div class="grid2" style="padding:0">'
-      + '<button class="tile" style="grid-column:1/3;border-color:var(--haz)" onclick="G.admin && G.admin.open ? G.admin.open() : G.toast(\'Админ-кабинет не загрузился. Перезапусти игру.\', \'warn\')"><b>🛡</b>Админ-кабинет<small>Вход для владельца и назначенных администраторов</small></button>'
+      + (G.srv && G.srv.role === 'owner' ? '<button class="tile" style="grid-column:1/3;border-color:var(--haz)" onclick="G.admin && G.admin.open && G.admin.open()"><b>🛡</b>Админ-кабинет<small>Только для владельца игры</small></button>' : '')
       + '<button class="tile" onclick="G.plantSystem()"><b>🏗</b>Система завода</button>'
       + '<button class="tile" onclick="G.plantInfo()"><b>ℹ️</b>Информация о заводе</button>'
       + '<button class="tile" style="grid-column:1/3" onclick="G.docsMenu()"><b>📜</b>Нормативная документация<small' + (left ? ' style="color:#e0605a"' : '') + '>' + (left ? 'Не подписано: ' + left + ' из ' + DOCS.length : 'Всё подписано ✅') + '</small></button></div></div>';
