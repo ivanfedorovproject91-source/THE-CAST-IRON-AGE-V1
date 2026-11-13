@@ -52,9 +52,10 @@ function S_(name) {
 function rows_(name) { var s = S_(name), n = s.getLastRow(); return n < 2 ? [] : s.getRange(2, 1, n - 1, HEAD[name].length).getValues(); }
 function withLock_(fn) { var l = LockService.getScriptLock(); l.waitLock(15000); try { return fn(); } finally { l.releaseLock(); } }
 function digits_(v) { v = String(v == null ? '' : v).replace(/^tg:/, '').trim(); return /^\d{1,15}$/.test(v) ? v : ''; }
+function bytes_(str) { return Utilities.newBlob(String(str)).getBytes(); }
 function hex_(bytes) { return bytes.map(function (b) { return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join(''); }
 function safeEq_(a, b) { if (a.length !== b.length) return false; var d = 0; for (var i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
-function sha_(s) { return hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s)); }
+function sha_(s) { return hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes_(s))); }
 function stable_(o) { // детерминированный JSON (для привязки подтверждения к параметрам операции)
   if (Array.isArray(o)) return '[' + o.map(stable_).join(',') + ']';
   if (o && typeof o === 'object') return '{' + Object.keys(o).sort().map(function (k) { return JSON.stringify(k) + ':' + stable_(o[k]); }).join(',') + '}';
@@ -72,8 +73,9 @@ function verify_(raw, maxAge) {
   });
   var got = o.hash; if (!got) return null; delete o.hash;
   var check = Object.keys(o).sort().map(function (k) { return k + '=' + o[k]; }).join('\n');
-  var secret = Utilities.computeHmacSha256Signature(token, 'WebAppData');
-  var calc = hex_(Utilities.computeHmacSha256Signature(check, secret));
+  // Apps Script принимает пары (строка, строка) или (байты, байты) — смешивать нельзя, поэтому всё переводим в байты.
+  var secret = Utilities.computeHmacSha256Signature(bytes_(token), bytes_('WebAppData'));
+  var calc = hex_(Utilities.computeHmacSha256Signature(bytes_(check), secret));
   if (!safeEq_(calc, String(got))) return null;
   var ad = +o.auth_date || 0;
   if (!ad || now_() / 1000 - ad > maxAge || ad > now_() / 1000 + 300) return null;

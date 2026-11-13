@@ -36,20 +36,23 @@
     const until = S.ban.until ? 'до ' + new Date(S.ban.until).toLocaleString('ru-RU') : 'бессрочно';
     el.innerHTML = '<div class="ban-box"><h2>⛔ Пропуск аннулирован</h2><p>Доступ к игре ограничен администрацией (' + until + ').</p><p class="note">Причина: ' + esc(S.ban.reason || '—') + '</p></div>';
   }
+  S.status = '';
   S.ping = function () {
-    if (!S.available() || !G.s || G.s.phase === 'new') return;
+    if (!S.available()) { S.status = !S.url() ? 'адрес сервера не задан' : 'нет данных Telegram (откройте игру из Telegram)'; return; }
+    if (!G.s || G.s.phase === 'new') return;
     S.last = Date.now();
     let p = {};
     try { p = { name: G.s.name, job: G.jobTitle(), rank: G.s.car.rank, shifts: G.s.car.shifts, oj: G.ojScore(), money: Math.round(G.s.money), days: G.s.t.day, v: CFG.VERSION }; } catch (e) {}
     S.post(Object.assign({ action: 'ping' }, p)).then(j => {
-      if (!j || !j.ok) return;
+      if (!j || !j.ok) { S.status = !j ? 'пустой ответ' : j.error === 'auth' ? 'сервер не принял подпись Telegram (проверьте BOT_TOKEN и что игра открыта через того же бота)' : j.error === 'unknown action' ? 'на сервере старая версия скрипта (нужна новая версия развёртывания)' : 'ошибка сервера: ' + j.error; return; }
+      S.status = j.role ? 'связь есть, роль: ' + (j.role === 'owner' ? 'владелец' : 'администратор') : 'связь есть, вы не администратор (проверьте OWNER_ID)';
       S.role = j.role || ''; S.perms = j.perms || []; S.ban = j.ban || null; S.mute = j.mute || null;
       applyCfg(j.cfg); try { localStorage.setItem(KEY, JSON.stringify(j.cfg)); } catch (e) {}
       banScreen();
       if (j.forceName && G.s && G.s.name !== j.forceName) { G.s.name = j.forceName; G.save && G.save(); G.ui && G.ui.render(); S.last = 0; }
       const a = j.cfg && j.cfg.announce;
       if (a && a !== S.seenAnn) { S.seenAnn = a; let seen = ''; try { seen = localStorage.getItem('cv_ann') || ''; } catch (e) {} if (seen !== a) { try { localStorage.setItem('cv_ann', a); } catch (e) {} G.toast && G.toast('📢 Объявление администрации: ' + esc(a)); } }
-    }).catch(() => {});
+    }).catch(() => { S.status = 'нет связи с сервером'; });
   };
   setTimeout(S.ping, 3000);
   setInterval(() => { if (!document.hidden && Date.now() - S.last > 150000) S.ping(); }, 20000);

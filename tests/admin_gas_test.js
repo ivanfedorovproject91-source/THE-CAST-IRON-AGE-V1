@@ -29,8 +29,14 @@ function makeEnv() {
     SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = new Sheet(n)) }) },
     ContentService: { createTextOutput: s => ({ s, setMimeType() { return this; } }), MimeType: { JSON: 1 } },
     Utilities: {
-      computeHmacSha256Signature: (v, k) => [...crypto.createHmac('sha256', Buffer.isBuffer(k) ? k : Array.isArray(k) ? Buffer.from(k.map(x => (x + 256) % 256)) : k).update(v).digest()].map(b => (b > 127 ? b - 256 : b)),
-      computeDigest: (a, s) => [...crypto.createHash('sha256').update(s).digest()].map(b => (b > 127 ? b - 256 : b)),
+      // Как в настоящем Apps Script: допустимы только (строка, строка) или (байты, байты)
+      computeHmacSha256Signature: (v, k) => {
+        if (typeof v !== typeof k) throw new Error('The parameters (' + typeof v + ',' + typeof k + ') don\'t match the method signature for Utilities.computeHmacSha256Signature.');
+        const toBuf = x => (typeof x === 'string' ? Buffer.from(x) : Buffer.from(x.map(b => (b + 256) % 256)));
+        return [...crypto.createHmac('sha256', toBuf(k)).update(toBuf(v)).digest()].map(b => (b > 127 ? b - 256 : b));
+      },
+      newBlob: s => ({ getBytes: () => [...Buffer.from(s)].map(b => (b > 127 ? b - 256 : b)) }),
+      computeDigest: (a, s) => { if (typeof s !== 'string' && !Array.isArray(s)) throw new Error('bad digest arg'); return [...crypto.createHash('sha256').update(typeof s === 'string' ? Buffer.from(s) : Buffer.from(s.map(b => (b + 256) % 256))).digest()].map(b => (b > 127 ? b - 256 : b)); },
       DigestAlgorithm: { SHA_256: 1 }, getUuid: () => crypto.randomUUID()
     },
     console
