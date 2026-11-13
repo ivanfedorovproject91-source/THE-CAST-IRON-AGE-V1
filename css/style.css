@@ -368,3 +368,6 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .adm-btns { display: flex; gap: 8px; margin-top: 14px; } .adm-btns .btn { flex: 1; margin: 0; }
 .ban-ov { position: absolute; inset: 0; z-index: 200; background: #0b0a09f2; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; }
 .ban-box { border: 2px solid var(--red); padding: 20px; background: #1b1917; } .ban-box h2 { margin: 0 0 10px; font-family: var(--f-head); color: var(--red); }
+
+.adm-toast { position: absolute; left: 10px; right: 10px; bottom: 14px; z-index: 20; background: #0d0c0bf5; border: 1px solid var(--line); border-left: 4px solid var(--green); padding: 10px 12px; font-size: 14px; box-shadow: 0 4px 14px #000a; pointer-events: none; animation: tin .25s ease-out; }
+.adm-toast.bad { border-left-color: var(--red); }

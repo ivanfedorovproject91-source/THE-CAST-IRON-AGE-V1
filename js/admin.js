@@ -11,6 +11,12 @@
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'только что' : m < 60 ? m + ' мин. назад' : m < 1440 ? Math.round(m / 60) + ' ч. назад' : Math.round(m / 1440) + ' дн. назад'; };
   const TABS = [['stats', '📊', 'Статистика', 'stats'], ['online', '🟢', 'Онлайн', 'online'], ['players', '👤', 'Игроки', 'players'], ['sanctions', '🚫', 'Баны и муты', 'bans'], ['chat', '💬', 'Чат', 'chat'], ['params', '⚙️', 'Параметры', 'params'], ['audit', '📜', 'Журнал', 'audit'], ['admins', '🛡', 'Админы', 'owner'], ['radio', '📻', 'Радио', 'owner']];
   const PERM_RU = { players: 'Игроки', bans: 'Баны/муты', chat: 'Чат', params: 'Параметры', online: 'Онлайн', stats: 'Статистика', audit: 'Журнал' };
+  // Уведомления внутри кабинета (игровые тосты лежат под ним и не видны)
+  function say(text, bad) {
+    if (!A.root) return;
+    const d = document.createElement('div'); d.className = 'adm-toast' + (bad ? ' bad' : ''); d.textContent = text; A.root.appendChild(d);
+    setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 4200);
+  }
   const can = p => A.me && (p === 'owner' ? A.me.role === 'owner' : A.me.perms.indexOf(p) >= 0);
 
   // ---- вызов сервера (с автоматическим подтверждением опасных операций)
@@ -36,14 +42,14 @@
         const x = e.target.closest('[data-x]'); if (!x) return;
         if (x.dataset.x === '0') { ov.remove(); return res(o.fields ? null : false); }
         const vals = {}; (o.fields || []).forEach((f, i) => { vals[f.id] = ov.querySelector('[data-f="' + i + '"]').value.trim(); });
-        for (const f of o.fields || []) if (f.req && !vals[f.id]) { G.toast && G.toast('Заполните: ' + f.label); return; }
+        for (const f of o.fields || []) if (f.req && !vals[f.id]) { say('Заполните поле: ' + f.label, true); return; }
         ov.remove(); res(o.fields ? vals : true);
       };
       (A.root || document.getElementById('app')).appendChild(ov);
     });
   }
   const reasonF = { id: 'reason', label: 'Причина (обязательно, от 3 знаков)', req: 1, max: 200 };
-  const notify = (r, okText) => { if (r.cancelled) return false; G.toast && G.toast(r.ok ? (okText || 'Готово') : '⛔ ' + esc(r.error === 'forbidden' ? 'Нет прав' : r.error || 'ошибка')); return !!r.ok; };
+  const notify = (r, okText) => { if (r.cancelled) return false; say(r.ok ? '✔ ' + (okText || 'Готово') : '⛔ ' + (r.error === 'forbidden' ? 'Нет прав' : r.error || 'ошибка'), !r.ok); return !!r.ok; };
 
   // ---- каркас
   A.open = async function () {
@@ -149,7 +155,7 @@
       if (a === 'pmute') { const v = await dialog({ title: 'Мут игрока ' + d.id, fields: [{ id: 'minutes', label: 'Минут', value: '60', type: 'number' }, reasonF], ok: 'Выдать мут' }); if (v && notify(await call('mute', { uid: d.id, minutes: +v.minutes || 60, reason: v.reason }), 'Мут выдан')) profile(d.id); return; }
       if (a === 'pdelall') { const v = await dialog({ title: 'Удалить все сообщения ' + d.id, fields: [reasonF], ok: 'Далее', danger: 1 }); if (v && notify(await call('chat_delete_user', { uid: d.id, reason: v.reason }), 'Сообщения удалены')) profile(d.id); return; }
       if (a === 'prename') { const v = await dialog({ title: 'Сменить игровое имя', fields: [{ id: 'name', label: 'Новое имя (2–18 знаков)', req: 1, max: 18 }, reasonF], ok: 'Далее', danger: 1 }); if (v && notify(await call('player_rename', { uid: d.id, name: v.name, reason: v.reason }), 'Имя изменится при следующем входе игрока')) profile(d.id); return; }
-    } catch (x) { G.toast && G.toast('⛔ Ошибка интерфейса'); }
+    } catch (x) { say('⛔ Ошибка интерфейса', true); }
   }
   async function profile(id) {
     const r = await call('player_get', { uid: id }); if (!r.ok) return notify(r);
