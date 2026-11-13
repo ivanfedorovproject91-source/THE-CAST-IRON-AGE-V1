@@ -127,9 +127,9 @@
     inp.value = '';
     if (!url()) { const a = localGet(); a.push(m); localSet(a); CH.msgs = a; CH.draw(); return; }
     CH.msgs = CH.msgs.concat([m]); CH.draw();
-    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chat_post', uid: m.uid, name: m.name, job: m.job, text: m.text }) })
+    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chat_post', initData: (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) || '', name: m.name, job: m.job, text: m.text }) })
       .then(r => r.json()).then(j => { if (!j || !j.ok) throw new Error((j && j.error) || '?'); CH.load(); })
-      .catch(e => { CH.err = 'не отправлено: ' + (e.message || e); CH.draw(); });
+      .catch(e => { CH.msgs = CH.msgs.filter(x => x !== m); CH.err = 'не отправлено: ' + (e.message || e); CH.draw(); });
   };
   const fmtT = t => { try { const d = new Date(t), p = n => ('0' + n).slice(-2); return p(d.getDate()) + '.' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); } catch (e) { return ''; } };
   CH.list = function () {
