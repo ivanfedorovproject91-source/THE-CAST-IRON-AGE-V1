@@ -217,7 +217,7 @@ function denied_(u, op) {
 function admin_(b) {
   var u = verify_(b.initData, ADMIN_AUTH_MAX); if (!u) return { ok: false, error: 'auth' };
   var r = roleOf_(u.id), op = String(b.op || ''), a = (b.args && typeof b.args === 'object') ? b.args : {}, h = OPS[op];
-  if (!r.role) { denied_(u, op); return { ok: false, error: 'forbidden' }; }
+  if (r.role !== 'owner') { denied_(u, op); return { ok: false, error: 'forbidden' }; }
   if (!h) return { ok: false, error: 'unknown op' };
   if ((h.owner && r.role !== 'owner') || (h.perm && r.perms.indexOf(h.perm) < 0)) { denied_(u, op); return { ok: false, error: 'forbidden' }; }
   if (!rate_(u.uid)) return { ok: false, error: 'Слишком часто' };
