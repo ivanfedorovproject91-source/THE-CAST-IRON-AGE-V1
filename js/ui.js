@@ -62,7 +62,7 @@
     else if (UI.mode === 'create') html = create();
     else html = title();
     top.classList.toggle('hide', !game); nav.classList.toggle('hide', !game);
-    if (game) { top.innerHTML = topbar(); nav.innerHTML = navHTML(); }
+    if (game) { top.innerHTML = topbar(); nav.innerHTML = navHTML(); nav.classList.toggle('n7', !!(G.ceo && G.ceo.is())); }
     el.innerHTML = html;
     if (UI.keepScroll) el.scrollTop = keep; else el.scrollTop = 0;
     UI.keepScroll = false;
@@ -84,11 +84,12 @@
   function navHTML() {
     const ph = G.s && G.s.phase, home = !(ph === 'locker' || ph === 'work' || ph === 'lunch');
     const T = [['shift', home ? '🏠' : '⚙️', home ? 'Дом' : 'Смена'], ['city', '🏙️', 'Город'], ['people', '👥', 'Люди'], ['phone', '📱', 'Телефон'], ['rating', '🏆', 'Рейтинг'], ['file', '📋', 'Дело']];
+    if (G.ceo && G.ceo.is()) T.splice(1, 0, ['cabinet', '🏢', 'Кабинет']);
     return T.map(t => '<button class="' + (UI.tab === t[0] ? 'on' : '') + '" onclick="G.ui.setTab(\'' + t[0] + '\')"><b>' + t[1] + '</b>' + t[2] + '</button>').join('');
   }
   UI.setTab = function (t) { UI.tab = t; if (t !== 'city') UI.place = null; UI.render(); };
   function gameScreen() {
-    switch (UI.tab) { case 'city': return cityTab(); case 'people': return peopleTab(); case 'phone': return phoneTab(); case 'file': return fileTab(); case 'rating': return ratingTab(); default: return (G.shiftTop ? G.shiftTop() : '') + shiftTab() + (G.shiftExtras ? G.shiftExtras() : ''); }
+    switch (UI.tab) { case 'city': return cityTab(); case 'people': return peopleTab(); case 'phone': return phoneTab(); case 'file': return fileTab(); case 'rating': return ratingTab(); case 'cabinet': return G.cab ? G.cab.render() : ''; default: return (G.shiftTop ? G.shiftTop() : '') + shiftTab() + (G.shiftExtras ? G.shiftExtras() : ''); }
   }
 
   // ---------- Вкладка СМЕНА
@@ -347,7 +348,7 @@
   function ending() {
     const s = G.s, e = D.ENDINGS[s.end.id] || { e: '❓', t: 'КОНЕЦ', x: 'История закончилась.' };
     const rec = G.records();
-    return '<div class="end-scr"><div class="em">' + e.e + '</div><h1>' + e.t + '</h1><p>' + e.x + '</p><div class="stripe"></div><div class="stat-list">'
+    return '<div class="end-scr"><div class="em">' + e.e + '</div><h1>' + e.t + '</h1><p>' + e.x + '</p>' + (s.end.why && s.end.why.length ? '<div class="note">' + s.end.why.join('<br>') + '</div>' : '') + '<div class="stripe"></div><div class="stat-list">'
       + '<div><span>Смен отработано</span><b>' + s.car.shifts + '</b></div><div><span>Должность</span><b>' + G.rankName() + '</b></div><div><span>Прожито дней</span><b>' + s.t.day + '</b></div><div><span>Деньги</span><b>' + G.rub(s.money) + '</b></div><div><span>Операций</span><b>' + s.stats.ops + '</b></div><div><span>Клички</span><b>' + (s.nicks.map(n => D.NICKS[n].n).join(', ') || '—') + '</b></div><div><span>Очки жизни</span><b style="color:var(--haz)">' + G.ojScore() + '</b></div><div><span>Рекорд</span><b>' + (rec.best || 0) + '</b></div></div>'
       + '<button class="btn big hazard" onclick="G.ui.restart()">НАЧАТЬ СНОВА</button></div>';
   }
@@ -413,6 +414,9 @@
       { t: 'Пропустить до вечера', fn: () => { if (s.phase === 'work' || s.phase === 'lunch') { s.t.hour = G.shiftEnd(); s.phase = 'work'; G.endShift(); } } },
       { t: 'Все корочки', fn: () => { Object.keys(D.COURSES).forEach(c => { if (s.car.certs.indexOf(c) < 0) s.car.certs.push(c); }); } },
       { t: 'Все знакомые', fn: () => { D.NPC_ORDER.forEach(id => { G.R(id).met = true; }); } },
+      { t: '🏢 Стать замом (CEO-тест)', fn: () => { if (G.ceo && G.ceo.dev) G.ceo.dev.deputy(); } },
+      { t: '🏢 Запустить историю директора', fn: () => { if (G.ceo && G.ceo.dev) G.ceo.dev.start(); } },
+      { t: '🏢 Стать директором сразу', fn: () => { if (G.ceo && G.ceo.dev) G.ceo.dev.now(); } },
       { t: 'Закрыть', fn: () => {} }
     ] });
   };
