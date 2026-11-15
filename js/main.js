@@ -29,9 +29,7 @@
   }, 3000);
   window.addEventListener('pagehide', () => G.save());
   document.addEventListener('visibilitychange', () => { if (document.hidden) G.save(); });
-  // Темп прогрессии (config.js → PACE)
-  const pace = (G.CONFIG && G.CONFIG.PACE) || 1;
-  if (pace !== 1) Object.keys(G.D.REQ).forEach(k => { const r = G.D.REQ[k]; r.shifts = Math.round(r.shifts * pace); r.bm = Math.round(r.bm * pace); });
+  // Темп прогрессии (config.js → PACE) применяется в career_ladder.js
   G.load();
   if (G.s && G.s.phase === 'new') G.wipe();
   G.ui.mode = 'title';

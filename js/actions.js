@@ -232,7 +232,7 @@
     }
     if (id === 'pelageya') o.push({ t: '📝 Пройти инструктаж', fn: () => G.instructMenu() });
     if (id === 'nadezhda') o.push({ t: '📝 Целевой инструктаж', dis: s.instr.perv == null ? 'Нужен первичный' : null, fn: () => { K.testInstr('celev', 'nadezhda'); } });
-    if (id === 'eblanov') o.push({ t: '🧰 Попросить новый чертёж', fn: () => { if (s.flags.eblBinge && s.t.day <= (s.flags.eblBingeUntil || 0)) { G.toast('Ебланов в запое — чертежа не будет.', 'bad'); } else { s.dwg.bad = G.chance(40); s.dwg.none = false; G.toast('Он ищет по ящикам и приносит новый чертёж. Пахнет вчерашним.'); } G.spend(1); } });
+    if (id === 'eblanov') o.push({ t: '🧰 Попросить новый чертёж', fn: () => { if (s.flags.eblBinge && s.t.day <= (s.flags.eblBingeUntil || 0)) { G.toast('Субрыкин в запое — чертежа не будет.', 'bad'); } else { s.dwg.bad = G.chance(40); s.dwg.none = false; G.toast('Он ищет по ящикам и приносит новый чертёж. Пахнет вчерашним.'); } G.spend(1); } });
     if (id === 'ekaterina') {
       o.push({ t: '🔩 Принести идеальную деталь', dis: G.quality() < 85 ? 'Качество ниже 85%' : null, fn: () => { G.relAdd('ekaterina', 4); s.flags.ekPerfect = (s.flags.ekPerfect || 0) + 1; G.toast('Екатерина Евгеньевна измерила, кивнула. +4 к отношению.'); G.spend(1); } });
       o.push({ t: '🆘 Помочь с авралом ОТК', fn: () => { G.relAdd('ekaterina', 6); s.flags.ekHelp = (s.flags.ekHelp || 0) + 1; G.fx({ energy: -10, mood: -2 }); G.toast('Ты отсортировал детали до вечера. Она заметила.'); G.spend(1); } });
@@ -488,7 +488,7 @@
     if (s.flags.gonoDay && s.t.day >= s.flags.gonoDay) { s.flags.gonoDay = 0; G.modal({ title: 'Медпункт', face: 'alevtina', text: 'Алевтина качает головой: «Милый, это заразное. И лечится платно». Лечение 7 000–15 000 ₽, здоровье −20, слух по заводу.', opts: [{ t: 'Лечиться', fn: () => { G.fx({ money: -G.ri(7000, 15000), health: -20, mood: -10, coll: -6 }); } }] }); }
     // блокнот
     if (s.flags.insp && s.t.day >= s.flags.insp) { s.flags.insp = 0; G.modal({ title: 'Ответ трудинспекции', text: '«Нарушений не выявлено». Тебя вызвали на ковёр.', face: 'truhanov', opts: [{ t: 'Выслушать', fn: () => { if (G.chance(70)) { s.car.rank = Math.max(1, s.car.rank - 1); G.toast('Понижен в должности.', 'bad'); } else { G.end('fired'); } } }] }); }
-    // выход на пенсию: Ебланов в запое
+    // выход на пенсию: Субрыкин в запое
     if (s.flags.eblBingeStart) {}
     // слухи
     if (G.chance(20)) s.flags.rumor = 1;

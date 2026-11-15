@@ -172,7 +172,17 @@ function ping_(b) {
     forceName: (cfg.forced || {})[u.uid] || '', cfg: publicCfg_(), now: now_() };
 }
 function num_(v, lo, hi) { v = Math.round(+v); return isNaN(v) ? lo : Math.max(lo, Math.min(hi, v)); }
+// Минимум смен для каждой должности (по карьерной лестнице V2, с запасом 50% на разные темпы PACE)
+var MIN_SHIFTS_ = [0, 5, 15, 25, 55, 105, 125, 245, 365, 485, 605];
+function plausible_(b) {
+  var rank = num_(b.rank, 0, 10), shifts = num_(b.shifts, 0, 4000), days = num_(b.days, 0, 4000), oj = num_(b.oj, -100000, 10000000);
+  if (shifts > days + 1) return false;
+  if (oj > 6000 + shifts * 80) return false;
+  if (shifts < Math.floor(MIN_SHIFTS_[rank] * 0.5)) return false;
+  return true;
+}
 function upsertPlayer_(u, b) {
+  if (!plausible_(b)) return; // подозрительные цифры не записываем
   var name = clean_(b.name, 18) || u.name;
   withLock_(function () {
     var s = S_('players'), n = s.getLastRow(), t = now_(), row = null, r = 0;

@@ -396,7 +396,7 @@
 
   G.weekendEvents = function () {
     const s = G.s;
-    if (s.car.probShifts >= 20 && G.week() >= s.world.nextCall && s.car.job) {
+    if (s.car.rank >= 1 && G.week() >= s.world.nextCall && s.car.job) {
       s.world.nextCall = G.week() + G.ri(2, 4);
       const who = G.chance(50) ? 'truhanov' : 'soplezhuykin';
       G.modal({ title: '☎ Звонок в выходной', text: (who === 'truhanov' ? 'Звонит Труханов: «Эй, {tn}! Выходи, аврал! Миллиарды… то есть план горит!»' : 'Звонит Соплежуйкин: «Максим Гогенович беспокоит. Нужно выйти. Это не обсуждается. Хотя обсуждается».').replace('{tn}', G.pick(D.TRUH_NAMES)), vib: 'warning', opts: [
