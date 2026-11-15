@@ -11,6 +11,8 @@ class Q(http.server.SimpleHTTPRequestHandler):
 srv = socketserver.TCPServer(('127.0.0.1',0),Q); port = srv.server_address[1]
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 fails=[]
+# в CI есть интернет: настоящий скрипт Telegram затёр бы макет CloudStorage, поэтому блокируем его
+NOJS = lambda route: route.fulfill(status=200, content_type='application/javascript', body='')
 def check(n,ok,info=''):
     print(('PASS ' if ok else 'FAIL ')+n+(('  -> '+str(info)) if info and not ok else ''))
     if not ok: fails.append(n)
@@ -62,7 +64,7 @@ with sync_playwright() as p:
     print('ERR',errs[:3]); check('нет ошибок страницы', not errs, errs)
     b.close()
     # 10. облако Telegram (мок)
-    b=p.chromium.launch(); ctx=b.new_context(); ctx.add_init_script(MOCK); pg=ctx.new_page(); errs=[]
+    b=p.chromium.launch(); ctx=b.new_context(); ctx.add_init_script(MOCK); ctx.route('**/telegram-web-app.js', NOJS); pg=ctx.new_page(); errs=[]
     pg.on('pageerror',lambda e: errs.append(str(e)))
     pg.goto('http://127.0.0.1:%d/index.html'%port); pg.wait_for_timeout(1200)
     pg.evaluate("""()=>{G.newState('Облако', G.defaultAv(), G.D.EDU[0].id); G.s.car.job='podsob'; G.s.car.shifts=7; G.s.phase='evening'; G.save();}""")
@@ -72,7 +74,7 @@ with sync_playwright() as p:
     check('облако: метка и куски согласованы', meta['n']>=1 and all(('cv_%d'%i) in pg.evaluate("Object.keys(window.__cs)") for i in range(meta['n'])), meta)
     cs=pg.evaluate("window.__cs")
     # новый «телефон»: чистый localStorage, облако то же
-    ctx2=b.new_context(); ctx2.add_init_script(MOCK+"; Object.assign(window.__cs, %s);"%json.dumps(cs)); pg2=ctx2.new_page()
+    ctx2=b.new_context(); ctx2.route('**/telegram-web-app.js', NOJS); ctx2.add_init_script(MOCK+"; Object.assign(window.__cs, %s);"%json.dumps(cs)); pg2=ctx2.new_page()
     pg2.goto('http://127.0.0.1:%d/index.html'%port); pg2.wait_for_timeout(4500)
     got=pg2.evaluate("(()=>{try{const d=JSON.parse(localStorage.getItem(G.SAVE_KEY)||'null');return d&&d.s&&d.s.car.shifts}catch(e){return null}})()")
     check('на новом устройстве прогресс восстановлен из облака', got==7, got)
