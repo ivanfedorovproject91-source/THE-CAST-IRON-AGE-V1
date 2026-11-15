@@ -86,8 +86,8 @@ ok(adm(1000, 'admin_add', { uid: '3001', perms: ['bans'], reason: 'новый м
 r = adm(1000, 'admin_add', { uid: '3001', perms: ['bans', 'chat', 'bogus'], reason: 'новый модератор' });
 ok(adm(1000, 'admin_add', { uid: '3001', perms: ['bans', 'chat', 'bogus'], reason: 'новый модератор' }, r.token).ok === true, 'назначение с верным подтверждением проходит');
 ok(adm(1000, 'admin_add', { uid: '3001', perms: [], reason: 'повтор' }).needConfirm && true, 'повтор снова требует подтверждение');
-ok(adm(3001, 'me').role === 'admin' && adm(3001, 'me').perms.join() === 'bans,chat', 'админ получил только выданные права (мусорное право отброшено)');
-ok(adm(3001, 'players_search', { q: '' }).error === 'forbidden', 'админ без права players не видит игроков');
+ok(adm(3001, 'me').error === 'forbidden', 'режим «только владелец»: назначенный админ не получает доступ к админ-API');
+ok(adm(3001, 'players_search', { q: '' }).error === 'forbidden', 'назначенный админ не видит игроков');
 ok(adm(3001, 'admin_add', { uid: '3001', perms: ['players'], reason: 'самоповышение' }).error === 'forbidden', 'админ не может выдавать права (только владелец)');
 ok(adm(3001, 'admin_perms', { uid: '3001', perms: ['players', 'audit'], reason: 'самоповышение' }).error === 'forbidden', 'админ не может изменить свои права');
 ok(adm(3001, 'radio_set', { reason: 'пробую', stations: [] }).error === 'forbidden', 'радио доступно только владельцу');
@@ -106,32 +106,30 @@ ok(post({ action: 'chat_post', initData: initData(4001, 'Вася'), name: 'Ва
 ok(post({ action: 'chat_post', initData: '', name: 'x', text: 'без подписи' }).ok === false, 'сообщение без подписи отклонено');
 ok(get({ action: 'chat_list' }).msgs.length === 1, 'чат отдаёт сообщения');
 
-ok(adm(3001, 'mute', { uid: '4001', minutes: 10 }).error.indexOf('причину') > 0, 'причина обязательна');
-ok(adm(3001, 'mute', { uid: '4001', minutes: 10, reason: 'спам' }).ok, 'мут выдан админом с правом bans');
+ok(adm(1000, 'mute', { uid: '4001', minutes: 10 }).error.indexOf('причину') > 0, 'причина обязательна');
+ok(adm(1000, 'mute', { uid: '4001', minutes: 10, reason: 'спам' }).ok, 'мут выдан владельцем');
 env.__cache['c_tg:4001'] && delete env.__cache['c_tg:4001'];
 ok(/мут/i.test(post({ action: 'chat_post', initData: initData(4001, 'Вася'), name: 'Вася', text: 'снова пишу' }).error), 'замученный не может писать (проверка на сервере)');
-ok(adm(3001, 'unmute', { uid: '4001', reason: 'извинился' }).ok, 'мут снят');
-ok(adm(3001, 'mute', { uid: '3001', minutes: 5, reason: 'сам' }).error.indexOf('себе') > 0, 'нельзя применять санкции к себе');
-ok(adm(3001, 'mute', { uid: '1000', minutes: 5, reason: 'владелец' }).error.indexOf('владельцу') > 0, 'нельзя применять санкции к владельцу');
+ok(adm(1000, 'unmute', { uid: '4001', reason: 'извинился' }).ok, 'мут снят');
+ok(adm(1000, 'mute', { uid: '1000', minutes: 5, reason: 'сам' }).error.indexOf('себе') > 0, 'нельзя применять санкции к себе');
 ok(adm(1000, 'admin_add', { uid: '3002', perms: ['bans'], reason: 'второй' }, adm(1000, 'admin_add', { uid: '3002', perms: ['bans'], reason: 'второй' }).token).ok, 'второй админ назначен');
-ok(adm(3001, 'mute', { uid: '3002', minutes: 5, reason: 'коллега' }).error.indexOf('владелец') > 0, 'админ не может наказать другого админа');
 
-let b = adm(3001, 'ban', { uid: '4002', hours: 0, reason: 'читерство' });
+let b = adm(1000, 'ban', { uid: '4002', hours: 0, reason: 'читерство' });
 ok(b.needConfirm, 'бан требует подтверждения');
-ok(adm(3001, 'ban', { uid: '4002', hours: 0, reason: 'читерство' }, b.token).ok, 'бан после подтверждения');
+ok(adm(1000, 'ban', { uid: '4002', hours: 0, reason: 'читерство' }, b.token).ok, 'бан после подтверждения');
 ok(post({ action: 'ping', initData: initData(4002, 'Петя') }).ban.reason === 'читерство', 'ping сообщает клиенту о бане');
 env.__cache['c_tg:4002'] && delete env.__cache['c_tg:4002'];
 ok(/заблокированы/.test(post({ action: 'chat_post', initData: initData(4002, 'Петя'), name: 'Петя', text: 'пишу из бана' }).error), 'забаненный не может писать в чат');
 ok(adm(1000, 'sanctions_list').list.some(x => x.type === 'ban' && x.id === '4002'), 'список активных санкций');
-ok(adm(3001, 'unban', { uid: '4002', reason: 'ошибка' }).ok && !post({ action: 'ping', initData: initData(4002, 'Петя') }).ban, 'разбан');
+ok(adm(1000, 'unban', { uid: '4002', reason: 'ошибка' }).ok && !post({ action: 'ping', initData: initData(4002, 'Петя') }).ban, 'разбан');
 
 // --- модерация чата
 const msg = get({ action: 'chat_list' }).msgs[0];
-ok(adm(3001, 'chat_delete', { id: msg.id, reason: 'оскорбление' }).ok, 'удаление сообщения');
+ok(adm(1000, 'chat_delete', { id: msg.id, reason: 'оскорбление' }).ok, 'удаление сообщения');
 ok(get({ action: 'chat_list' }).msgs.length === 0, 'удалённое сообщение не отдаётся игрокам');
-ok(adm(3001, 'chat_recent', {}).msgs.some(m => m.deleted), 'админ видит удалённые с пометкой');
-let lk = adm(3001, 'chat_lock', { locked: true, reason: 'рейд' });
-ok(lk.needConfirm && adm(3001, 'chat_lock', { locked: true, reason: 'рейд' }, lk.token).ok, 'закрытие чата с подтверждением');
+ok(adm(1000, 'chat_recent', {}).msgs.some(m => m.deleted), 'админ видит удалённые с пометкой');
+let lk = adm(1000, 'chat_lock', { locked: true, reason: 'рейд' });
+ok(lk.needConfirm && adm(1000, 'chat_lock', { locked: true, reason: 'рейд' }, lk.token).ok, 'закрытие чата с подтверждением');
 env.__cache['c_tg:4001'] && delete env.__cache['c_tg:4001'];
 ok(/закрыт/.test(post({ action: 'chat_post', initData: initData(4001, 'Вася'), name: 'В', text: 'пишу в закрытый' }).error), 'закрытый чат не принимает сообщения от игроков');
 

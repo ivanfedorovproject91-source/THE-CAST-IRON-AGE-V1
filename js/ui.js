@@ -129,7 +129,7 @@
       const acts = visibleActs(a => a.loc === s.loc && ((a.ph || ['work']).indexOf('work') >= 0));
       if (G.friendsBlock) h += G.friendsBlock();
       h += groupActs(acts);
-      if (s.dwg.none) h += '<div class="card note">⚠ Чертежа нет — Ебланов в запое. Работать нечем.</div>';
+      if (s.dwg.none) h += '<div class="card note">⚠ Чертежа нет — Субрыкин в запое. Работать нечем.</div>';
       if (ph === 'lunch') h += '<div class="cta"><button class="btn big hazard" onclick="G.endLunch()">ЗАКОНЧИТЬ ОБЕД →</button></div>';
       return h;
     }

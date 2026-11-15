@@ -104,7 +104,7 @@
     { t: 'Взять', fn: () => { G.addMoney(3000); G.fx({ cons: -8, boss: -1 }); G.punish({ risk: 55, what: 'Взятка от заказчика', fine: [1000, 3000], sev: 2 }); } },
     { t: 'Отказаться', fn: () => { G.fx({ cons: 4, mood: 2 }); } }
   ] }) });
-  E('ebl_cry', { where: ['work'], w: 1, cd: 8, cond: s => s.car.shifts >= 6 && !s.flags.eblBinge, fn: () => G.modal({ title: 'Ебланов плачет', face: 'eblanov', text: 'Ебланов сидит у станка и тихо рыдает: «Меня никто не ценит…»', opts: [
+  E('ebl_cry', { where: ['work'], w: 1, cd: 8, cond: s => s.car.shifts >= 6 && !s.flags.eblBinge, fn: () => G.modal({ title: 'Субрыкин плачет', face: 'eblanov', text: 'Субрыкин сидит у станка и тихо рыдает: «Меня никто не ценит…»', opts: [
     { t: 'Утешить', fn: () => { G.fx({ cons: 3, rel: { eblanov: 8 }, flag: { eblGood: 1 } }); } },
     { t: 'Налить ему', fn: () => { G.fx({ drunk: 15, rel: { eblanov: 10 }, flag: { eblBinge: 1 } }); } },
     { t: 'Пройти мимо', fn: () => {} }

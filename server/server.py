@@ -33,6 +33,8 @@ db.execute("""CREATE TABLE IF NOT EXISTS players(
     hidden INTEGER DEFAULT 0, updated REAL, last_post REAL)""")
 db.commit()
 
+# Минимум смен для должности по карьерной лестнице V2 (запас 50% на разные темпы PACE)
+MIN_SHIFTS = [0, 5, 15, 25, 55, 105, 125, 245, 365, 485, 605]
 COLS = {"oj": "best_oj", "shifts": "best_shifts", "rank": "best_rank"}
 
 
@@ -104,7 +106,7 @@ async def post_score(request):
     oj = clamp(d.get("oj"), -100000, 10_000_000)
     money = clamp(d.get("money"), 0, 10**10)
     # базовая защита от накруток: за день не больше одной смены, очки жизни ограничены темпом игры
-    if shifts > days + 1 or oj > 6000 + shifts * 80 or rank > 9 and shifts < 700:
+    if shifts > days + 1 or oj > 6000 + shifts * 80 or shifts < int(MIN_SHIFTS[rank] * 0.5):
         return web.json_response({"ok": False, "error": "implausible"}, status=422)
     job = re.sub(r"[\x00-\x1f<>&\"']", "", str(d.get("job", "")))[:40]
     end = str(d.get("end") or "")[:20] or None

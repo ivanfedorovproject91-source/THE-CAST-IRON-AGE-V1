@@ -41,7 +41,7 @@
   G.rankInfo = function () {
     const s = G.s, c = s.car, r = c.rank;
     if (!c.job) return { stars: 0, noStars: true, mgmt: false, line: 'Оформление на работу' };
-    if (r === 0) return { stars: 0, noStars: true, mgmt: false, line: 'Стажёр · до допуска: ' + Math.max(0, 20 - (c.probShifts || 0)) + ' смен' };
+    if (r === 0) return { stars: 0, noStars: true, mgmt: false, line: 'Стажёр · до допуска: ' + Math.max(0, 5 - (c.probShifts || 0)) + ' смен' };
     if (r <= 5) {
       const nx = D.REQ[r + 1], left = Math.max(0, nx.shifts - c.shifts), nm = r < 5 ? 'Р' + (r + 1) : 'бригадира';
       return { stars: r, mgmt: false, line: left ? 'До ' + nm + ': ' + left + ' смен' : 'Стаж набран — подай заявление' };

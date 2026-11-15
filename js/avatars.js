@@ -16,7 +16,7 @@
   };
   G.defaultAv = () => ({ skin: '#ecc3a5', hc: '#6b4a30', hair: 'short', shape: 'oval', stache: 'none', beard: 'none', glasses: 'none', cloth: '#4a5c78', brow: 'thick' });
 
-  const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; const c = v => Math.max(0, Math.min(255, Math.round(v * f))); return '#' + [c(r), c(g), c(b)].map(x => x.toString(16).padStart(2, '0')).join(''); };
+  const shade = (hex, f) => { hex = (typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex)) ? hex : '#ecc3a5'; const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; const c = v => Math.max(0, Math.min(255, Math.round(v * f))); return '#' + [c(r), c(g), c(b)].map(x => x.toString(16).padStart(2, '0')).join(''); };
 
   function cat(ap) {
     const c = ap.skin;
@@ -33,6 +33,8 @@
 
   G.avatar = function (ap, o) {
     o = o || {};
+    ap = ap || G.defaultAv();
+    if (!ap.skin && !ap.cat && !ap.dog && !ap.squirrel) ap = Object.assign({}, G.defaultAv(), ap);
     if (ap.cat) return cat(ap);
     if (ap.dog) return dog(ap);
     if (ap.squirrel) return squirrel(ap);
