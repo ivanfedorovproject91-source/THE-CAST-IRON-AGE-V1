@@ -40,6 +40,14 @@ with sync_playwright() as pw:
       for (let i = 0; i < 30; i++) { try { G.dailyTick(); } catch (e) {} }
       return { end: s.end || null, pw: f.prosperWeeks }; }""")
     check('ранг 3: концовка «процветает» не срабатывает', r['end'] != 'prosper', r)
+        # 4. лестница окладов: каждая управленческая ступень ощутимо выше лучшего разряда 5 и предыдущей ступени
+    r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; const out = {};
+      let best5 = 0; for (const k of Object.keys(G.D.JOBS)) { s.car.job = k; s.car.rank = 5; best5 = Math.max(best5, G.monthlyPay()); }
+      const m = []; s.car.job = 'tokar'; for (let r = 6; r <= 10; r++) { s.car.rank = r; s.car.mgmtStage = 1; const a = G.monthlyPay(); s.car.mgmtStage = 5; m.push([a, G.monthlyPay()]); }
+      return { best5, m }; }""")
+    check('Мастер участка (р6, ступень 1) ≥ +25% к лучшему разряду 5 любой профессии', r['m'][0][0] >= r["best5"] * 1.25, r)
+    ok = all(r['m'][i][0] >= r['m'][i-1][1] * 1.05 for i in range(1, 5))
+    check('каждая следующая должность ≥ +5% к верху предыдущей', ok, r)
     b.close()
 srv.shutdown()
 print('\nИТОГ:', 'все проверки пройдены' if not fails else 'ОШИБКИ: %s' % fails)
