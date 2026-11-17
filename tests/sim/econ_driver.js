@@ -119,9 +119,18 @@ window.__sim = function (cfg) {
     if (cfg.sickPerMonth && d % MONTH === 14) { s.car.sickUntil = d + cfg.sickPerMonth; s.st.health = Math.max(20, s.st.health - 25); }
   }
   function bankOpt(prefix) {
-    s.loc = 'c_bank'; G.bankMenu(); const sp = G.cur; if (!sp) return;
-    const i = (sp.opts || []).findIndex(o => String(o.t).indexOf(prefix) === 0 && !o.dis);
-    if (i >= 0) { L.tag = 'кредит(получено)'; G.choose(i); } else { G.choose((sp.opts || []).length - 1); }
+    // новое многошаговое меню банка (этап 3); старые префиксы сопоставлены с ближайшими новыми продуктами
+    const steps = /Микрозайм/.test(prefix) ? [/Микрозайм/, /Взять/]
+      : /50 000/.test(prefix) ? [/Кредит наличными/, /^100 000/, /^12 мес/, /Оформить/]
+      : [/Кредит наличными/, /^300 000/, /^24 мес/, /Оформить/];
+    s.loc = 'c_bank'; G.bankMenu();
+    for (const re of steps) {
+      const sp = G.cur; if (!sp) return;
+      const i = (sp.opts || []).findIndex(o => re.test(String(o.t).replace(/^[^0-9A-Za-zА-Яа-я]+\s*/, '')) && !o.dis);
+      if (i < 0) { G.choose((sp.opts || []).length - 1); resolve(); return; }
+      if (re === steps[steps.length - 1]) L.tag = 'кредит(получено)';
+      G.choose(i);
+    }
     resolve();
   }
   // ---------- день

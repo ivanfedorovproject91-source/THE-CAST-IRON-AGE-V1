@@ -539,8 +539,7 @@
       G.addMoney(-fixed);
       // долги и кредиты
       let loanTxt = '';
-      s.loans.forEach(l => { if (l.type === 'micro') { const pay = Math.min(s.money, l.left); s.money -= pay; l.left -= pay; loanTxt += '<br>Микрозайм: удержано ' + G.rub(pay); } if (l.type === 'bank' || l.type === 'mortgage') { const pay = Math.min(l.pay, l.left); if (s.money >= pay) { s.money -= pay; l.left -= pay; loanTxt += '<br>Платёж по кредиту: ' + G.rub(pay); } else { l.late = (l.late || 0) + 1; loanTxt += '<br>⚠ Просрочка платежа по кредиту!'; } l.left = Math.round(l.left * (1 + l.rate / 12)); } });
-      s.loans = s.loans.filter(l => l.left > 5);
+      loanTxt += G.loanSettle ? G.loanSettle() : ''; // этап 3: новые договоры — аннуитет; старые — прежняя логика (см. stage3_credit.js)
       G.modal({ title: '💵 РАСЧЁТ ЗА МЕСЯЦ', text: 'Начислено: ' + G.rub(p.acc) + (prem ? ' + премия ' + G.rub(prem) : '') + (deprive ? '<br><b>Соплежуйкин лишил премии (' + G.rub(deprive) + ')</b>' : '') + (wedPen ? '<br>Удержано штрафов: ' + G.rub(wedPen) : '') + '<br>Аванс уже получен: ' + G.rub(p.adv) + '<br>На руки: <b>' + G.rub(net) + '</b>' + (errTxt ? '<br><i>' + errTxt + '</i>' : '') + '<br>' + (G.fixedCosts ? G.fixedCosts().name : 'Общага') + ', связь, проезд: −' + G.rub(fixed) + loanTxt, opts: [{ t: 'Ок' }], vib: 'success' });
       p.hist.push({ m: G.monthIdx(), net });
       p.acc = 0; p.adv = 0; p.prem = 0; p.pen = 0; p.qs = 0; p.qn = 0; p.viol = 0;
@@ -591,7 +590,7 @@
   G.dailyTick = function () {
     const s = G.s, st = s.st;
     // долги
-    s.loans.forEach(l => { if (l.type === 'micro') { l.left = Math.round(l.left * 1.015); } });
+    s.loans.forEach(l => { if (l.type === 'micro') { if (l.v === 2 && G.loanDailyMicro) G.loanDailyMicro(l); else l.left = Math.round(l.left * 1.015); } });
     if (s.loans.some(l => l.late >= 1) && G.chance(30)) G.collectors();
     if (s.debt > 0 && s.debt > 20000 && G.chance(15)) G.collectors();
     // больничный
