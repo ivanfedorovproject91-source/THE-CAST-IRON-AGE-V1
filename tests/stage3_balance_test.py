@@ -48,6 +48,12 @@ with sync_playwright() as pw:
     check('Мастер участка (р6, ступень 1) ≥ +25% к лучшему разряду 5 любой профессии', r['m'][0][0] >= r["best5"] * 1.25, r)
     ok = all(r['m'][i][0] >= r['m'][i-1][1] * 1.05 for i in range(1, 5))
     check('каждая следующая должность ≥ +5% к верху предыдущей', ok, r)
+    # 5. сдельные за операции: рабочему платят, руководителю (р6+) — нет
+    r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; s.car.job = 'tokar'; s.s = 0; s.dwg = { none: false };
+      const res = {}; for (const rk of [3, 6]) { s.car.rank = rk; s.money = 1000; s.dwg.none = false; try { G.doOp(1); } catch (e) { res.err = String(e); } res[rk] = s.money - 1000; }
+      return res; }""")
+    check('рабочий (р3) получает сдельные за операцию', r.get('3', 0) > 0, r)
+    check('руководитель (р6) не получает сдельных', r.get('6', 1) == 0, r)
     b.close()
 srv.shutdown()
 print('\nИТОГ:', 'все проверки пройдены' if not fails else 'ОШИБКИ: %s' % fails)

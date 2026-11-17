@@ -47,11 +47,11 @@
     const q = G.quality(), qop = q * (0.55 + 0.45 * score);
     d.ops++; d.qsum += qop; s.stats.ops++;
     const heavy = G.physical();
-    const cash = Math.round((20 + c.rank * 5) * qop / 100 * (c.rank === 0 ? 0.5 : 1));
-    G.addMoney(cash); s.stats.earned;
+    const cash = c.rank >= 6 ? 0 : Math.round((20 + c.rank * 5) * qop / 100 * (c.rank === 0 ? 0.5 : 1)); // этап 3: руководитель не получает сдельных за операции
+    if (cash) G.addMoney(cash); s.stats.earned;
     s.st.bm += (c.rank >= 8 ? 3.5 : c.rank >= 6 ? 2.5 : 1.6) * qop / 100;
     G.fx({ energy: -(2 + heavy * 1.4) * ((G.CONFIG && G.CONFIG.OP_ENERGY_MULT) || 1), mood: -(0.15 + (j.nerves || 2) * 0.12), know: 0.6, wear: 0.9 });
-    G.toast('Операция: качество ' + Math.round(qop) + '% (+' + G.rub(cash) + ')' + (score >= 0.8 ? ' — отлично!' : score < 0.35 ? ' — криво.' : ''), score >= 0.8 ? 'good' : score < 0.35 ? 'warn' : '');
+    G.toast('Операция: качество ' + Math.round(qop) + '%' + (cash ? ' (+' + G.rub(cash) + ')' : '') + (score >= 0.8 ? ' — отлично!' : score < 0.35 ? ' — криво.' : ''), score >= 0.8 ? 'good' : score < 0.35 ? 'warn' : '');
     if (G.chance(s.machine.wear / 14)) G.machineIncident();
     G.spend(1);
   };
