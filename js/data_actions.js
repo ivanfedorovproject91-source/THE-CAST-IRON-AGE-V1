@@ -1214,11 +1214,12 @@
       f.shopMorale = C(f.shopMorale + ((s.st.coll + s.st.mood) / 2 - f.shopMorale) / 6);
       if (G.weekday() === 0) {
         const sc = (f.plan + f.shopMorale + s.world.plant) / 3;
-        if (sc >= 70) { s.pay.acc += 3000; G.fx({ boss: 3, mood: 4 }); msg('🏭 Завод перевыполнил план: премия 3 000 ₽ всем, и тебе тоже.', 'good'); }
-        else if (sc <= 30) { s.pay.pen += 2000; G.fx({ boss: -3, mood: -3 }); s.world.plant = C(s.world.plant - 3); msg('🏭 Комиссия недовольна планом: премию сняли (−2 000 ₽).', 'bad'); }
+        const pb = Math.max(500, Math.round(G.monthlyPay() * 0.05 / 100) * 100); // этап 3: премия = 5% оклада ступени
+        if (sc >= 70) { s.pay.acc += pb; G.fx({ boss: 3, mood: 4 }); msg('🏭 Завод перевыполнил план: премия ' + G.rub(pb) + ' всем, и тебе тоже.', 'good'); }
+        else if (sc <= 30) { s.pay.pen += pb; G.fx({ boss: -3, mood: -3 }); s.world.plant = C(s.world.plant - 3); msg('🏭 Комиссия недовольна планом: премию сняли (−' + G.rub(pb) + ').', 'bad'); }
         s.world.plant = C(s.world.plant + (f.plan - 50) / 25 + (f.shopMorale - 50) / 50);
-        f.prosperWeeks = (f.plan >= 85 && f.shopMorale >= 75 && s.world.plant >= 80) ? (f.prosperWeeks || 0) + 1 : 0;
-        if (f.prosperWeeks >= 4 && !s.end) G.info('🏭 ЗАВОД ПРОЦВЕТАЕТ', 'Четыре недели подряд план перевыполнен, цех поёт, станки гудят. Генеральный директор лично пожал тебе руку.', () => G.end('prosper'));
+        f.prosperWeeks = (f.plan >= 85 && f.shopMorale >= 75 && s.world.plant >= 80 && s.car.rank >= 8) ? (f.prosperWeeks || 0) + 1 : 0;
+        if (f.prosperWeeks >= 8 && !s.end) G.info('🏭 ЗАВОД ПРОЦВЕТАЕТ', 'Восемь недель подряд план перевыполнен, цех поёт, станки гудят. Генеральный директор лично пожал тебе руку.', () => G.end('prosper'));
       }
     };
 

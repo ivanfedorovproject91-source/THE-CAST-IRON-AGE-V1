@@ -519,7 +519,7 @@
       const soplRel = G.rl('soplezhuykin');
       if (c.rank > 0 && G.chance(soplRel >= 60 ? 3 : soplRel < 30 ? 15 : 8)) { deprive = prem; prem = 0; }
       if (s.flags.soplGift && s.flags.soplGift > G.week()) { deprive = 0; if (!prem) prem = Math.round(p.acc * 0.15); }
-      const wedPen = p.pen || 0;
+      const wedPen = Math.min(p.pen || 0, Math.round(p.acc * 0.2)); // этап 3: удержания за штрафы не больше 20% начисления, выплата не уходит в минус
       const total = p.acc + prem - wedPen;
       let net = (total - p.adv) * 0.87;
       const union = c.union ? Math.round(total * 0.01) : 0;
