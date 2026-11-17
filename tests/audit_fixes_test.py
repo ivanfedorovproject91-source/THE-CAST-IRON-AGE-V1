@@ -26,12 +26,14 @@ with sync_playwright() as p:
     pg.goto('http://127.0.0.1:%d/index.html'%port); pg.wait_for_timeout(1000)
     ev=pg.evaluate; ev(SETUP)
     # 1. зависание экзамена
+    ev("G.CONFIG.PACE=1")  # тест рассчитан на базовые сроки; темп по умолчанию (1.5) проверяется в stage3_balance_test.py
     ev("G.s.car.shifts=5; G.career.checkLadder();")
     check('экзамен стартовал', ev("G.s.car.ladderPending")==1)
     ev("G.headless=false; G.save(); G.headless=true")
     pg.reload(); pg.wait_for_timeout(1000)
     ev("()=>{G.headless=true; G.load(); window.__m=[]; G.modal=function(o){window.__m.push(o);window.__last=o;};}")
     check('после перезагрузки ladderPending сброшен', ev("G.s.car.ladderPending")==0, ev("G.s.car.ladderPending"))
+    ev("G.CONFIG.PACE=1")
     ev("G.career.checkLadder()")
     check('экзамен можно начать снова', 'Экзамен' in ev("(window.__m[0]||{}).title||''"), ev("window.__m.map(m=>m.title)"))
     # 2. PACE

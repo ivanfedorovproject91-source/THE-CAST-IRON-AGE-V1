@@ -80,6 +80,14 @@ with sync_playwright() as pw:
     check('окно «Жильё» открывается и содержит 4 варианта + закрыть', r['has'] and r['titles'] and len(r['titles']) == 5, r)
     r = p.evaluate("""() => { const s = G.s; const i = G.cur.opts.findIndex(o => /Съёмная комната/.test(o.t)); G.choose(i); return { h: G.housing(), money: s.money, fixed: G.fixedCosts().total }; }""")
     check('переезд в комнату: залог 9 000 списан, расходы 11 500', r['h'] == 'room' and r['money'] == 21000 and r['fixed'] == 11500, r)
+    # 8. темп карьеры: PACE 1.5 для новых; текущий шаг старого сохранения идёт по прежнему темпу, следующий — по новому
+    r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s;
+      const out = { pace: G.CONFIG.PACE, newNeed: G.career.reqLines()[0].t };
+      s.car.rank = 1; s.car.shifts = 12; s.car.ladderStepAt = 4; delete s.car.paceSchema; delete s.car.paceStep; G.load && 0;
+      s.car.paceSchema = 1; s.car.paceStep = 1; out.oldNeed = G.career.reqLines()[0].t;
+      delete s.car.paceStep; out.liveNeed = G.career.reqLines()[0].t; return out; }""")
+    check('PACE по умолчанию 1.5, первый экзамен через 8 смен (было 5)', r['pace'] == 1.5 and r['newNeed'].endswith('/ 8 смен'), r)
+    check('старый шаг (разряд 1→2) идёт по прежним 10 сменам, новый — по 15', r['oldNeed'].endswith('/ 10 смен') and r['liveNeed'].endswith('/ 15 смен'), r)
     b.close()
 srv.shutdown()
 print('\nИТОГ:', 'все проверки пройдены' if not fails else 'ОШИБКИ: %s' % fails)

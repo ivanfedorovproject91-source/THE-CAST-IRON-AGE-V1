@@ -6,7 +6,10 @@
   const MGMT_BASE = { 1: 10, 2: 10, 3: 30, 4: 50, 5: 20 };
   // PACE из config.js реально масштабирует сроки (минимум 1 смена)
   const pace = () => Math.max(0.1, (G.CONFIG && Number(G.CONFIG.PACE)) || 1);
-  const need = v => Math.max(1, Math.round(v * pace()));
+  // этап 3: текущий шаг лестницы у игроков, начавших до изменения темпа, досчитывается по прежнему темпу (c.paceStep = 1);
+  // следующие шаги идут по текущему PACE. Новые игры paceStep не имеют — действует PACE из config.js.
+  const stepPace = () => { const c = G.s && G.s.car; return c && c.paceStep != null ? c.paceStep : pace(); };
+  const need = v => Math.max(1, Math.round(v * stepPace()));
   const WORK_NEED = new Proxy(WORK_BASE, { get: (o, k) => (k in o ? need(o[k]) : undefined) });
   const MGMT_NEED = new Proxy(MGMT_BASE, { get: (o, k) => (k in o ? need(o[k]) : undefined) });
   const ROLES = {
@@ -189,7 +192,7 @@
       c.rank=target.nextRank; c.mgmtStage=target.nextStage;
       c.mgmtAppointment=G.week();
     }
-    c.ladderStepAt=c.shifts; c.ladderExamKey=null; c.ladderAttempts=0; c.ladderRetryAt=0; c.ladderPending=0;
+    delete c.paceStep; c.ladderStepAt=c.shifts; c.ladderExamKey=null; c.ladderAttempts=0; c.ladderRetryAt=0; c.ladderPending=0;
     st.know=Math.min(100,st.know+5); G.fx({mood:15,boss:3,coll:2,bm:20});
     G.relAdd('tatishcheva',3); G.relAdd('soplezhuykin',2);
     const mg=c.rank>=6, role=ROLES[c.rank], stage=c.mgmtStage||1;
@@ -261,7 +264,7 @@
   // Новая схема сохраняется поверх старого объекта car; старые сохранения мигрируют автоматически.
   D.RANKS[6]='Мастер участка'; D.RANKS[7]='Старший мастер участка';
   const oldBase=G.baseState;
-  G.baseState=function(){const s=oldBase.apply(this,arguments);s.car.ladderStepAt=0;s.car.mgmtStage=1;s.car.ladderAttempts=0;s.car.ladderRetryAt=0;return s;};
+  G.baseState=function(){const s=oldBase.apply(this,arguments);s.car.ladderStepAt=0;s.car.paceSchema=1;s.car.mgmtStage=1;s.car.ladderAttempts=0;s.car.ladderRetryAt=0;return s;};
   const oldLoad=G.load;
-  if(oldLoad)G.load=function(){const r=oldLoad.apply(this,arguments);if(G.s&&G.s.car){const c=G.s.car;c.ladderPending=0;if(c.mgmtStage==null)c.mgmtStage=1;if(c.ladderAttempts==null)c.ladderAttempts=0;if(c.ladderRetryAt==null)c.ladderRetryAt=0;if(c.ladderStepAt==null)c.ladderStepAt=c.rank===0?0:c.shifts;}return r;};
+  if(oldLoad)G.load=function(){const r=oldLoad.apply(this,arguments);if(G.s&&G.s.car){const c=G.s.car;c.ladderPending=0;if(c.paceSchema==null){c.paceSchema=1;if(c.shifts>0)c.paceStep=1;}if(c.mgmtStage==null)c.mgmtStage=1;if(c.ladderAttempts==null)c.ladderAttempts=0;if(c.ladderRetryAt==null)c.ladderRetryAt=0;if(c.ladderStepAt==null)c.ladderStepAt=c.rank===0?0:c.shifts;}return r;};
 })();
