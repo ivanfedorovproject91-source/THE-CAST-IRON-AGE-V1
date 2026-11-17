@@ -535,13 +535,13 @@
       if (s.flags.overpaid && !p.err) { net -= s.flags.overpaid; s.flags.overpaid = 0; }
       net = Math.round(net);
       G.addMoney(net);
-      const fixed = 3500 + 500 + 1500;
+      const fixed = G.fixedCosts ? G.fixedCosts().total : 5500; // этап 3: зависит от выбранного жилья (по умолчанию общага = 5 500)
       G.addMoney(-fixed);
       // долги и кредиты
       let loanTxt = '';
       s.loans.forEach(l => { if (l.type === 'micro') { const pay = Math.min(s.money, l.left); s.money -= pay; l.left -= pay; loanTxt += '<br>Микрозайм: удержано ' + G.rub(pay); } if (l.type === 'bank' || l.type === 'mortgage') { const pay = Math.min(l.pay, l.left); if (s.money >= pay) { s.money -= pay; l.left -= pay; loanTxt += '<br>Платёж по кредиту: ' + G.rub(pay); } else { l.late = (l.late || 0) + 1; loanTxt += '<br>⚠ Просрочка платежа по кредиту!'; } l.left = Math.round(l.left * (1 + l.rate / 12)); } });
       s.loans = s.loans.filter(l => l.left > 5);
-      G.modal({ title: '💵 РАСЧЁТ ЗА МЕСЯЦ', text: 'Начислено: ' + G.rub(p.acc) + (prem ? ' + премия ' + G.rub(prem) : '') + (deprive ? '<br><b>Соплежуйкин лишил премии (' + G.rub(deprive) + ')</b>' : '') + (wedPen ? '<br>Удержано штрафов: ' + G.rub(wedPen) : '') + '<br>Аванс уже получен: ' + G.rub(p.adv) + '<br>На руки: <b>' + G.rub(net) + '</b>' + (errTxt ? '<br><i>' + errTxt + '</i>' : '') + '<br>Общага, связь, проезд: −' + G.rub(fixed) + loanTxt, opts: [{ t: 'Ок' }], vib: 'success' });
+      G.modal({ title: '💵 РАСЧЁТ ЗА МЕСЯЦ', text: 'Начислено: ' + G.rub(p.acc) + (prem ? ' + премия ' + G.rub(prem) : '') + (deprive ? '<br><b>Соплежуйкин лишил премии (' + G.rub(deprive) + ')</b>' : '') + (wedPen ? '<br>Удержано штрафов: ' + G.rub(wedPen) : '') + '<br>Аванс уже получен: ' + G.rub(p.adv) + '<br>На руки: <b>' + G.rub(net) + '</b>' + (errTxt ? '<br><i>' + errTxt + '</i>' : '') + '<br>' + (G.fixedCosts ? G.fixedCosts().name : 'Общага') + ', связь, проезд: −' + G.rub(fixed) + loanTxt, opts: [{ t: 'Ок' }], vib: 'success' });
       p.hist.push({ m: G.monthIdx(), net });
       p.acc = 0; p.adv = 0; p.prem = 0; p.pen = 0; p.qs = 0; p.qn = 0; p.viol = 0;
     }

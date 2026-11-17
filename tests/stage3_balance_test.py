@@ -54,6 +54,32 @@ with sync_playwright() as pw:
       return res; }""")
     check('рабочий (р3) получает сдельные за операцию', r.get('3', 0) > 0, r)
     check('руководитель (р6) не получает сдельных', r.get('6', 1) == 0, r)
+    # 6. жильё: по умолчанию общага = 5 500, съём дороже, бонус сна, старое сохранение без флага = общага
+    r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; s.car.job = 'tokar'; s.car.rank = 5;
+      const out = { def: G.fixedCosts().total, hk: G.housing(), act: !!G.ACT.housing };
+      s.money = 100000; s.flags.housing = 'room'; out.room = G.fixedCosts().total;
+      s.flags.housing = 'flat'; out.flat = G.fixedCosts().total;
+      s.flags.housing = 'own'; out.ownNoFlat = G.housing();
+      s.own.flat = 1; out.own = G.fixedCosts().total;
+      s.flags.housing = 'room'; s.st.energy = 20; s.st.mood = 50; s.phase = 'evening'; s.t.hour = 22; const e0 = s.st.energy; try { G.sleep(); } catch (e) { out.err = String(e); } out.sleepGain = s.st.energy - e0;
+      s.flags.housing = 'dorm'; s.st.energy = 20; s.t.hour = 22; const e1 = s.st.energy; try { G.sleep(); } catch (e) {} out.sleepGainDorm = s.st.energy - e1;
+      delete s.flags.housing; out.old = G.fixedCosts().total; return out; }""")
+    check('общага по умолчанию = 5 500 ₽/мес', r['def'] == 5500 and r['hk'] == 'dorm' and r['old'] == 5500, r)
+    check('действие «Жильё» зарегистрировано', r['act'], r)
+    check('комната 11 500, квартира 22 500, своя 5 000; «своя» без квартиры → общага', r['room'] == 11500 and r['flat'] == 22500 and r['own'] == 5000 and r['ownNoFlat'] == 'dorm', r)
+    check('сон в съёмной комнате восстанавливает больше, чем в общаге', r['sleepGain'] > r['sleepGainDorm'], r)
+    # расчёт зарплаты списывает выбранные расходы (общага → ровно 5 500)
+    r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; s.flags.shurFriend = 1; s.car.job = 'tokar'; s.car.rank = 5;
+      const calc = (h) => { s.flags.housing = h; s.pay.acc = 40000; s.pay.adv = 16000; s.pay.pen = 0; s.pay.viol = 1; s.pay.qn = 1; s.pay.prem = 0.5; s.money = 50000; const w = G.week; G.week = () => 3; G.payday(); G.week = w; return s.money; };
+      return { dorm: calc('dorm'), room: calc('room') }; }""")
+    check('в расчёте комната дороже общаги ровно на 6 000 ₽', r['dorm'] - r['room'] == 6000, r)
+    # 7. окно «Жильё» открывается, переезд в комнату списывает залог и меняет расходы
+    r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; s.car.job = 'tokar'; s.car.rank = 5; s.money = 30000; s.phase = 'free';
+      G.mq.length = 0; G.cur = null; G.busy = false; G.ACT.housing.fn(s); const m = G.cur || G.modal.cur || null;
+      const titles = (G.cur && G.cur.opts) ? G.cur.opts.map(o => o.t + '|' + (o.dis || '')) : null; return { titles, has: !!G.cur }; }""")
+    check('окно «Жильё» открывается и содержит 4 варианта + закрыть', r['has'] and r['titles'] and len(r['titles']) == 5, r)
+    r = p.evaluate("""() => { const s = G.s; const i = G.cur.opts.findIndex(o => /Съёмная комната/.test(o.t)); G.choose(i); return { h: G.housing(), money: s.money, fixed: G.fixedCosts().total }; }""")
+    check('переезд в комнату: залог 9 000 списан, расходы 11 500', r['h'] == 'room' and r['money'] == 21000 and r['fixed'] == 11500, r)
     b.close()
 srv.shutdown()
 print('\nИТОГ:', 'все проверки пройдены' if not fails else 'ОШИБКИ: %s' % fails)
