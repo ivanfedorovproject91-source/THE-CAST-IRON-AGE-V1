@@ -88,6 +88,19 @@ with sync_playwright() as pw:
       delete s.car.paceStep; out.liveNeed = G.career.reqLines()[0].t; return out; }""")
     check('PACE по умолчанию 1.5, первый экзамен через 8 смен (было 5)', r['pace'] == 1.5 and r['newNeed'].endswith('/ 8 смен'), r)
     check('старый шаг (разряд 1→2) идёт по прежним 10 сменам, новый — по 15', r['oldNeed'].endswith('/ 10 смен') and r['liveNeed'].endswith('/ 15 смен'), r)
+    # 9. образ жизни: по умолчанию 0 ₽, выбор по рангу, расход в расчёте, бонус сна
+    r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; s.car.job = 'tokar'; s.car.rank = 8; s.money = 100000;
+      const out = { def: G.fixedCosts().total, k: G.lifestyle(), act: !!G.ACT.lifestyle };
+      s.flags.lifestyle = 'repr'; out.repr = G.fixedCosts().total; out.label = G.fixedCosts().label;
+      s.flags.housing = 'flat'; out.both = G.fixedCosts().total; delete s.flags.housing;
+      s.st.energy = 20; s.st.mood = 50; s.t.hour = 22; const e1 = s.st.energy; try { G.sleep(); } catch (e) {} out.gainRepr = s.st.energy - e1;
+      s.flags.lifestyle = 'modest'; s.st.energy = 20; s.t.hour = 22; const e2 = s.st.energy; try { G.sleep(); } catch (e) {} out.gainModest = s.st.energy - e2;
+      s.car.rank = 2; s.flags.lifestyle = 'modest'; G.mq.length = 0; G.cur = null; G.busy = false; G.ACT.lifestyle.fn(s); out.opts = G.cur.opts.map(o => o.t + '|' + (o.dis || ''));
+      return out; }""")
+    check('образ жизни по умолчанию «Скромный»: расходы 5 500', r['def'] == 5500 and r['k'] == 'modest' and r['act'], r)
+    check('«Представительский» +30 000, вместе с квартирой 52 500; строка в расчёте', r['repr'] == 35500 and r['both'] == 52500 and 'образ жизни' in r['label'], r)
+    check('образ жизни улучшает сон', r['gainRepr'] > r['gainModest'], r)
+    check('на низком ранге элитный недоступен', any('Элитный' in o and 'Нужен ранг 9' in o for o in r['opts']), r)
     b.close()
 srv.shutdown()
 print('\nИТОГ:', 'все проверки пройдены' if not fails else 'ОШИБКИ: %s' % fails)

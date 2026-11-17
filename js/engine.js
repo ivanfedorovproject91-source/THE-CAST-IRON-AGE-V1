@@ -540,7 +540,7 @@
       // долги и кредиты
       let loanTxt = '';
       loanTxt += G.loanSettle ? G.loanSettle() : ''; // этап 3: новые договоры — аннуитет; старые — прежняя логика (см. stage3_credit.js)
-      G.modal({ title: '💵 РАСЧЁТ ЗА МЕСЯЦ', text: 'Начислено: ' + G.rub(p.acc) + (prem ? ' + премия ' + G.rub(prem) : '') + (deprive ? '<br><b>Соплежуйкин лишил премии (' + G.rub(deprive) + ')</b>' : '') + (wedPen ? '<br>Удержано штрафов: ' + G.rub(wedPen) : '') + '<br>Аванс уже получен: ' + G.rub(p.adv) + '<br>На руки: <b>' + G.rub(net) + '</b>' + (errTxt ? '<br><i>' + errTxt + '</i>' : '') + '<br>' + (G.fixedCosts ? G.fixedCosts().name : 'Общага') + ', связь, проезд: −' + G.rub(fixed) + loanTxt, opts: [{ t: 'Ок' }], vib: 'success' });
+      G.modal({ title: '💵 РАСЧЁТ ЗА МЕСЯЦ', text: 'Начислено: ' + G.rub(p.acc) + (prem ? ' + премия ' + G.rub(prem) : '') + (deprive ? '<br><b>Соплежуйкин лишил премии (' + G.rub(deprive) + ')</b>' : '') + (wedPen ? '<br>Удержано штрафов: ' + G.rub(wedPen) : '') + '<br>Аванс уже получен: ' + G.rub(p.adv) + '<br>На руки: <b>' + G.rub(net) + '</b>' + (errTxt ? '<br><i>' + errTxt + '</i>' : '') + '<br>' + (G.fixedCosts ? G.fixedCosts().label : 'Общага, связь, проезд') + ': −' + G.rub(fixed) + loanTxt, opts: [{ t: 'Ок' }], vib: 'success' });
       p.hist.push({ m: G.monthIdx(), net });
       p.acc = 0; p.adv = 0; p.prem = 0; p.pen = 0; p.qs = 0; p.qn = 0; p.viol = 0;
     }

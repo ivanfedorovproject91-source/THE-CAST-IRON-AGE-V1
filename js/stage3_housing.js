@@ -21,7 +21,7 @@
   // постоянные ежемесячные расходы (жильё + связь + проезд)
   G.fixedCosts = function () {
     const h = H[cur()];
-    return { housing: h.rent, comms: h.comms, transit: h.transit, total: h.rent + h.comms + h.transit, name: h.n };
+    return { housing: h.rent, comms: h.comms, transit: h.transit, total: h.rent + h.comms + h.transit, name: h.n, label: h.n + ', связь, проезд', life: 0 };
   };
 
   const move = (k) => {
