@@ -47,7 +47,7 @@ window.__sim = function (cfg) {
   const ACC = {};
   if (cfg.traceAcc) { let av = s.pay.acc; Object.defineProperty(s.pay, 'acc', { get() { return av; }, set(v) { const d = v - av; if (d > 0) { const k = new Error().stack.split('\n').slice(2, 4).map(x => x.trim().replace(/^at /, '').replace(/http:\/\/[^/]+\//, '').replace('?v=3.14.0', '').replace(/:\d+$/, '')).join(' < '); const a = ACC[k] || (ACC[k] = [0, 0]); a[0]++; a[1] += d; } av = v; }, enumerable: true }); }
   // ---------- решатель окон
-  const BAD = /^взять$|взятк|конверт|украст|своровать|стащить|напиться|водк|уволь|запанибрата|нагруб|послать|обмануть|соврать|подраться|ударить/i;
+  const BAD = /^взять$|взятк|конверт|украст|своровать|стащить|напиться|водк|уволь|запанибрата|нагруб|послать|обмануть|соврать|подраться|ударить|припис|вполсилы|не лезть/i;
   const QB = () => { const L2 = window.__LADDER || {}; return [].concat(window.__NQ || [], D.QUIZ || [], L2.WORK_Q || [], L2.WORK_HARD || [], L2.MGMT_Q || [], L2.MGMT_HARD || []); };
   let QCACHE = null;
   function examIdx(opts) {
