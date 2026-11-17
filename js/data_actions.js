@@ -47,11 +47,11 @@
     const q = G.quality(), qop = q * (0.55 + 0.45 * score);
     d.ops++; d.qsum += qop; s.stats.ops++;
     const heavy = G.physical();
-    const cash = Math.round((20 + c.rank * 5) * qop / 100 * (c.rank === 0 ? 0.5 : 1));
-    G.addMoney(cash); s.stats.earned;
+    const cash = c.rank >= 6 ? 0 : Math.round((20 + c.rank * 5) * qop / 100 * (c.rank === 0 ? 0.5 : 1)); // этап 3: руководитель не получает сдельных за операции
+    if (cash) G.addMoney(cash); s.stats.earned;
     s.st.bm += (c.rank >= 8 ? 3.5 : c.rank >= 6 ? 2.5 : 1.6) * qop / 100;
     G.fx({ energy: -(2 + heavy * 1.4) * ((G.CONFIG && G.CONFIG.OP_ENERGY_MULT) || 1), mood: -(0.15 + (j.nerves || 2) * 0.12), know: 0.6, wear: 0.9 });
-    G.toast('Операция: качество ' + Math.round(qop) + '% (+' + G.rub(cash) + ')' + (score >= 0.8 ? ' — отлично!' : score < 0.35 ? ' — криво.' : ''), score >= 0.8 ? 'good' : score < 0.35 ? 'warn' : '');
+    G.toast('Операция: качество ' + Math.round(qop) + '%' + (cash ? ' (+' + G.rub(cash) + ')' : '') + (score >= 0.8 ? ' — отлично!' : score < 0.35 ? ' — криво.' : ''), score >= 0.8 ? 'good' : score < 0.35 ? 'warn' : '');
     if (G.chance(s.machine.wear / 14)) G.machineIncident();
     G.spend(1);
   };
@@ -1214,11 +1214,12 @@
       f.shopMorale = C(f.shopMorale + ((s.st.coll + s.st.mood) / 2 - f.shopMorale) / 6);
       if (G.weekday() === 0) {
         const sc = (f.plan + f.shopMorale + s.world.plant) / 3;
-        if (sc >= 70) { s.pay.acc += 3000; G.fx({ boss: 3, mood: 4 }); msg('🏭 Завод перевыполнил план: премия 3 000 ₽ всем, и тебе тоже.', 'good'); }
-        else if (sc <= 30) { s.pay.pen += 2000; G.fx({ boss: -3, mood: -3 }); s.world.plant = C(s.world.plant - 3); msg('🏭 Комиссия недовольна планом: премию сняли (−2 000 ₽).', 'bad'); }
+        const pb = Math.max(500, Math.round(G.monthlyPay() * 0.05 / 100) * 100); // этап 3: премия = 5% оклада ступени
+        if (sc >= 70) { s.pay.acc += pb; G.fx({ boss: 3, mood: 4 }); msg('🏭 Завод перевыполнил план: премия ' + G.rub(pb) + ' всем, и тебе тоже.', 'good'); }
+        else if (sc <= 30) { s.pay.pen += pb; G.fx({ boss: -3, mood: -3 }); s.world.plant = C(s.world.plant - 3); msg('🏭 Комиссия недовольна планом: премию сняли (−' + G.rub(pb) + ').', 'bad'); }
         s.world.plant = C(s.world.plant + (f.plan - 50) / 25 + (f.shopMorale - 50) / 50);
-        f.prosperWeeks = (f.plan >= 85 && f.shopMorale >= 75 && s.world.plant >= 80) ? (f.prosperWeeks || 0) + 1 : 0;
-        if (f.prosperWeeks >= 4 && !s.end) G.info('🏭 ЗАВОД ПРОЦВЕТАЕТ', 'Четыре недели подряд план перевыполнен, цех поёт, станки гудят. Генеральный директор лично пожал тебе руку.', () => G.end('prosper'));
+        f.prosperWeeks = (f.plan >= 85 && f.shopMorale >= 75 && s.world.plant >= 80 && s.car.rank >= 8) ? (f.prosperWeeks || 0) + 1 : 0;
+        if (f.prosperWeeks >= 8 && !s.end) G.info('🏭 ЗАВОД ПРОЦВЕТАЕТ', 'Восемь недель подряд план перевыполнен, цех поёт, станки гудят. Генеральный директор лично пожал тебе руку.', () => G.end('prosper'));
       }
     };
 
