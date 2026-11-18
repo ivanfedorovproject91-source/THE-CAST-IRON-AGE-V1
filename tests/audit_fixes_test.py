@@ -68,7 +68,7 @@ with sync_playwright() as p:
     # 10. облако Telegram (мок)
     b=p.chromium.launch(); ctx=b.new_context(); ctx.add_init_script(MOCK); ctx.route('**/telegram-web-app.js', NOJS); pg=ctx.new_page(); errs=[]
     pg.on('pageerror',lambda e: errs.append(str(e)))
-    pg.goto('http://127.0.0.1:%d/index.html'%port); pg.wait_for_timeout(1200)
+    pg.goto('http://127.0.0.1:%d/index.html'%port); pg.wait_for_timeout(2400)
     pg.evaluate("""()=>{G.newState('Облако', G.defaultAv(), G.D.EDU[0].id); G.s.car.job='podsob'; G.s.car.shifts=7; G.s.phase='evening'; G.save();}""")
     ok=pg.evaluate("G.cloud.push()")
     check('сохранение ушло в облако', ok is True, pg.evaluate("G.cloud.status"))

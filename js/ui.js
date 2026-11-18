@@ -405,8 +405,38 @@
     if (UI.taps >= 7) { UI.taps = 0; UI.debug(); }
   };
   UI.debug = function () {
-    const s = G.s; s.flags.dbg = 1;
-    G.modal({ title: '🛠 Отладка', wide: true, opts: [
+    G.modal({ title: '🛠 Меню разработчика', wide: true, text: 'Диагностика, копии и облако — безопасны. «Читы» навсегда отключают это прохождение от общего рейтинга.', opts: [
+      { t: 'ℹ Диагностика загрузки', fn: () => G.diag.show() },
+      { t: '💾 Сохранение: копии и перенос', fn: () => UI.debugSave() },
+      { t: '☁ Облако Telegram', fn: () => UI.debugCloud() },
+      { t: '🎮 Читы (отключат рейтинг)', fn: () => UI.debugCheats() },
+      { t: 'Закрыть', fn: () => {} }] });
+  };
+  UI.debugSave = function () {
+    const b = G.saveBackups(), row = (n, x) => '<div class="kv"><span>' + n + '</span><b>' + (x ? 'день ' + x.day + ', смен ' + x.shifts + (x.ok ? '' : ' (повреждена)') : 'нет') + '</b></div>';
+    G.modal({ title: '💾 Сохранение', wide: true, text: row('Скользящая копия', b.rolling) + row('До обновления', b.pre) + (b.corrupt ? '<div class="kv"><span>Повреждённое (сохранено для разбора)</span><b>' + b.corrupt.size + ' симв.</b></div>' : '') + '<small>Копии лежат в памяти этого устройства. Перед загрузкой копии текущее сохранение откладывается в запасной слот.</small>', opts: [
+      { t: '📌 Сделать копию сейчас', fn: () => { G.forceBackup(); G.toast('Копия сделана.', 'good'); } },
+      { t: '♻ Вернуть скользящую копию', dis: b.rolling && b.rolling.ok ? null : 'Нет копии', fn: () => G.modal({ title: 'Вернуть копию?', text: 'Игра перезагрузится с состоянием копии (день ' + b.rolling.day + ').', opts: [{ t: 'Вернуть', fn: () => G.restoreBackup('rolling') }, { t: 'Отмена', fn: () => {} }] }) },
+      { t: '♻ Вернуть копию «до обновления»', dis: b.pre && b.pre.ok ? null : 'Нет копии', fn: () => G.modal({ title: 'Вернуть копию?', text: 'Игра перезагрузится с состоянием до обновления (день ' + b.pre.day + ').', opts: [{ t: 'Вернуть', fn: () => G.restoreBackup('pre') }, { t: 'Отмена', fn: () => {} }] }) },
+      { t: '📋 Скопировать сохранение (перенос)', fn: () => { try { navigator.clipboard.writeText(G.exportSave()); G.toast('Сохранение скопировано в буфер.', 'good'); } catch (e) { G.toast('Не удалось скопировать.', 'warn'); } } },
+      { t: '📥 Вставить сохранение', fn: () => UI.debugImport() },
+      { t: 'Назад', fn: () => UI.debug() }] });
+  };
+  UI.debugImport = function () {
+    G.modal({ title: '📥 Вставить сохранение', wide: true, text: 'Вставь скопированный ранее текст. Текущее сохранение будет отложено в запасной слот.<br><textarea id="imp-ta" style="width:100%;height:110px;margin-top:6px"></textarea>', opts: [
+      { t: 'Загрузить', fn: () => { const t = (document.getElementById('imp-ta') || {}).value, r = G.importSave(t); if (r.ok) { try { location.reload(); } catch (e) {} } else G.modal({ title: 'Не получилось', text: r.error, opts: [{ t: 'Ок', fn: () => {} }] }); } },
+      { t: 'Отмена', fn: () => {} }] });
+  };
+  UI.debugCloud = function () {
+    const C = G.cloud, d = C.lastDecision;
+    G.modal({ title: '☁ Облако Telegram', wide: true, text: '<div class="kv"><span>Доступно</span><b>' + (C.available() ? 'да' : 'нет (нужен Telegram)') + '</b></div><div class="kv"><span>Статус</span><b>' + (C.status || '—') + '</b></div>' + (d ? '<div class="kv"><span>Последняя сверка</span><b>' + d.act + ': ' + d.why + '</b></div>' : ''), opts: [
+      { t: '🔄 Сверить с облаком', dis: C.available() ? null : 'Нет облака', fn: () => { C.synced = false; C.sync(); } },
+      { t: '⬆ Принудительно записать в облако', dis: C.available() ? null : 'Нет облака', fn: () => G.modal({ title: 'Перезаписать облако?', text: 'Облачное сохранение будет заменено текущим.', opts: [{ t: 'Да', fn: () => { C.synced = true; C.allowOverwrite = true; C.push(); } }, { t: 'Отмена', fn: () => {} }] }) },
+      { t: 'Назад', fn: () => UI.debug() }] });
+  };
+  UI.debugCheats = function () {
+    const s = G.s; s.flags.dbg = 1; // любой чит навсегда исключает это прохождение из рейтинга
+    G.modal({ title: '🎮 Читы (рейтинг отключён для этого прохождения)', wide: true, opts: [
       { t: '+10 000 ₽', fn: () => G.addMoney(10000) },
       { t: '+500 000 ₽', fn: () => G.addMoney(500000) },
       { t: 'Здоровье/энергия/настроение 100', fn: () => { ['health', 'energy', 'mood', 'satiety'].forEach(k => { s.st[k] = 100; }); } },
