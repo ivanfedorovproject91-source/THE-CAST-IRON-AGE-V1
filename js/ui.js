@@ -350,6 +350,7 @@
     const rec = G.records();
     return '<div class="end-scr"><div class="em">' + e.e + '</div><h1>' + e.t + '</h1><p>' + e.x + '</p>' + (s.end.why && s.end.why.length ? '<div class="note">' + s.end.why.join('<br>') + '</div>' : '') + '<div class="stripe"></div><div class="stat-list">'
       + '<div><span>Смен отработано</span><b>' + s.car.shifts + '</b></div><div><span>Должность</span><b>' + G.rankName() + '</b></div><div><span>Прожито дней</span><b>' + s.t.day + '</b></div><div><span>Деньги</span><b>' + G.rub(s.money) + '</b></div><div><span>Операций</span><b>' + s.stats.ops + '</b></div><div><span>Клички</span><b>' + (s.nicks.map(n => D.NICKS[n].n).join(', ') || '—') + '</b></div><div><span>Очки жизни</span><b style="color:var(--haz)">' + G.ojScore() + '</b></div><div><span>Рекорд</span><b>' + (rec.best || 0) + '</b></div></div>'
+      + (G.canContinueFree && G.canContinueFree() ? '<button class="btn big" onclick="G.continueFree()">▶ ПРОДОЛЖИТЬ ИГРУ (свободная игра)</button>' : '')
       + '<button class="btn big hazard" onclick="G.ui.restart()">НАЧАТЬ СНОВА</button></div>';
   }
   UI.restart = function () { G.wipe(); UI.mode = 'title'; UI.render(); };
