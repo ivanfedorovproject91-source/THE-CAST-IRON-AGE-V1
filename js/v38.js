@@ -74,10 +74,10 @@
     // сообщить игроку о смене «климата»
     if (sd.lvl !== v.tier) {
       const old = v.tier; v.tier = sd.lvl;
-      if (sd.lvl > old && sd.lvl >= 2) wait(() => bossModal(pick(['stepanych', 'dudukin']), 'Начальство приглядывается', pick([
+      if (sd.lvl > old && sd.lvl >= 2 && trustWho()) wait(() => bossModal(trustWho(), 'Начальство приглядывается', pick([
         'Мастер отводит тебя в сторону: «Слушай, в последнее время у тебя пошли косяки. Я не злюсь, но другие уже замечают. Возьмись за ум — и всё забудется».',
         '«Я вижу, что с работой у тебя не очень, — говорит мастер. — Придётся чаще заглядывать к тебе. Хорошая новость: это поправимо. Пять чистых смен — и разговор будет другой».']), [{ t: 'Понял, исправлюсь', fn: () => {} }]));
-      else if (sd.lvl < old && old >= 2) wait(() => { const who = pick(['stepanych', 'dudukin']); G.fx({ boss: 2, mood: 4 }); if (G.s.car.notes.length) G.s.car.notes.pop(); bossModal(who, 'Подтянулся!', pick([
+      else if (sd.lvl < old && old >= 2 && trustWho()) wait(() => { const who = trustWho(); G.fx({ boss: 2, mood: 4 }); if (G.s.car.notes.length) G.s.car.notes.pop(); bossModal(who, 'Подтянулся!', pick([
         'Мастер хмыкает: «Заметил, что ты подтянулся. Прошлое поминать не буду. Так держать». Одна запись в блокнотике зачёркнута.',
         '«Знаешь, — говорит мастер, — я думал, ты безнадёжен. Ошибался». Он протягивает руку. Придирок станет заметно меньше.']), [{ t: 'Спасибо!', fn: () => {} }]); });
     }
@@ -257,15 +257,21 @@
   // =====================================================================
   // 3. ПРИДИРКИ И ДОВЕРИЕ: частота зависит от репутации
   // =====================================================================
-  const masters = lv => lv >= 2 ? ['stepanych', 'dudukin', 'shchiplen', 'kulezhov'] : ['stepanych', 'dudukin'];
-  const who = lv => { const a = masters(lv).filter(x => D.NPC[x]); return pick(a.length ? a : ['stepanych']); };
+  // Этап 4: придираться может только тот, кто выше игрока по должности (G.aboveMe — stage4_hierarchy.js); у директора — никто
+  const above = x => (G.aboveMe ? G.aboveMe(x) : true);
+  const masters = lv => { const all = ['stepanych', 'dudukin', 'shchiplen', 'kulezhov', 'rassvetov', 'soplezhuykin', 'truhanov'].filter(x => D.NPC[x] && above(x)); const low = all.filter(x => TIER[x] <= (lv >= 2 ? 2 : 1)); return low.length ? low : all; };
+  const who = lv => { const a = masters(lv); return a.length ? pick(a) : null; };
+  const trustWho = () => { const a = masters(0); return a.length ? pick(a) : null; };
   G.cleanLevel = () => { const w = G.s.world; if (w.clean == null) w.clean = 70; return w.clean; };
 
   const NIT_START = {
     stepanych: ['Степаныч подкрадывается со спины: «Ну-ка, покажи, что у тебя тут».', 'Степаныч обходит станок, водит пальцем по поверхности и смотрит на палец: «Хм».'],
     dudukin: ['Дудукин подходит с блокнотом: «Плановая проверка. Ничего личного».', 'Дудукин внимательно осматривает рабочее место: «Давай быстро пройдёмся».'],
     shchiplen: ['В цеху гаснут разговоры: Щиплен лично идёт к твоему станку, сложив руки за спиной.', 'Щиплен приближается, пыхтя: «Что тут у нас? Показывай!»'],
-    kulezhov: ['Кулежов появляется внезапно: «Я как раз проходил мимо… по поручению директора».', 'Кулежов щурится: «Проверка. Лично я бы не стал, но надо».']
+    kulezhov: ['Кулежов появляется внезапно: «Я как раз проходил мимо… по поручению директора».', 'Кулежов щурится: «Проверка. Лично я бы не стал, но надо».'],
+    rassvetov: ['Рассветов молча кладёт на станок штангенциркуль: «Допуск. Сейчас».', 'Рассветов проходит вдоль участка с чертежом под мышкой: «Проверка соответствия. Стойте, где стоите».'],
+    soplezhuykin: ['Соплежуйкин возникает с блокнотом: «Проверка. Всё будет записано».', 'Соплежуйкин молча раскрывает блокнотик и начинает смотреть на тебя. Это хуже любых слов.'],
+    truhanov: ['Труханов заходит в цех без свиты: «Хочу сам посмотреть, как у вас дела».', 'Труханов останавливается за спиной: «Покажи-ка, что вы тут производите».']
   };
   function fails() {
     const s = G.s, st = s.st, f = [];
@@ -329,7 +335,7 @@
   }
   // ---- доверие при хорошей репутации
   function evTrust() {
-    const s = G.s, id = pick(['stepanych', 'dudukin']), v = V();
+    const s = G.s, id = trustWho(), v = V(); if (!id) return;
     const k = pick(['alone', 'task', 'praise', 'char']);
     if (k === 'char' && charOk()) return evTrust2('alone', id);
     return evTrust2(k, id);
@@ -347,11 +353,12 @@
     const s = G.s, v = V(), sd = G.bossStanding(), lv = sd.lvl, ng = v.neg;
     if (ng.day !== s.t.day) { ng.day = s.t.day; ng.n = 0; ng.slot = -9; }
     if (s.phase !== 'work' || s.day.slots < 2 || s.day.slots - ng.slot < 2 || s.car.shifts < 3) return false;
+    if (!who(0)) return false; // над игроком никого нет (директор) — придираться некому
     const cap = [1, 1, 2, 3][lv], pr = [6, 4, 10, 17][lv];
     if (ng.n >= cap || !G.chance(pr)) return false;
     ng.n++; ng.slot = s.day.slots;
     if (lv === 0) { evTrust(); return true; }
-    const p = v.perf, pool = [['inspect', 3, true], ['remark', 2, true], ['error', 2, s.stats.brak > 0 || p.brak > 0.5 || p.qual < 0.72 || s.day.viol > 0], ['check', 1.5, lv >= 2], ['explain', 1.5, lv >= 2 && (p.late > 0.8 || p.viol > 0.8 || p.brak > 0.8)]].filter(x => x[2]);
+    const p = v.perf, pool = [['inspect', 3, s.car.rank <= 6], ['remark', 2, s.car.rank <= 6], ['error', 2, s.stats.brak > 0 || p.brak > 0.5 || p.qual < 0.72 || s.day.viol > 0], ['check', 1.5, lv >= 2], ['explain', 1.5, lv >= 2 && (p.late > 0.8 || p.viol > 0.8 || p.brak > 0.8)]].filter(x => x[2]);
     const e = G.wpick(pool, x => x[1]); if (!e) return false;
     ({ inspect: evInspect, remark: evRemark, error: evError, check: evCheck, explain: evExplain })[e[0]](lv);
     return true;
@@ -450,7 +457,7 @@
     o.push({ t: '😄 Пошутить', fn: () => { const p = C(32 + s.st.cool / 3 + (arch === 'soft' || arch === 'joker' ? 10 : arch === 'prim' ? -15 : 0) + r.l / 8 - 4 * L3, 10, 75); if (G.chance(p)) finish(react('joke', true), { rel: { [id]: 3 }, mood: 3, coll: 1 }, 'joke', 7, 0, 'good'); else finish(react('joke', false), { rel: { [id]: -7 }, mood: -2 }, 'joke_bad', 4, 1, 'bad'); } });
     const liked = (n.likes || []).filter(k => G.has(k))[0];
     o.push({ t: '🤝 Помириться' + (liked ? ' (с подарком: ' + (D.ITEMS[liked] ? D.ITEMS[liked].n : liked) + ')' : ''), fn: () => { const p = C(40 + s.st.coll / 4 + r.l / 5 + (liked ? 25 : 0) - 5 * L3, 15, 90); if (liked) G.give(liked, -1); if (G.chance(p)) finish(react('peace', true) + sig('ok'), { rel: { [id]: 6 }, mood: 2, coll: 1 }, 'peace', 10, 0, 'good'); else finish(react('peace', false), { rel: { [id]: -2 }, mood: -1 }, 'peace_bad', 3, 1, 'warn'); } });
-    o.push({ t: '👔 Обратиться к руководству', fn: () => { const sd = G.bossStanding().score, m = who(1), p = C(30 + sd / 3 + G.rl(m) / 5 - (cause === 'rude' || cause === 'error' || cause === 'rep' ? 25 : 0), 8, 80); s.car.snitch += 1; if (G.chance(p)) finish(react('boss', true), { rel: { [id]: -6, [m]: 2 }, coll: -2, boss: 1 }, 'boss', 10, 1, 'warn'); else finish(react('boss', false), { rel: { [id]: -3, [m]: -2 }, coll: -2, boss: -2, mood: -2 }, 'boss_bad', 6, 1, 'bad'); } });
+    o.push({ t: '👔 Обратиться к руководству', fn: () => { const sd = G.bossStanding().score, m = who(1) || id, p = C(30 + sd / 3 + G.rl(m) / 5 - (cause === 'rude' || cause === 'error' || cause === 'rep' ? 25 : 0), 8, 80); s.car.snitch += 1; if (G.chance(p)) finish(react('boss', true), { rel: { [id]: -6, [m]: 2 }, coll: -2, boss: 1 }, 'boss', 10, 1, 'warn'); else finish(react('boss', false), { rel: { [id]: -3, [m]: -2 }, coll: -2, boss: -2, mood: -2 }, 'boss_bad', 6, 1, 'bad'); } });
     G.modal({ title: '⚡ Конфликт: ' + n.name, face: id, vib: 'warning', cls: 'bad', wide: true, text: text + '<br>Как ответишь? (у каждого ответа есть последствия, и ' + nm1 + ' всё запомнит)', opts: o });
   }
   // память: при разговоре с NPC напоминает о прошлой ссоре (раз в день, пока она «открыта»)
