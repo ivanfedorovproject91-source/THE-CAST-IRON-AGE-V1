@@ -193,12 +193,8 @@
   // ---------- Должность, зарплата, качество
   G.job = () => D.JOBS[G.s.car.job] || null;
   G.rank = () => G.s.car.rank;
-  G.rankName = () => D.RANKS[G.s.car.rank];
-  G.jobTitle = function () {
-    const c = G.s.car, j = G.job(); if (!j) return 'Безработный';
-    if (c.rank >= 6) return D.RANKS[c.rank];
-    return j.name + (c.rank === 0 ? ' (стажёр)' : ', ' + D.RANKS[c.rank].toLowerCase());
-  };
+  /* Этап 5: прежнее определение G.rankName удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
+  /* Этап 5: прежнее определение G.jobTitle удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
   G.monthlyPay = function () {
     const c = G.s.car, j = G.job(); if (!j) return 0;
     if (c.rank === 0) return 12000;
@@ -535,13 +531,12 @@
       if (s.flags.overpaid && !p.err) { net -= s.flags.overpaid; s.flags.overpaid = 0; }
       net = Math.round(net);
       G.addMoney(net);
-      const fixed = 3500 + 500 + 1500;
+      const fixed = G.fixedCosts ? G.fixedCosts().total : 5500; // этап 3: зависит от выбранного жилья (по умолчанию общага = 5 500)
       G.addMoney(-fixed);
       // долги и кредиты
       let loanTxt = '';
-      s.loans.forEach(l => { if (l.type === 'micro') { const pay = Math.min(s.money, l.left); s.money -= pay; l.left -= pay; loanTxt += '<br>Микрозайм: удержано ' + G.rub(pay); } if (l.type === 'bank' || l.type === 'mortgage') { const pay = Math.min(l.pay, l.left); if (s.money >= pay) { s.money -= pay; l.left -= pay; loanTxt += '<br>Платёж по кредиту: ' + G.rub(pay); } else { l.late = (l.late || 0) + 1; loanTxt += '<br>⚠ Просрочка платежа по кредиту!'; } l.left = Math.round(l.left * (1 + l.rate / 12)); } });
-      s.loans = s.loans.filter(l => l.left > 5);
-      G.modal({ title: '💵 РАСЧЁТ ЗА МЕСЯЦ', text: 'Начислено: ' + G.rub(p.acc) + (prem ? ' + премия ' + G.rub(prem) : '') + (deprive ? '<br><b>Соплежуйкин лишил премии (' + G.rub(deprive) + ')</b>' : '') + (wedPen ? '<br>Удержано штрафов: ' + G.rub(wedPen) : '') + '<br>Аванс уже получен: ' + G.rub(p.adv) + '<br>На руки: <b>' + G.rub(net) + '</b>' + (errTxt ? '<br><i>' + errTxt + '</i>' : '') + '<br>Общага, связь, проезд: −' + G.rub(fixed) + loanTxt, opts: [{ t: 'Ок' }], vib: 'success' });
+      loanTxt += G.loanSettle ? G.loanSettle() : ''; // этап 3: новые договоры — аннуитет; старые — прежняя логика (см. stage3_credit.js)
+      G.modal({ title: '💵 РАСЧЁТ ЗА МЕСЯЦ', text: 'Начислено: ' + G.rub(p.acc) + (prem ? ' + премия ' + G.rub(prem) : '') + (deprive ? '<br><b>Соплежуйкин лишил премии (' + G.rub(deprive) + ')</b>' : '') + (wedPen ? '<br>Удержано штрафов: ' + G.rub(wedPen) : '') + '<br>Аванс уже получен: ' + G.rub(p.adv) + '<br>На руки: <b>' + G.rub(net) + '</b>' + (errTxt ? '<br><i>' + errTxt + '</i>' : '') + '<br>' + (G.fixedCosts ? G.fixedCosts().label : 'Общага, связь, проезд') + ': −' + G.rub(fixed) + loanTxt, opts: [{ t: 'Ок' }], vib: 'success' });
       p.hist.push({ m: G.monthIdx(), net });
       p.acc = 0; p.adv = 0; p.prem = 0; p.pen = 0; p.qs = 0; p.qn = 0; p.viol = 0;
     }
@@ -591,7 +586,7 @@
   G.dailyTick = function () {
     const s = G.s, st = s.st;
     // долги
-    s.loans.forEach(l => { if (l.type === 'micro') { l.left = Math.round(l.left * 1.015); } });
+    s.loans.forEach(l => { if (l.type === 'micro') { if (l.v === 2 && G.loanDailyMicro) G.loanDailyMicro(l); else l.left = Math.round(l.left * 1.015); } });
     if (s.loans.some(l => l.late >= 1) && G.chance(30)) G.collectors();
     if (s.debt > 0 && s.debt > 20000 && G.chance(15)) G.collectors();
     // больничный
@@ -604,16 +599,7 @@
     if (s.flags.lent_vityok && G.chance(5)) { s.flags.lent_vityok = 0; if (G.chance(40)) { G.addMoney(500); G.toast('Витёк вернул 500 ₽. Чудо!', 'good'); } else G.toast('Витёк «забыл» про долг.', 'warn'); }
   };
 
-  G.friendDebt = function (id, key) {
-    const s = G.s, amt = s.flags[key], n = D.NPC[id];
-    const lvl = (s.flags[key + '_lvl'] = (s.flags[key + '_lvl'] || 0) + 1);
-    const texts = ['напомнил про долг.', 'ссорится из-за долга.', 'пустил слух про тебя по заводу.', 'грозит разобраться по-мужски.'];
-    G.modal({ title: n.name + ' вспомнил', text: n.name + ' ' + texts[Math.min(3, lvl - 1)] + '<br>Долг: ' + G.rub(amt), opts: [
-      { t: 'Отдать ' + G.rub(amt), fn: () => { if (s.money >= amt) { G.addMoney(-amt); s.flags[key] = 0; s.flags[key + '_lvl'] = 0; G.toast('Долг отдан.', 'good'); G.relAdd(id, 4); } else G.toast('Денег нет.', 'bad'); } },
-      { t: 'Попросить отсрочку', fn: () => { G.fx({ mood: -2 }); G.relAdd(id, -2); } },
-      { t: 'Послать', fn: () => { G.fx({ cool: 3, cons: -3, coll: lvl >= 3 ? -8 : -2 }); G.addNick('dolzhnik'); if (lvl >= 4) { G.fx({ health: -15, mood: -15 }); G.toast('Тебя подкараулили и отметелили.', 'bad'); } } }
-    ] });
-  };
+  /* Этап 5: прежнее определение G.friendDebt удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
 
   G.collectors = function () {
     const s = G.s;

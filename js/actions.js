@@ -118,19 +118,7 @@
   G.statusScore = () => Object.keys(G.s.own).reduce((a, k) => a + D.STATUS[k].v, 0);
 
   // ---------- Банк, кредиты
-  G.bankMenu = function () {
-    const s = G.s, loans = s.loans;
-    const t = 'Рублёв улыбается: <i>«Для вас — особые условия!»</i><br>Долги: ' + G.rub(s.debt) + ' · Кредитов: ' + loans.length + '<br>' + loans.map(l => '• ' + ({ bank: 'Кредит', micro: 'Микрозайм', mortgage: 'Ипотека' }[l.type]) + ': осталось ' + G.rub(l.left)).join('<br>');
-    const o = [];
-    o.push({ t: 'Взять кредит 50 000 ₽ (38% годовых)', fn: () => { s.loans.push({ type: 'bank', left: 50000, rate: 0.38, pay: 4800 }); G.addMoney(50000); G.fx({ cons: -1 }); G.toast('Кредит одобрен. Подпись — и ты на крючке.', 'warn'); } });
-    o.push({ t: 'Взять кредит 200 000 ₽ (42%)', dis: s.car.rank < 1 ? 'Стажёрам не дают' : null, fn: () => { s.loans.push({ type: 'bank', left: 200000, rate: 0.42, pay: 19000 }); G.addMoney(200000); G.toast('200 000 ₽. И шесть звонков в неделю.', 'warn'); } });
-    o.push({ t: 'Микрозайм «До зарплаты» 5 000 ₽ (1,5%/день)', fn: () => { s.loans.push({ type: 'micro', left: 5000, rate: 0 }); G.addMoney(5000); G.toast('Микрозайм получен. Проценты капают каждый день.', 'warn'); } });
-    if (s.car.rank >= 7) o.push({ t: 'Ипотека: квартира в центре (4,5 млн, 24%)', dis: s.own.flat ? 'Уже есть' : null, fn: () => { s.loans.push({ type: 'mortgage', left: 4500000, rate: 0.24, pay: 90000 }); s.own.flat = 1; G.fx({ mood: 15, cool: 10 }); G.toast('Квартира в центре! Платёж — 90 000 ₽ в месяц.', 'warn'); G.achieve('flat', 'Квартира в центре (в ипотеку)'); } });
-    if (s.debt > 0) o.push({ t: 'Погасить долг (' + G.rub(Math.min(s.debt, s.money)) + ')', dis: s.money < 1 ? 'Нет денег' : null, fn: () => { const p = Math.min(s.debt, s.money); G.addMoney(0); s.money -= p; s.debt -= p; G.toast('Долг погашен частично/полностью: ' + G.rub(p)); } });
-    loans.forEach((l, i) => { if (s.money > 0) o.push({ t: 'Погасить: ' + ({ bank: 'кредит', micro: 'микрозайм', mortgage: 'ипотека' }[l.type]) + ' (' + G.rub(Math.min(l.left, s.money)) + ')', fn: () => { const p = Math.min(l.left, s.money); s.money -= p; l.left -= p; if (l.left <= 5) { s.loans.splice(s.loans.indexOf(l), 1); if (l.type === 'mortgage') { delete s.own.flat; } } G.toast('Платёж: ' + G.rub(p)); } }); });
-    o.push({ t: 'Выйти', fn: () => {} });
-    G.modal({ title: '🏦 «Рубль-Банк»', face: 'rublev', text: t, opts: o, wide: true });
-  };
+  /* Этап 5: прежнее определение G.bankMenu удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
 
   // ---------- Люди: меню, разговор, подарки
   G.isPresent = function (id) {
@@ -172,16 +160,7 @@
     G.toast(n.name + (hated ? ' скривился(ась).' : liked ? ' в восторге!' : ' принял(а) подарок.') + extra + ' (отн. ' + (v > 0 ? '+' : '') + Math.round(v) + ')', hated ? 'bad' : 'good');
     G.spend(1);
   };
-  G.lendMenu = function (id) {
-    const n = D.NPC[id], s = G.s;
-    G.modal({ title: n.name + ': деньги', face: id, text: 'Надёжность: ~' + (n.reliab || 50) + '%', opts: [
-      { t: 'Одолжить 500 ₽', dis: s.money < 500 ? 'Нет денег' : null, fn: () => { G.addMoney(-500); G.R(id).owed = (G.R(id).owed || 0) + 500; G.R(id).help = (G.R(id).help || 0) + 1; G.relAdd(id, 4); G.toast('Одолжил 500 ₽ (' + n.name + ')'); } },
-      { t: 'Одолжить 2 000 ₽', dis: s.money < 2000 ? 'Нет денег' : null, fn: () => { G.addMoney(-2000); G.R(id).owed = (G.R(id).owed || 0) + 2000; G.R(id).help = (G.R(id).help || 0) + 2; G.relAdd(id, 8); G.toast('Одолжил 2 000 ₽ (' + n.name + ')'); } },
-      { t: 'Занять у него 1 000 ₽', fn: () => { G.addMoney(1000); s.flags['debt_' + id] = (s.flags['debt_' + id] || 0) + 1000; G.relAdd(id, -2); G.toast('Занял 1 000 ₽. Запомнят.'); } },
-      { t: 'Занять 3 000 ₽', fn: () => { G.addMoney(3000); s.flags['debt_' + id] = (s.flags['debt_' + id] || 0) + 3000; G.relAdd(id, -4); G.toast('Занял 3 000 ₽. Теперь отдавай.'); } },
-      { t: 'Передумал', fn: () => {} }
-    ] });
-  };
+  /* Этап 5: прежнее определение G.lendMenu удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
   G.npcMenu = function (id) {
     if (G.isShunned && G.isShunned(id)) return G.shunTalk(id);
     const s = G.s, n = D.NPC[id], r = G.R(id), here = G.isPresent(id);
@@ -433,22 +412,7 @@
   };
 
   // ---------- Телефон
-  G.phoneMenu = function () {
-    const s = G.s;
-    if (G.weekday() === 2 && s.phase === 'work' && s.day.inspect === false && Math.floor(s.t.hour) >= 10) { G.toast('В среду с телефоном — опасно.', 'warn'); }
-    const work = s.phase === 'work' || s.phase === 'lunch';
-    const o = [
-      { t: '📲 «Контактик»', fn: () => { const a = { risk: work ? 12 : 0 }; G.fx({ mood: G.ri(4, 8) }); G.toast('Листаешь ленту. Мир ещё хуже, чем завод.'); if (work) { s.day.breaks++; G.caught({ risk: 12, fine: [100, 250], what: 'Телефон на рабочем месте' }); } G.spend(1); } },
-      { t: '▶️ «Ютабчик»', fn: () => { G.fx({ mood: G.ri(5, 9) }); G.toast('Видео про кота. Кот лучше начальника.'); if (work) { s.day.breaks++; G.caught({ risk: 15, fine: [100, 250], what: 'Видео на рабочем месте' }); } G.spend(1); } },
-      { t: '📞 Позвонить знакомым', fn: () => G.callRandom() },
-      { t: '🤡 Пранк-звонок на неизвестный номер', fn: () => { G.fx({ mood: G.ri(15, 20) }); s.flags.prank = (s.flags.prank || 0) + 1; G.toast('Ты звонишь незнакомцу и пищишь «Алло, это прачечная?». Жизнь прекрасна.'); if (G.chance(Math.min(15, 3 * s.flags.prank))) { G.toast('Хулиган из соседнего подъезда вычислил тебя и дал в глаз.', 'bad'); G.fx({ health: -8, mood: -10, fights: 1 }); } G.spend(1); } },
-      { t: '🏦 Банк', fn: () => G.bankMenu() },
-      { t: '🛍 Магазин онлайн (подарки/еда)', fn: () => { G.shopMenu(); } },
-      { t: '🎥 Блог «ЧугунTV»', fn: () => G.blogMenu() },
-      { t: 'Закрыть', fn: () => {} }
-    ];
-    G.modal({ title: '📱 Телефон', text: 'Заряд 80%. Деньги: ' + G.rub(s.money) + ' · Долг: ' + G.rub(s.debt), opts: o, wide: true });
-  };
+  /* Этап 5: прежнее определение G.phoneMenu удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
   G.callRandom = function () {
     const s = G.s;
     const who = G.pick([['мама', { mood: -6 }, 'Мама спрашивает, почему ты так худой. И почему не звонишь. И когда внуки.'], ['мама', { mood: 4 }, 'Мама прислала фото кота. Теплее.'], ['kolyan', { mood: 6 }, 'Колян ржёт в трубку и зовёт «на стаканчик».'], ['seryoga', { mood: 3 }, 'Серёга сплетничает о начальстве.'], ['коллега', { mood: 2 }, 'Коллега ругает завод. Хорошо.'], ['tatyana', { mood: 5, rel: { tatyana: 3 } }, 'Татьяна смущённо поздоровалась.']]);

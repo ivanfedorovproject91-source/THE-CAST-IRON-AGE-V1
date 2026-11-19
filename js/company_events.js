@@ -357,7 +357,8 @@
     if (c.arrears.wages + c.arrears.tax + c.arrears.other > 30e6 && c.negWeeks >= 6) { EVN.dismiss(c, 'Предприятие не в состоянии платить по обязательствам: долги превысили 30 млн ₽ при пустой кассе.'); return; }
     // доверие: прямой удар от невыплаты зарплат
     if (c.arrears.wages > 0) c.board.trust = C(c.board.trust - 2);
-    if (c.board.trust <= 8 && c.board.warn >= 1 && !G.s.end) { EVN.dismiss(c, 'Доверие собственников упало до критического (' + Math.round(c.board.trust) + ') после предупреждения.'); return; }
+    c.flags.lowWk = c.board.trust <= 8 ? (c.flags.lowWk || 0) + 1 : 0; // Этап 4: четыре недели на дне — снятие даже без предупреждения
+    if (c.board.trust <= 8 && (c.board.warn >= 1 || c.flags.lowWk >= 4) && !G.s.end) { EVN.dismiss(c, 'Доверие собственников упало до критического (' + Math.round(c.board.trust) + ') после предупреждения.'); return; }
     // почётная отставка
     if (c.stats.weeks >= 104 && c.board.trust >= 70 && margin(c, 8) > 0 && !c.flags.legacy) { c.flags.legacy = 1; EVN.raise(c, 'board_legacy', {}); }
   };

@@ -13,6 +13,9 @@
 window.__errs = [];
 window.addEventListener('error', function (e) { try { window.__errs.push((e.message || 'ошибка') + ' @' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || '')); } catch (x) {} });
 window.addEventListener('unhandledrejection', function (e) { try { window.__errs.push('promise: ' + (e.reason && e.reason.message || e.reason)); } catch (x) {} });
+// Этап 5: не загрузившиеся файлы (404, обрыв связи) ловятся в фазе захвата — обычный обработчик их не видит
+window.__failed = [];
+window.addEventListener('error', function (e) { try { var t = e.target; if (t && t !== window && t.tagName === 'SCRIPT' && String(t.src).indexOf(location.origin) === 0) window.__failed.push(String(t.src || '').split('/').pop().split('?')[0]); } catch (x) {} }, true);
 </script>
 <script async src="https://telegram.org/js/telegram-web-app.js" onload="window.__tgInit && window.__tgInit()"></script>
 </head>
@@ -64,7 +67,17 @@ window.addEventListener('unhandledrejection', function (e) { try { window.__errs
 <script src="js/company_events.js?v=3.14.0"></script>
 <script src="js/ceo.js?v=3.14.0"></script>
 <script src="js/company_ui.js?v=3.14.0"></script>
+<script src="js/stage4_events.js?v=3.14.0"></script>
+<script src="js/stage4_careers.js?v=3.14.0"></script>
+<script src="js/stage4_social.js?v=3.14.0"></script>
+<script src="js/stage4_ceo.js?v=3.14.0"></script>
+<script src="js/stage4_hierarchy.js?v=3.14.0"></script>
+<script src="js/stage3_housing.js?v=3.14.0"></script>
+<script src="js/stage3_lifestyle.js?v=3.14.0"></script>
+<script src="js/stage3_credit.js?v=3.14.0"></script>
 <script src="js/release.js?v=3.14.0"></script>
+<script src="js/stage5_saves.js?v=3.14.0"></script>
+<script src="js/stage5_diag.js?v=3.14.0"></script>
 <script src="js/cloud.js?v=3.14.0"></script>
 <script src="js/main.js?v=3.14.0"></script>
 </body>

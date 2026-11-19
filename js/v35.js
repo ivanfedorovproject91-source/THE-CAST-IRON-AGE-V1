@@ -20,7 +20,7 @@
     const l = G.R(id).l;
     return '<div class="rbar"><i style="width:' + Math.max(3, (l + 100) / 2) + '%;background:' + G.relColor(l) + '"></i></div>';
   };
-  G.relFace = (id, cls) => '<div class="rface">' + G.faceHTML(id, cls) + G.relBar(id) + '</div>';
+  /* Этап 5: прежнее определение G.relFace удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
   G.relWord = function (l) { return l <= -60 ? 'Враг' : l <= -25 ? 'Неприязнь' : l < -5 ? 'Прохладно' : l <= 10 ? 'Нейтрально' : l <= 35 ? 'Знакомый' : l <= 60 ? 'Приятель' : l <= 85 ? 'Хороший друг' : l < 100 ? 'Почти свой' : 'Свой человек'; };
   G.relBig = function (id) {
     const r = G.R(id), l = r.l, cap = G.relCap(id), n = D.NPC[id];

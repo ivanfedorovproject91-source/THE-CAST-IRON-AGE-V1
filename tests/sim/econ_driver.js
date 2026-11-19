@@ -26,7 +26,7 @@ window.__sim = function (cfg) {
   const mk = () => Math.floor(s.t.day / MONTH);
   const E = k => led[k] || (led[k] = { in: {}, out: {}, loan: 0, accrued: 0, shifts: 0, ops: 0, fines: 0 });
   const _am = G.addMoney;
-  G.addMoney = function (v) { if (cfg.trace && v >= 4000 && L.tag !== 'выплата') (stats.titles = stats.titles || []).push(s.t.day + ' h' + s.t.hour + ' INCOME +' + Math.round(v) + ' tag=' + L.tag + ' @' + new Error().stack.split('\n').slice(2, 6).map(x => x.trim().replace(/^at /, '').replace(/http:\/\/[^/]+\//, '').replace('?v=3.14.0', '')).join(' < ')); const e = E(mk()); v = Math.round(v); let t = L.tag; if (t === 'прочее' && /G\.payday/.test(new Error().stack || '')) t = 'выплата'; if (t === 'выплата' && v < 0) t = (v === -5500 ? 'общага+связь+проезд' : 'удержания (штрафы/долг)'); const b = v >= 0 ? e.in : e.out; b[t] = (b[t] || 0) + Math.abs(v); if (L.pay) L.pay.add += v; return _am.call(G, v); };
+  G.addMoney = function (v) { if (cfg.trace && v >= 4000 && L.tag !== 'выплата') (stats.titles = stats.titles || []).push(s.t.day + ' h' + s.t.hour + ' INCOME +' + Math.round(v) + ' tag=' + L.tag + ' @' + new Error().stack.split('\n').slice(2, 6).map(x => x.trim().replace(/^at /, '').replace(/http:\/\/[^/]+\//, '').replace('?v=3.14.0', '')).join(' < ')); const e = E(mk()); v = Math.round(v); let t = L.tag; if (t === 'прочее' && /G\.payday/.test(new Error().stack || '')) t = 'выплата'; if (t === 'выплата' && v < 0) t = (v === -(G.fixedCosts ? G.fixedCosts().total : 5500) ? 'общага+связь+проезд' : 'удержания (штрафы/долг)'); const b = v >= 0 ? e.in : e.out; b[t] = (b[t] || 0) + Math.abs(v); if (L.pay) L.pay.add += v; return _am.call(G, v); };
   const _pd = G.payday;
   G.payday = function () {
     const e = E(mk()), before = s.money, debt0 = s.debt, loans0 = s.loans.reduce((a, l) => a + l.left, 0); L.pay = { add: 0 }; const old = L.tag; L.tag = 'выплата';
@@ -47,7 +47,7 @@ window.__sim = function (cfg) {
   const ACC = {};
   if (cfg.traceAcc) { let av = s.pay.acc; Object.defineProperty(s.pay, 'acc', { get() { return av; }, set(v) { const d = v - av; if (d > 0) { const k = new Error().stack.split('\n').slice(2, 4).map(x => x.trim().replace(/^at /, '').replace(/http:\/\/[^/]+\//, '').replace('?v=3.14.0', '').replace(/:\d+$/, '')).join(' < '); const a = ACC[k] || (ACC[k] = [0, 0]); a[0]++; a[1] += d; } av = v; }, enumerable: true }); }
   // ---------- решатель окон
-  const BAD = /^взять$|взятк|конверт|украст|своровать|стащить|напиться|водк|уволь|запанибрата|нагруб|послать|обмануть|соврать|подраться|ударить/i;
+  const BAD = /^взять$|взятк|конверт|украст|своровать|стащить|напиться|водк|уволь|запанибрата|нагруб|послать|обмануть|соврать|подраться|ударить|припис|вполсилы|не лезть/i;
   const QB = () => { const L2 = window.__LADDER || {}; return [].concat(window.__NQ || [], D.QUIZ || [], L2.WORK_Q || [], L2.WORK_HARD || [], L2.MGMT_Q || [], L2.MGMT_HARD || []); };
   let QCACHE = null;
   function examIdx(opts) {
@@ -119,9 +119,18 @@ window.__sim = function (cfg) {
     if (cfg.sickPerMonth && d % MONTH === 14) { s.car.sickUntil = d + cfg.sickPerMonth; s.st.health = Math.max(20, s.st.health - 25); }
   }
   function bankOpt(prefix) {
-    s.loc = 'c_bank'; G.bankMenu(); const sp = G.cur; if (!sp) return;
-    const i = (sp.opts || []).findIndex(o => String(o.t).indexOf(prefix) === 0 && !o.dis);
-    if (i >= 0) { L.tag = 'кредит(получено)'; G.choose(i); } else { G.choose((sp.opts || []).length - 1); }
+    // новое многошаговое меню банка (этап 3); старые префиксы сопоставлены с ближайшими новыми продуктами
+    const steps = /Микрозайм/.test(prefix) ? [/Микрозайм/, /Взять/]
+      : /50 000/.test(prefix) ? [/Кредит наличными/, /^100 000/, /^12 мес/, /Оформить/]
+      : [/Кредит наличными/, /^300 000/, /^24 мес/, /Оформить/];
+    s.loc = 'c_bank'; G.bankMenu();
+    for (const re of steps) {
+      const sp = G.cur; if (!sp) return;
+      const i = (sp.opts || []).findIndex(o => re.test(String(o.t).replace(/^[^0-9A-Za-zА-Яа-я]+\s*/, '')) && !o.dis);
+      if (i < 0) { G.choose((sp.opts || []).length - 1); resolve(); return; }
+      if (re === steps[steps.length - 1]) L.tag = 'кредит(получено)';
+      G.choose(i);
+    }
     resolve();
   }
   // ---------- день
