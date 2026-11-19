@@ -32,6 +32,8 @@
   G.DOCS = DOCS;
   const signed = () => (G.s && G.s.flags.docs) || {};
   G.docsUnsigned = () => G.s ? DOCS.filter(d => !signed()[d.id]).length : 0;
+  // сколько смен игрок «тянет» с подписями (первые 3 смены — льготные)
+  G.docsOverdue = () => { const s = G.s; if (!s || !s.car || !s.car.job || G.docsUnsigned() <= 0) return 0; return Math.max(0, (s.car.shifts || 0) - 3); };
   G.docOpen = function (id) {
     const d = DOCS.find(x => x.id === id); if (!d) return;
     const ok = !!signed()[id];
@@ -61,6 +63,17 @@
           F().docScold = n; G.fx({ boss: -4, mood: -3 }); G.relAdd('tatishcheva', -2);
           G.modal({ title: '😠 Нагоняй от отдела кадров', face: 'tatishcheva', vib: 'warning', text: 'Татищева: «Вы расписались не везде! Не хватает подписей: <b>' + left + '</b>. Труханов уже в курсе. Идите в Заводоуправление → Нормативная документация. Сегодня. Сейчас. Бегом».', opts: [{ t: 'Виноват, исправлюсь', fn: () => {} }] });
         } else if (n % 3 === 0) G.toast('📜 Напоминание: не подписано документов — ' + left + '. Заводоуправление → Нормативная документация.', 'warn');
+      }
+      // Долго не расписывается — начальство относится всё хуже (любой разряд ниже мастера)
+      if (c.rank < 6 && left > 0) {
+        const od = G.docsOverdue();
+        if (od > 0) {
+          G.fx({ boss: -Math.min(2, 0.5 + od * 0.1) });
+          if (od >= 4 && od % 4 === 0 && F().docScoldAt !== od) {
+            F().docScoldAt = od; G.relAdd('tatishcheva', -2); G.fx({ mood: -2 });
+            G.modal({ title: '😠 Начальство недовольно', face: 'tatishcheva', vib: 'warning', text: 'Татищева: «Вы тянете с подписями уже ' + od + ' смен. Не подписано: <b>' + left + '</b>. Руководство замечает такое и делает выводы — репутация у начальства падает. Заводоуправление → Нормативная документация. Сегодня».', opts: [{ t: 'Понял(а), схожу', fn: () => {} }] });
+          }
+        }
       }
     } catch (e) { log(e); }
     return r;
@@ -154,7 +167,9 @@
   // ================= Низ вкладки «Смена/Дом» =================
   G.shiftTop = function () {
     const s = G.s;
-    if (s.car.rank === 0 && s.car.job && G.docsUnsigned() > 0) return '<div class="card" style="border-left:4px solid #e0605a"><b>📜 Нужно расписаться!</b> Ты не подписал документов: ' + G.docsUnsigned() + ' из ' + DOCS.length + '. Заводоуправление → «Нормативная документация». Начальство будет ругаться.</div>';
+    // плашка показывается только на заводе (вкладка «Смена»), дома её нет
+    const atWork = ['work', 'lunch', 'locker'].indexOf(s.phase) >= 0;
+    if (atWork && s.car.rank < 6 && s.car.job && G.docsUnsigned() > 0) return '<div class="card" style="border-left:4px solid #e0605a"><b>📜 Нужно расписаться!</b> Ты не подписал документов: ' + G.docsUnsigned() + ' из ' + DOCS.length + '. Заводоуправление → «Нормативная документация». Начальство ' + (G.docsOverdue() >= 3 ? 'уже ругается и портит тебе репутацию.' : 'будет ругаться.') + '</div>';
     return '';
   };
   G.shiftExtras = function () {

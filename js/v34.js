@@ -15,6 +15,7 @@
       if (s && s.st && o && o.satiety > 0) {
         if (s.st.satiety > (CFG.SAT_CAP || 95)) s.st.satiety = CFG.SAT_CAP || 95;
         if (o.satiety >= 10 || s.st.satiety - sat0 >= 10) s.flags.starveH = 0;
+        else s.flags.starveH = Math.max(0, (s.flags.starveH || 0) - o.satiety * 0.6);
       }
     } catch (e) {}
     return r;
@@ -39,8 +40,11 @@
       const s = G.s; if (!s || !s.st || s.end || s.phase === 'new') return r;
       const f = s.flags;
       f.starveH = (f.starveH || 0) + h;
+      // Если шкала сытости в норме — человек не голодает: счётчик «часов без еды» не копится (раньше мелкая еда его не сбрасывала)
+      if (s.st.satiety >= 35) f.starveH = Math.min(f.starveH, CFG.HUNGER_H1 - 4);
       if (f.starveH >= CFG.HUNGER_H2) {
-        s.st.mood = Math.min(s.st.mood, 6);
+        // Раньше настроение мгновенно обрушивалось до 6 и удерживалось там. Теперь — плавное падение по часам (не ниже 12)
+        s.st.mood = Math.max(Math.min(s.st.mood, 12), s.st.mood - 2 * h);
         if (f.starveWarn !== s.t.day) { f.starveWarn = s.t.day; msg('🍽 Ты почти сутки не ел(а). Настроение на нуле, руки трясутся, работа валится.', 'bad'); }
       } else if (f.starveH >= CFG.HUNGER_H1 && f.starveWarn1 !== s.t.day) {
         f.starveWarn1 = s.t.day; msg('Живот сводит от голода. Надо поесть.', 'warn');
@@ -191,6 +195,7 @@
   const _gate = G.gate;
   G.gate = function () {
     const s = G.s, st = s.st, self = this, args = arguments;
+    if (s.car.rank >= 6) return _gate.apply(this, args); // начиная с мастера пропуск «забыть» нельзя: Егорыч пускает всегда
     if (s.day.passRoll === undefined) {
       s.day.passRoll = 1;
       if (G.isFriend('egorych') && (st.energy < 50 || st.drunk >= 5) && G.chance(85)) { msg('Егорыч видит твою рожу: «Проходи, свой. Пропуск потом покажешь».', 'good'); return _gate.apply(this, args); }

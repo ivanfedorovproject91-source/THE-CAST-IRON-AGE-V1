@@ -146,7 +146,19 @@
   const _fd = G.dailyTick;
   G.dailyTick = function () {
     const r = _fd.apply(this, arguments);
-    try { G.friends().forEach(id => { if (PERK[id] && PERK[id].day) PERK[id].day(); }); } catch (e) { if (window.console) console.error(e); }
+    try {
+      // польза друзей теперь видна: показываем, что каждый дал за сутки
+      const s = G.s, keys = ['mood', 'energy', 'health', 'satiety', 'boss', 'know'], names = { mood: 'настроение', energy: 'энергия', health: 'здоровье', satiety: 'сытость', boss: 'отношение начальства', know: 'мастерство' }, lines = [];
+      G.friends().forEach(id => {
+        if (!(PERK[id] && PERK[id].day)) return;
+        const b = {}; keys.forEach(k => { b[k] = s.st[k]; }); const m0 = s.money;
+        PERK[id].day();
+        const d = []; keys.forEach(k => { const v = Math.round((s.st[k] - b[k]) * 10) / 10; if (Math.abs(v) >= 0.5) d.push(names[k] + ' ' + (v > 0 ? '+' : '') + v); });
+        if (s.money - m0 > 0) d.push('+' + G.rub(s.money - m0));
+        if (d.length) lines.push(first(id) + ': ' + d.join(', '));
+      });
+      if (lines.length) G.toast('🤝 Свои люди выручают — ' + lines.join('; ') + '.', 'good');
+    } catch (e) { if (window.console) console.error(e); }
     return r;
   };
 
@@ -257,6 +269,7 @@
       : n.name + ' кивает: «Ну, чем займёмся?»';
     const o = [];
     o.push({ t: '😎 Приколы с ' + first(id), fn: () => G.friendPranks(id) });
+    o.push({ t: '📨 Пригласить: домой, в бар, на рыбалку, в гости', fn: () => G.inviteMenu(id) });
     o.push({ t: '🚶 Пойти куда-нибудь после работы', fn: () => G.outingMenu(id) });
     o.push({ t: '💬 Поговорить по душам', fn: () => G.talkMenu(id) });
     o.push({ t: '🤝 Помочь по работе (1 ч)', dis: work ? null : 'Только на смене', fn: () => { G.fx({ coll: 3, energy: -5, cons: 1 }); G.relAdd(id, 3); r.help = (r.help || 0) + 1; msg('Подсобил(а) — друг оценил.', 'good'); sp(1); } });

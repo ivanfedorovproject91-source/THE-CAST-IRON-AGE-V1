@@ -42,6 +42,7 @@
     add('brak', -Math.min(10, p.brak * 3), 'Брак');
     add('absent', -Math.min(12, p.absent * 6), 'Прогулы и «липовые» больничные');
     add('notes', -Math.min(8, G.noteCount() * 2), 'Записи в блокнотике Труханова');
+    if (G.docsOverdue) add('docs', -Math.min(12, G.docsOverdue() * 0.8 + (G.docsOverdue() > 0 ? G.docsUnsigned() * 0.5 : 0)), 'Не подписана нормативная документация');
     add('disc', Math.min(10, c.clean * 1.5), 'Дисциплина (смены без нарушений)');
     add('init', Math.min(10, p.init * 3), 'Инициативность');
     sc = C(Math.round(sc), -100, 100);
@@ -539,12 +540,9 @@
     ['🆘 КРИТИЧЕСКОЕ СОСТОЯНИЕ', 'Ещё один удар по настроению — и вы рухнете прямо здесь. Немедленно отдыхайте: выйдите на воздух, поешьте, поговорите с кем-нибудь.']];
   const WARN_FX = ['', '', 'Последствия: −энергия каждый час, хуже качество.', 'Последствия: −энергия и −здоровье каждый час.', 'Последствия: быстро падает здоровье; при нуле — нервный срыв.'];
   function reliefOpts() {
-    const s = G.s, v = V(), ph = s.phase, can = ['work', 'lunch', 'evening', 'weekend'].indexOf(ph) >= 0;
-    return [
-      { t: '🌬 Выйти на воздух (1 ч, +8 настроения)', dis: !can ? 'Сейчас не получится' : v.mood.airDay === s.t.day ? 'Сегодня уже выходил(а)' : null, fn: () => { v.mood.airDay = s.t.day; G.fx({ mood: 8, energy: 1 }); msg('Ты постоял(а) на крыльце, подышал(а) дымом и чуть пришёл(ла) в себя.', 'good'); G.spend(1); } },
-      { t: '👥 Поговорить с кем-нибудь (вкладка «Люди»)', fn: () => { if (G.ui && G.ui.setTab) G.ui.setTab('people'); msg('Разговор по душам, друзья и романтика поднимают настроение.', 'tip'); } },
-      { t: 'Понял(а), исправлюсь', fn: () => {} }
-    ];
+    // способы поднять настроение определены в js/v39.js (G.moodReliefOpts): работают в любой фазе и без телефона
+    if (G.moodReliefOpts) return G.moodReliefOpts();
+    return [{ t: 'Ок', fn: () => {} }];
   }
   function checkMood() {
     const s = G.s; if (!s || s.end || s.phase === 'new' || !s.st) return;
@@ -596,7 +594,7 @@
       const s = G.s; if (!s || !s.car) return h;
       const m = V().mood;
       if (s.st.mood <= 30 && s.phase !== 'new') h += '<div class="card" style="border-left:4px solid #e0605a"><b>' + (s.st.mood <= 10 ? '🚨' : '⚠') + ' Настроение критически низкое.</b> <span class="note">Отдохни, поешь, поговори с кем-нибудь — иначе будет срыв.' + (m.breaks && s.t.day - m.crisisDay <= 10 ? ' <b>Ты уже был(а) на грани: повторный срыв — конец работы.</b>' : '') + '</span></div>';
-      if (s.car.job && s.car.shifts >= 1 && ['work', 'lunch', 'locker', 'morning', 'evening'].indexOf(s.phase) >= 0 && (UI_TAB() === 'shift')) {
+      if (s.car.job && s.car.shifts >= 1 && ['work', 'lunch', 'locker'].indexOf(s.phase) >= 0 && (UI_TAB() === 'shift')) {
         const sd = G.bossStanding(), cl = Math.round(G.cleanLevel());
         h += '<div class="card" style="border-left:4px solid ' + sd.color + '"><b>👔 Репутация у начальства:</b> ' + sd.label + ' (' + (sd.score > 0 ? '+' : '') + sd.score + ') <button class="btn" onclick="G.bossRepInfo()">Подробнее</button><div class="note">🧹 Чистота в цеху: ' + cl + '%' + (charOk() ? ' · 📜 есть характеристика' : '') + '</div></div>';
       }

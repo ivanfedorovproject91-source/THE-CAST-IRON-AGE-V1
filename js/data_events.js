@@ -127,7 +127,7 @@
   E('mugging', { where: ['evening'], w: 0.8, cd: 25, cond: s => s.money > 500, fn: () => G.modal({ title: 'Тёмный двор', vib: 'warning', text: 'Двое в капюшонах преграждают дорогу: «Закурить не найдётся?»', opts: [{ t: 'Отдать 300 ₽', fn: () => { G.addMoney(-300); G.fx({ mood: -4 }); } }, { t: 'Драться', fn: () => { if (G.chance(35 + G.s.st.cool / 3)) { G.fx({ cool: 8, mood: 6 }); G.toast('Отбился! Герой двора.', 'good'); } else { G.fx({ health: -10, mood: -8, money: -300 }); } } }, { t: 'Убежать', fn: () => { G.fx({ energy: -8, cool: -3 }); } }] }) });
   E('lottery', { where: ['evening'], w: 0.8, cd: 20, cond: s => s.money > 100, fn: () => G.modal({ title: 'Лотерейка «Спортлото»', text: 'У ларька продают билет: 100 ₽.', opts: [{ t: 'Взять', fn: () => { G.addMoney(-100); if (G.chance(1)) { G.addMoney(100000); G.toast('ВЫИГРАЛ 100 000 ₽!!!', 'good'); } else if (G.chance(12)) { G.addMoney(500); G.toast('+500 ₽ — отбил.'); } else G.toast('Не повезло.'); } }, { t: 'Пройти мимо', fn: () => {} }] }) });
   E('corp', { where: ['evening'], w: 0, cd: 1, fn: () => {} });
-  E('babka', { where: ['evening'], w: 1, cd: 8, fn: () => { G.fx({ mood: 3, satiety: 8 }); G.toast('Баба Нюра угостила огурцами и рассказала про молодость.'); G.relAdd('nyura', 3); } });
+  E('babka', { where: ['evening'], w: 1, cd: 8, cond: () => !G.nyuraHere || G.nyuraHere(), fn: () => { G.fx({ mood: 3, satiety: 8 }); G.toast('Баба Нюра угостила огурцами и рассказала про молодость.'); G.relAdd('nyura', 3); } });
 
   // ---------- Запуск
   G.rollEvent = function () {
