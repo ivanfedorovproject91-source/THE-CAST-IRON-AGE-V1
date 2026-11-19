@@ -364,24 +364,7 @@
   G.gift = function (id, item) { const r = G.R(id), l0 = r.l, r0 = _gift.apply(this, arguments); try { if (G.R(id).l > l0) G.R(id).help = (G.R(id).help || 0) + 1; } catch (e) {} return r0; };
 
   // ---------- Меню друга (формальнее после повышения)
-  G.friendMenu = function (id) {
-    const s = G.s, n = D.NPC[id], r = G.R(id), formal = s.car.rank >= 6, face = id;
-    const intro = formal
-      ? n.name + ' слегка кашлянул(а): «Здравствуй… ой, здравствуйте. Привычка. Ты теперь начальство, но для меня — всё тот же свой человек».'
-      : n.name + ' кивает: «Ну, чем займёмся?»';
-    const o = [];
-    o.push({ t: '🗣 Поговорить по душам', fn: () => {
-      r.talks = (r.talks || 0) + 1; G.fx({ mood: 4 }); G.relAdd(id, 3);
-      msg(n.name + ': ' + G.pick(formal ? ['«Ты, главное, нас не забывай. Мы за тебя горой».', '«Поздравляю с должностью — заслужил. А мы тут по-старому».'] : ['«Жизнь — штука тяжёлая, но когда есть свои, терпимо».', '«Слушай, а помнишь, как мы…» — и дальше полчаса воспоминаний.', '«Держись, я рядом».']), 'good'); sp(1);
-    } });
-    if (id === 'seryoga' && G.seryogaMenu) o.push({ t: '😎 Приколы с Серёгой и помощь', fn: () => G.seryogaMenu() });
-    if (id === 'afonya' && G.afonyaMenu) o.push({ t: '🎸 Приколы с Афоней', fn: () => G.afonyaMenu() });
-    o.push({ t: '🤝 Помочь по работе (1 ч)', dis: WORKPH() ? null : 'Только на смене', fn: () => { G.fx({ coll: 3, energy: -5, cons: 1 }); G.relAdd(id, 3); r.help = (r.help || 0) + 1; msg('Подсобил(а) — друг оценил.', 'good'); sp(1); } });
-    o.push({ t: '☕ Посидеть вместе (2 ч)', dis: G.isFree() ? null : 'Только вечером/в выходной', fn: () => { G.fx({ mood: 9, energy: 2 }); G.relAdd(id, 4); r.help = (r.help || 0) + 1; msg('Посидели, поговорили о жизни. Стало легче.', 'good'); sp(2); } });
-    o.push({ t: '🙏 Попросить о помощи', fn: () => G.friendAsk(id) });
-    o.push({ t: 'Закрыть', fn: () => {} });
-    G.modal({ title: '🤝 ' + n.name, face, text: intro + '<br><small>Отношение: ' + Math.round(r.l) + ' · друзей всего: ' + G.friends().length + '</small>', opts: o });
-  };
+  /* Этап 5: прежнее определение G.friendMenu удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
   G.friendAsk = function (id) {
     const s = G.s, n = D.NPC[id], r = G.R(id), o = [];
     if (r.askHelpDay !== undefined && s.t.day - r.askHelpDay < 3) { G.info(n.name, '«Я тебе только что помогал(а). Дай и другим вздохнуть, и мне».'); return; }
@@ -401,29 +384,10 @@
     Object.keys(D.NPC).forEach(id => { const n = D.NPC[id]; if (!n.romance || !s.rel[id]) return; const r = s.rel[id]; if (r.stage >= 5 && r.l >= 30 && !s.flags['cheat_' + id]) { if (!best || r.l > s.rel[best].l) best = id; } });
     return best;
   };
-  G.girlMenu = function (id) {
-    const n = D.NPC[id], s = G.s;
-    G.modal({ title: '💗 ' + n.name, face: id, text: n.name + ': «Я всегда на твоей стороне. Только не пей, ладно?»', opts: [
-      { t: '💬 Поговорить', fn: () => G.talkTo(id) },
-      { t: '🎁 Подарить', fn: () => G.giftMenu(id) },
-      { t: '💘 Побыть вместе', dis: G.isFree() ? null : 'Только вечером/в выходной', fn: () => G.romanceMove(id) },
-      { t: '📞 Позвонить', fn: () => G.callNpc(id) },
-      { t: 'Закрыть', fn: () => {} }] });
-  };
+  /* Этап 5: прежнее определение G.girlMenu удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
 
   // ---------- Блок «Свои люди» в интерфейсе
-  G.friendsBlock = function () {
-    const ids = G.friends(), gf = G.girlfriend(), adm = F().adm;
-    let h = '<div class="card friends"><h3>🤝 Свои люди</h3>';
-    if (!ids.length && !gf) h += '<div class="note">Пока никого. Общайся, помогай, дари подарки и расти в статусе — настоящие друзья появляются не сразу и не со всеми.</div>';
-    else {
-      h += '<div class="ppl">' + ids.map(id => '<button class="pp fr" onclick="G.friendMenu(\'' + id + '\')">' + G.faceHTML(id) + first(id) + '</button>').join('')
-        + (gf ? '<button class="pp fr gf" onclick="G.girlMenu(\'' + gf + '\')">' + G.faceHTML(gf) + '💗 ' + first(gf) + '</button>' : '') + '</div>';
-      h += '<div class="note">Чем больше друзей — тем легче жить: настроение, прикрытие перед начальством, помощь в трудную минуту.</div>';
-    }
-    if (adm && !adm.revealed) h += '<button class="btn" onclick="G.admGuess()">💗? Выяснить, кто в тебя влюбился</button>';
-    return h + '</div>';
-  };
+  /* Этап 5: прежнее определение G.friendsBlock удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
 
   // ---------- Ежедневное и еженедельное: бонусы, потери
   const _dt = G.dailyTick;

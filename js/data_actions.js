@@ -148,65 +148,11 @@
   S('nyura', 'home', 'Дом', 'Зайти к бабе Нюре', '👵', 1, { mood: 3 }, '', { menu: false, fn: () => { G.npcMenu('nyura'); return 'custom'; } });
 
   // ---------- Меню: еда
-  G.eatMenu = function () {
-    const s = G.s, p = G.R('lyudka').stage >= 4 ? 1.2 : 1;
-    const lim = G.CONFIG.CANTEEN_LIMIT || 0, left = () => lim - (s.day.canteen || 0);
-    const rec = () => G.modal({ title: 'Столовая', face: 'lyudka', wide: true, text: 'Деньги: <b>' + G.rub(s.money) + '</b> · Сытость: ' + Math.round(s.st.satiety) + (lim ? ' · Порций до конца дня: <b>' + Math.max(0, left()) + '</b>' : '') + '<br><i>Людка гремит черпаком.</i>', opts: D.MENU.map(m => ({ t: m.n + ' — ' + G.rub(m.p), dis: s.money < m.p ? 'Нет денег' : (lim && left() <= 0) ? 'Лимит порций на сегодня' : null, fn: () => { s.day.canteen = (s.day.canteen || 0) + 1; G.addMoney(-m.p); const f = {}; for (const k in m.fx) f[k] = m.fx[k] * (k === 'satiety' ? p : 1); G.fx(f); if (m.mask) s.mask += m.mask; if (m.fx.satiety >= 15) G.fx({ cure: 1 }); G.toast(m.n + ': ' + Object.keys(f).map(k => D.STAT_RU[k] + ' +' + Math.round(f[k])).join(', ')); if (G.R('tatyana').l >= 20 && G.chance(30)) { G.toast('В хлебе записка от Татьяны: «Приятного».', 'good'); G.relAdd('tatyana', 2); } rec(); } })).concat([{ t: 'Хватит', fn: () => G.spend(1) }]) });
-    rec();
-  };
+  /* Этап 5: прежнее определение G.eatMenu удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
 
   // ---------- Разговор с мастером (бывшее «Доложить мастеру»)
   const masterId = () => (D.NPC_ORDER || []).find(id => D.NPC[id] && /Степаныч/.test(D.NPC[id].name)) || null;
-  G.masterTalk = function () {
-    const s = G.s, mid = masterId(), f = s.flags;
-    const mf = o => mid ? Object.assign({ face: mid }, o) : o;
-    const rel = v => { if (mid) G.relAdd(mid, v); };
-    const initN = () => { if (f.initWeek !== G.week()) { f.initWeek = G.week(); f.initN = 0; } return f.initN; };
-    // «Инициатива наказуема»: шанс похвалы падает с каждой инициативой за неделю и с выговорами
-    const initiative = o => {
-      const n = initN();
-      const p = C(o.base + s.st.know / 4 + s.st.boss / 8 - n * 14 - s.car.rep * 8, 10, 80);
-      f.initN = n + 1;
-      if (G.chance(p)) {
-        f.initOk = (f.initOk || 0) + 1; rel(3);
-        G.fx(Object.assign({ bm: 3 }, o.okFx)); if (o.onOk) o.onOk();
-        G.toast(G.pick(o.ok), 'good'); if (G.boardAdd) G.boardAdd('Поощрён мастером за инициативу', 'good');
-        G.spend(1);
-      } else {
-        f.initBad = (f.initBad || 0) + 1; rel(-3);
-        G.fx(Object.assign({ bm: -1 }, o.badFx));
-        G.toast(G.pick(o.bad), 'bad'); if (G.boardAdd) G.boardAdd('Проявил инициативу. Получил по инициативе', 'bad');
-        if (s.st.boss < 30 && G.chance(15)) { G.fx({ rep: 1 }); G.toast('Мастер оформил это как самовольство. Выговор.', 'bad'); }
-        G.spend(2);
-      }
-    };
-    const work = () => G.modal(mf({ title: 'Рабочие моменты', text: 'Что предложишь мастеру? Инициатива — дело хорошее. Иногда даже хвалят. <small>(Чем чаще лезешь с идеями за неделю, тем меньше шанс на похвалу.)</small>', opts: [
-      { t: '🔧 Улучшить станок', fn: () => initiative({ base: 40,
-        okFx: { boss: 6, know: 2, mood: 2, coll: 1, wear: -12 },
-        badFx: { boss: -4, mood: -5, energy: -8, coll: -1, wear: 2 },
-        ok: ['Степаныч покрутил ручку, крякнул: «Ну… в целом толково». Станок стал бегать ровнее.', 'Мастер хлопнул по плечу: «Вот бы все так!» Станок работает тише.'],
-        bad: ['Степаныч побагровел: «Тебе больше всех надо?» — и заставил перебирать узел вручную.', 'Предложение «улучшить» закончилось переделкой за тебя же. Мастер вздыхает громче станка.'] }) },
-      { t: '📐 Предложить поправку по чертежам', fn: () => initiative({ base: 35,
-        okFx: { boss: 5, know: 3, mood: 1 },
-        badFx: { boss: -3, mood: -4, energy: -5 },
-        onOk: () => { if (s.dwg.bad && !s.dwg.fixed) { s.dwg.fixed = true; G.toast('Мастер согласовал правку. Чертёж теперь читаемый.', 'good'); } },
-        ok: ['Мастер посмотрел чертёж и неожиданно согласился. Редкий день.', '«Хм, и правда косяк. Молодец, что заметил», — буркнул Степаныч.'],
-        bad: ['«Чертёж утверждал главный инженер. Ты что, умнее главного инженера?» — спросил мастер.', 'Мастер велел «не умничать» и дал лишних полчаса бумажной работы.'] }) },
-      { t: '🦺 Пожаловаться на условия труда', fn: () => initiative({ base: 25,
-        okFx: { coll: 5, mood: 3, cons: 2, boss: -1 },
-        badFx: { boss: -7, mood: -4, coll: -1 },
-        ok: ['Мастер что-то записал «для начальства». Коллеги за глаза благодарят.', 'Степаныч вздохнул: «Передам». Цех зауважал тебя тихо, но искренне.'],
-        bad: ['«Жаловаться — это не по-нашему», — нахмурился Степаныч. Теперь ты на заметке.', 'Мастер молча посмотрел так, что захотелось уволиться самому.'] }) },
-      { t: 'Передумал', fn: () => { G.spend(1); } }
-    ] }));
-    const chats = ['Степаныч полчаса рассказывал, как в девяносто пятом станок «сам работал».', 'Мастер пожаловался на начальство. Ты кивал в нужных местах.', 'Узнал, что премия «в этом квартале точно будет». Он говорит это каждый квартал.', 'Степаныч показал фото рассады. Рассада, надо признать, хорошая.'];
-    G.modal(mf({ title: 'Мастер', text: 'Степаныч оторвался от журнала: «Чего тебе?»', opts: [
-      { t: '🛠 Рабочие моменты: что улучшить', fn: work },
-      { t: '☕ Просто поболтать', fn: () => { G.fx({ mood: 2, boss: G.chance(25) ? 1 : 0 }); rel(2); G.toast(G.pick(chats.concat(G.MASTER_CHATS || []))); G.spend(1); } },
-      { t: '🐀 Доложить о коллеге (настучать)', fn: () => { G.fx({ boss: 5, coll: -8, cons: -6, snitch: 1 }); G.toast('Настучал Степанычу на коллегу. Мастер доволен.', 'warn'); if (G.chance(30)) G.addNick('stukach'); G.spend(1); } },
-      { t: 'Ничего, я пойду', fn: () => {} }
-    ] }));
-  };
+  /* Этап 5: прежнее определение G.masterTalk удалено — его целиком заменяет более позднее (см. docs/STAGE5_REPORT.md) */
 
   // ---------- Курсы
   G.coursesMenu = function () {
