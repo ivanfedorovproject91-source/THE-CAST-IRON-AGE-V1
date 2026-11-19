@@ -95,6 +95,7 @@
     if (!valid(d)) return { ok: false, error: 'Это не сохранение игры (нет данных персонажа).' };
     const bad = G.saveSane(d.s); if (bad.length) return { ok: false, error: 'Сохранение повреждено: ' + bad.join(', ') };
     const cur = ls.get(KEY); if (cur) ls.set(KEY + '_before_import', cur);
+    d.s.flags = d.s.flags || {}; d.s.flags.imported = 1; // вручную вставленное сохранение не участвует в общем рейтинге (перенос между устройствами — через облако)
     ls.set(KEY, JSON.stringify(d)); return { ok: true };
   };
 })();

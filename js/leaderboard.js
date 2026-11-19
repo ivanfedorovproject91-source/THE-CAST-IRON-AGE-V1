@@ -36,7 +36,7 @@
   // Отправка результата. Не чаще раза в 45 секунд (кроме force). Читерам (отладочное меню) — не отправляем.
   LB.submit = function (force) {
     const s = G.s;
-    if (!LB.configured() || !s || s.flags.dbg || s.phase === 'new') return;
+    if (!LB.configured() || !s || s.flags.dbg || s.flags.imported || s.phase === 'new') return; // читы и вручную импортированные сохранения в рейтинг не идут
     const now = Date.now();
     if (!force && now - LB.last < 45000) return;
     LB.last = now;
