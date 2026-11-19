@@ -103,7 +103,7 @@
     if (ph === 'morning') {
       const sick = s.car.sickUntil >= s.t.day;
       h += scene(IMG.gate, 'Утро. ' + wd, G.dateStr() + ', ' + G.season() + '. ' + (sick ? 'Ты на больничном/в отпуске.' : G.weekday() === 2 ? 'Среда — день проверки охраны труда!' : 'Впереди смена с 8:00.'), 'smoke');
-      if (s.hang) h += '<div class="card"><b>🤕 Похмелье.</b> <span class="note">Рассол, молоко или плотный завтрак помогут.</span></div>';
+      if (s.hang) h += '<div class="card"><b>🤕 Похмелье.</b> <span class="note">Рассол, молоко или плотный завтрак помогут. Пока похмелье не прошло, настроение выше ' + (G.hangMoodCap ? G.hangMoodCap() : 100) + ' не поднимется.</span></div>';
       if (G.weekday() === 2) h += '<div class="card note">⚠ Сегодня проверяющая Надежда Николаевна. Нужны чистота, форма и трезвость. Дядя Лёша принюхается на проходной.</div>';
       if (s.flags.povtDue) h += '<div class="card note">⚠ Просрочен повторный инструктаж — зайди к Пелагее Фёдоровне.</div>';
       h += groupActs(visibleActs(a => (a.ph || []).indexOf('morning') >= 0));
@@ -167,7 +167,7 @@
   // ---------- Люди
   function peopleTab() {
     const s = G.s;
-    const ids = D.NPC_ORDER.filter(id => (s.rel[id] && s.rel[id].met) || (id === 'chugun' && s.flags.dog) || (id === 'chugunok' && !s.flags.catHome));
+    const ids = D.NPC_ORDER.filter(id => (s.rel[id] && s.rel[id].met) || (id === 'chugun' && s.flags.dog) || (id === 'chugunok' && !s.flags.catHome)).filter(id => !(G.npcGone && G.npcGone(id)));
     let h = '<div class="card"><h3>Знакомые</h3><div class="note">Тапни, чтобы поговорить (если человек рядом) или позвонить.</div></div>';
     if (!ids.length) h += '<div class="card note">Пока никого не знаешь. Выйди на смену — познакомишься.</div>';
     ids.forEach(id => {

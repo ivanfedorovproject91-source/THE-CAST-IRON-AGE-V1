@@ -29,20 +29,31 @@
   function result(type,title,text,fx,delta){
     const p=petState(type);Object.keys(delta||{}).forEach(k=>p[k]+=delta[k]);clampPet(p);
     if(/Уход/.test(title))p.lastCare=G.s.t.day;
-    if(fx)G.fx(fx);
+    // Настроение хозяина: заметный бонус, зависящий от доверия питомца; за день «полный» эффект ограничен (потом слабее)
+    let sum='';
+    if(fx){
+      const day=G.s.t.day;if(p.moodDay!==day){p.moodDay=day;p.moodGiven=0;}
+      const f2=Object.assign({},fx);
+      if(f2.mood>0){
+        const base=f2.mood*(1+p.trust/100);          // доверие 0..100 → до ×2
+        const full=Math.max(0,Math.min(base,30-p.moodGiven)), rest=base-full;
+        f2.mood=Math.round(full+rest*0.35);p.moodGiven+=f2.mood;
+      }
+      sum=G.fx(f2);
+    }
     G.spend(1);
-    G.modal({title,face:type==='cat'?'chugunok':'chugun',bg:'checkpoint',text:text+'<br><br>'+bars(p),opts:[{t:'Хорошо',fn:()=>{}}]});
+    G.modal({title,face:type==='cat'?'chugunok':'chugun',bg:'checkpoint',text:text+(sum?'<br><b>🙂 '+sum+'</b>':'')+'<br><br>'+bars(p),opts:[{t:'Хорошо',fn:()=>{}}]});
   }
   function catMenu(){
     const p=petState('cat'),s=G.s;
     const opts=[
-      {t:'🐾 Погладить',fn:()=>result('cat','Чугунок мурлычет','Кот прищурился, подставил голову под ладонь и довольно замурлыкал.',{mood:2},{mood:9,trust:5,energy:-2})},
-      {t:'🤲 Взять на руки',fn:()=>result('cat','На руках','Чугунок устроился поудобнее. Если не тянуть за лапы и не удерживать силой, он спокойно мурлычет.',{mood:2},{mood:7,trust:4,energy:-5})},
-      {t:'🧡 Потискать',fn:()=>{if(p.trust<35)return result('cat','Чугунок не в настроении','Кот мягко вывернулся и отошёл. Он пока не настолько доверяет тесным объятиям.',{mood:-1},{mood:-3,trust:-2,energy:-2});result('cat','Мягкий рыжий комок','Чугунок терпеливо принимает ласку, потом довольно потягивается.',{mood:3},{mood:10,trust:4,energy:-5});}},
-      {t:'🥫 Покормить (100 ₽)',dis:s.money<100?'Нет денег':p.satiety>92?'Кот пока сыт':null,fn:()=>{G.addMoney(-100);p.lastFed=s.t.day;result('cat','Миска Чугунка','Чугунок съел порцию и тщательно умылся.',{mood:2},{satiety:32,mood:5,trust:3,energy:4});}},
-      {t:'🧶 Поиграть',dis:p.energy<15?'Кот устал':null,fn:()=>result('cat','Охота на верёвочку','Чугунок крадётся, прыгает за игрушкой и в конце победно валится на бок.',{mood:3},{mood:12,trust:5,energy:-18,satiety:-7})},
+      {t:'🐾 Погладить',fn:()=>result('cat','Чугунок мурлычет','Кот прищурился, подставил голову под ладонь и довольно замурлыкал.',{mood:5},{mood:9,trust:5,energy:-2})},
+      {t:'🤲 Взять на руки',fn:()=>result('cat','На руках','Чугунок устроился поудобнее. Если не тянуть за лапы и не удерживать силой, он спокойно мурлычет.',{mood:5},{mood:7,trust:4,energy:-5})},
+      {t:'🧡 Потискать',fn:()=>{if(p.trust<35)return result('cat','Чугунок не в настроении','Кот мягко вывернулся и отошёл. Он пока не настолько доверяет тесным объятиям.',{mood:-1},{mood:-3,trust:-2,energy:-2});result('cat','Мягкий рыжий комок','Чугунок терпеливо принимает ласку, потом довольно потягивается.',{mood:6},{mood:10,trust:4,energy:-5});}},
+      {t:'🥫 Покормить (100 ₽)',dis:s.money<100?'Нет денег':p.satiety>92?'Кот пока сыт':null,fn:()=>{G.addMoney(-100);p.lastFed=s.t.day;result('cat','Миска Чугунка','Чугунок съел порцию и тщательно умылся.',{mood:3},{satiety:32,mood:5,trust:3,energy:4});}},
+      {t:'🧶 Поиграть',dis:p.energy<15?'Кот устал':null,fn:()=>result('cat','Охота на верёвочку','Чугунок крадётся, прыгает за игрушкой и в конце победно валится на бок.',{mood:7},{mood:12,trust:5,energy:-18,satiety:-7})},
       {t:'👀 Наблюдать за поведением',fn:()=>{const mood=p.mood>70?'довольно мурлычет и ищет компанию':p.mood<30?'прячется и просит оставить его в покое':'умывается и внимательно следит за происходящим';G.modal({title:'Наблюдение за Чугунком',face:'chugunok',text:'Чугунок '+mood+'.<br><br>'+bars(p),opts:[{t:'Продолжить',fn:()=>{}}]});}},
-      {t:'🧼 Ухаживать',fn:()=>result('cat','Уход за котом','Ты проверил воду, чистоту места отдыха и шерсть. Чугунок доволен спокойным уходом.',{mood:2},{health:5,mood:5,trust:4,energy:3})},
+      {t:'🧼 Ухаживать',fn:()=>result('cat','Уход за котом','Ты проверил воду, чистоту места отдыха и шерсть. Чугунок доволен спокойным уходом.',{mood:3},{health:5,mood:5,trust:4,energy:3})},
       {t:'🏠 Забрать домой (500 ₽)',dis:!G.isFree()?'Забрать домой можно после смены':F().catHome?'Уже дома':s.money<500?'Нет денег':null,fn:()=>{G.addMoney(-500);F().cat=1;F().catHome=1;F().petCat=p;G.fx({mood:8});G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осмотрел комнату, выбрал самое тёплое место и улёгся. На заводе теперь появится новый хвостатый знакомый — пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:s.t.day,lastCare:s.t.day,lastWalk:s.t.day};G.R('chugun').met=true;}}]});}}
     ];
     G.modal({title:'🐈 Чугунок — заводской кот',face:'chugunok',text:'Рыжий кот — самостоятельное животное. Не разговаривает как человек, а отвечает позой, мурлыканьем и поведением.<br><br>'+bars(p),opts:opts.concat([{t:'Закрыть',fn:()=>{}}]),wide:true});
@@ -57,11 +68,11 @@
   function dogMenu(){
     const p=petState('dog'),s=G.s;
     const opts=[
-      {t:'🐾 Погладить',fn:()=>{if(p.trust<15&&G.chance(10))return dogBite(p,'Ты подошёл слишком резко.');result('dog','Чугун рад','Добрый дворняга виляет хвостом и с удовольствием подставляет бок.',{mood:2},{mood:9,trust:5,energy:-2});}},
-      {t:'🧡 Потискать',fn:()=>{if(p.trust<40||p.mood<25)return dogBite(p,'Псу не понравилось, что его крепко удерживают.');result('dog','Чугун обнимается','Чугун радостно прижимается и лижет руку.',{mood:3},{mood:11,trust:5,energy:-5});}},
+      {t:'🐾 Погладить',fn:()=>{if(p.trust<15&&G.chance(10))return dogBite(p,'Ты подошёл слишком резко.');result('dog','Чугун рад','Добрый дворняга виляет хвостом и с удовольствием подставляет бок.',{mood:5},{mood:9,trust:5,energy:-2});}},
+      {t:'🧡 Потискать',fn:()=>{if(p.trust<40||p.mood<25)return dogBite(p,'Псу не понравилось, что его крепко удерживают.');result('dog','Чугун обнимается','Чугун радостно прижимается и лижет руку.',{mood:6},{mood:11,trust:5,energy:-5});}},
       {t:'🥣 Покормить (150 ₽)',dis:s.money<150?'Нет денег':p.satiety>98?'Пёс совсем сыт':null,fn:()=>{if(p.satiety>90&&G.chance(8))return dogBite(p,'Ты снова предлагаешь еду, хотя Чугун уже наелся.');G.addMoney(-150);p.lastFed=s.t.day;if(p.satiety>85){result('dog','Чугун переел','Пёс съел лишнее и теперь тяжело вздыхает. Лучше соблюдать режим кормления.',{mood:-2},{satiety:15,mood:-3,health:-2,trust:-1});return;}G.addMoney(0);result('dog','Миска Чугуна','Пёс съел свою порцию. Кормление по режиму помогает ему чувствовать себя хорошо.',{mood:2},{satiety:35,mood:5,trust:3,energy:3});}},
-      {t:'🎾 Поиграть',dis:p.energy<20?'Чугун устал':null,fn:()=>result('dog','Игра с Чугуном','Чугун носится за мячом и возвращает его, гордо виляя хвостом.',{mood:3},{mood:13,trust:5,energy:-22,satiety:-8})},
-      {t:'🦮 Погулять',dis:!G.isFree()?'Прогулка возможна после смены':p.energy<15?'Пёс слишком устал':null,fn:()=>{p.lastWalk=s.t.day;result('dog','Прогулка','Вы прошлись по двору. Чугун обнюхал кусты, познакомился с запахами и вернулся довольным.',{mood:4},{mood:12,trust:6,energy:-16,satiety:-9,health:2});}},
+      {t:'🎾 Поиграть',dis:p.energy<20?'Чугун устал':null,fn:()=>result('dog','Игра с Чугуном','Чугун носится за мячом и возвращает его, гордо виляя хвостом.',{mood:7},{mood:13,trust:5,energy:-22,satiety:-8})},
+      {t:'🦮 Погулять',dis:!G.isFree()?'Прогулка возможна после смены':p.energy<15?'Пёс слишком устал':null,fn:()=>{p.lastWalk=s.t.day;result('dog','Прогулка','Вы прошлись по двору. Чугун обнюхал кусты, познакомился с запахами и вернулся довольным.',{mood:8},{mood:12,trust:6,energy:-16,satiety:-9,health:2});}},
       {t:'🧼 Ухаживать',fn:()=>result('dog','Уход за Чугуном','Ты проверил воду, лапы и шерсть, устроил ему чистое место отдыха.',{mood:2},{health:6,mood:5,trust:4,energy:3})},
       {t:'👀 Наблюдать за поведением',fn:()=>{const mood=p.mood>70?'радостно виляет хвостом и ищет игру':p.mood<30?'держится в стороне и выглядит подавленным':'спокойно лежит рядом и прислушивается';G.modal({title:'Наблюдение за Чугуном',face:'chugun',text:'Чугун '+mood+'.<br><br>'+bars(p),opts:[{t:'Продолжить',fn:()=>{}}]});}}
     ];
