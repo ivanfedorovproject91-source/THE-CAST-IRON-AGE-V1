@@ -76,7 +76,11 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .btn.red { border-left-color: var(--red); } .btn.green { border-left-color: var(--green); } .btn.blue { border-left-color: var(--blue); }
 .btn.big { padding: 16px; font-size: 18px; margin-top: 10px; }
 .btns { padding: 0 10px; }
-.cta { padding: 10px; position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 40%); }
+.cta { padding: 10px; }
+.cta-in { padding: 4px 0 0; }
+.ctabar { flex: 0 0 auto; background: var(--bg); border-top: 1px solid #000; }
+.ctabar .cta { padding: 0 10px 8px; }
+.ctabar .btn.big { margin-top: 8px; }
 
 /* ---------- Город/люди ---------- */
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }

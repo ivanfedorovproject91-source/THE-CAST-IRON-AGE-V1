@@ -204,6 +204,23 @@ with sync_playwright() as p:
             else: none_g+=1
     check('Тамара на проходной бывает, но не каждый день', seen_g>0 and none_g>0, (seen_g, none_g))
 
+    # --- кнопки неподвижны, «Свои люди» только в цехе, рейтинг без тестовых «Т» ---
+    for ph,hr in [('morning',7),('locker',7),('lunch',12)]:
+        reset(); setup(rank=1, shifts=5, phase=ph, hour=hr)
+        ev("G.ui.tab='shift'; G.ui.render()")
+        inbar=ev("document.querySelectorAll('#ctabar .btn').length"); inscr=ev("document.querySelectorAll('#screen > .cta').length")
+        check('главная кнопка в неподвижной панели (%s)'%ph, inbar==1 and inscr==0, (inbar,inscr))
+        ev("document.getElementById('screen').scrollTop=400")
+        a=ev("Math.round(document.querySelector('#ctabar .btn').getBoundingClientRect().top)"); ev("document.getElementById('screen').scrollTop=0")
+        b2=ev("Math.round(document.querySelector('#ctabar .btn').getBoundingClientRect().top)")
+        check('кнопка не двигается при прокрутке (%s)'%ph, a==b2, (a,b2))
+    reset(); setup(rank=1, shifts=5, phase='work', hour=10)
+    for loc,want in [('shop',True),('admin',False),('otk',False),('yard',False)]:
+        ev("G.s.loc='%s'; G.ui.tab='shift'; G.ui.render()"%loc)
+        has=ev("/Свои люди/i.test(document.getElementById('screen').textContent)")
+        check('«Свои люди» в локации %s: %s'%(loc,want), has==want, has)
+    check('тестовые имена не уходят в рейтинг', ev("G.lb.isJunk('Т') && G.lb.isJunk('Тест') && !G.lb.isJunk('Иван')"))
+
     check('нет ошибок страницы', not errs, errs)
     b.close()
 print('\nИТОГ:', 'ВСЁ ПРОШЛО' if not fails else 'ПРОВАЛЕНО: %d' % len(fails))

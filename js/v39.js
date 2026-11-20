@@ -431,10 +431,10 @@
       const s = G.s;
       if (s && live() && F().catHome && !atWork()) {
         const p = F().petCat;
-        h += '<div class="card" style="border-left:4px solid #e0a03a"><b>🐈 Чугунок дома.</b> <span class="note">Погладишь — настроение заметно поднимется' + (p ? ' (сейчас у него ' + Math.round(p.mood) + '/100)' : '') + '.</span><div class="cta"><button class="btn" onclick="G.petMenu(\'cat\')">🐾 К Чугунку</button></div></div>';
+        h += '<div class="card" style="border-left:4px solid #e0a03a"><b>🐈 Чугунок дома.</b> <span class="note">Погладишь — настроение заметно поднимется' + (p ? ' (сейчас у него ' + Math.round(p.mood) + '/100)' : '') + '.</span><div class="cta-in"><button class="btn" onclick="G.petMenu(\'cat\')">🐾 К Чугунку</button></div></div>';
       }
       if (s && live() && !atWork() && G.nyuraHere() && G.R(NY).met && nyJobToday() && !nyDone(s, 'nyJob') && hour() < 24) {
-        h += '<div class="card" style="border-left:4px solid #bba"><b>👵 У бабы Нюры сегодня есть дело.</b> <span class="note">Можно подзаработать и подружиться.</span><div class="cta"><button class="btn" onclick="G.nyuraMenu()">Зайти к ней</button></div></div>';
+        h += '<div class="card" style="border-left:4px solid #bba"><b>👵 У бабы Нюры сегодня есть дело.</b> <span class="note">Можно подзаработать и подружиться.</span><div class="cta-in"><button class="btn" onclick="G.nyuraMenu()">Зайти к ней</button></div></div>';
       }
     } catch (e) { if (window.console) console.error(e); }
     return h;

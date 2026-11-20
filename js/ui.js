@@ -64,6 +64,10 @@
     top.classList.toggle('hide', !game); nav.classList.toggle('hide', !game);
     if (game) { top.innerHTML = topbar(); nav.innerHTML = navHTML(); nav.classList.toggle('n7', !!(G.ceo && G.ceo.is())); }
     el.innerHTML = html;
+    // главная жёлтая кнопка — в неподвижной панели над меню, не в прокручиваемом списке
+    const cb = $('ctabar'); let main = '';
+    if (game) Array.prototype.slice.call(el.children).forEach(c => { if (c.classList && c.classList.contains('cta')) { main = c.outerHTML; c.remove(); } });
+    if (cb) { cb.innerHTML = main; cb.classList.toggle('hide', !main); }
     if (UI.keepScroll) el.scrollTop = keep; else el.scrollTop = 0;
     UI.keepScroll = false;
   };
@@ -127,7 +131,7 @@
       if (s.loc === 'admin' && G.adminCard) h += G.adminCard();
       if (ph === 'lunch') h += '<div class="card note">Обед: осталось действий — <b>' + s.lunchAP + '</b>. Можно поесть, выпить молока, поболтать.</div>';
       const acts = visibleActs(a => a.loc === s.loc && ((a.ph || ['work']).indexOf('work') >= 0));
-      if (G.friendsBlock) h += G.friendsBlock();
+      if (G.friendsBlock && s.loc === 'shop') h += G.friendsBlock();
       h += groupActs(acts);
       if (s.dwg.none) h += '<div class="card note">⚠ Чертежа нет — Субрыкин в запое. Работать нечем.</div>';
       if (ph === 'lunch') h += '<div class="cta"><button class="btn big hazard" onclick="G.endLunch()">ЗАКОНЧИТЬ ОБЕД →</button></div>';
@@ -220,6 +224,10 @@
     if (!c || Date.now() - c.t > 60000) LB.load(by);
     if (!c) return h + '<div class="card note">' + (LB.err ? 'Не удалось загрузить рейтинг (' + esc(LB.err) + '). <button class="chip" onclick="G.ui.reloadLb()">Повторить</button>' : 'Загрузка…') + '</div>';
     const d = c.data, medals = ['🥇', '🥈', '🥉'];
+    if (d && d.rows && by !== 'brig') { // убираем тестовые записи и пересчитываем места
+      const rows = d.rows.filter(r => r.me || !(G.lb.isJunk(r.name) || (sec === 'co' && G.lb.isJunk(String(r.shop || r.name || '').replace(/^Цех «|»$/g, '')))));
+      if (rows.length !== d.rows.length) { rows.forEach((r, i) => { if (!r.me) r.pos = i + 1; }); d.total = Math.max(rows.length, (d.total || 0) - (d.rows.length - rows.length)); d.rows = rows; }
+    }
     if (by === 'brig') {
       h += '<div class="card note">Неделя ' + esc(d.week) + '. Очки бригады: смены × 100 + выпущенные детали у всех участников. Победители недели получают звание.</div>';
       if (d.last && d.last.top && d.last.top.length) h += '<div class="card note">Итоги прошлой недели (' + esc(d.last.week) + '): ' + d.last.top.map((x, i) => (medals[i] || '') + ' ' + esc(x.name) + ' — ' + fmt(x.pts)).join(' · ') + '</div>';

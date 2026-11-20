@@ -73,7 +73,7 @@
       if (p && G.isFree()) {
         const late = s.t.hour + 2 > 26, tired = s.st.energy < 10;
         h += '<div class="card" style="border-left:4px solid #3aa0c8"><b>🎣 Рыбалка с ' + first(p.id) + '</b> — вы договорились. <span class="note">Пруд, термос и тишина (2 ч).</span>'
-          + '<div class="cta"><button class="btn big hazard" ' + (late || tired ? 'disabled' : '') + ' onclick="G.fishPlanGo()">🎣 ПОЙТИ НА РЫБАЛКУ →</button></div>'
+          + '<div class="cta-in"><button class="btn big hazard" ' + (late || tired ? 'disabled' : '') + ' onclick="G.fishPlanGo()">🎣 ПОЙТИ НА РЫБАЛКУ →</button></div>'
           + (late ? '<div class="note">Слишком поздно, не успеешь.</div>' : tired ? '<div class="note">Нет сил: сначала отдохни.</div>' : '') + '</div>';
       }
     } catch (e) {}

@@ -6,6 +6,8 @@
   const CFG = G.CONFIG;
   const LB = (G.lb = { cache: {}, last: 0, by: 'oj', sec: 'me', err: null, loading: false, status: '', brigMsg: '' });
   LB.configured = () => !!CFG.API_URL;
+  // Тестовые записи (автотесты создают героя «Т» / «test») в рейтинг не попадают и не показываются
+  LB.isJunk = n => { n = String(n == null ? '' : n).trim(); return n.length < 2 || /^(т|t|тест|test|aaa+|ааа+|asd|qwe|123+)$/i.test(n); };
   function devId() {
     try { let d = localStorage.getItem('cv_dev_id'); if (!d) { d = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem('cv_dev_id', d); } return d; } catch (e) { return 'nodev'; }
   }
@@ -36,7 +38,7 @@
   // Отправка результата. Не чаще раза в 45 секунд (кроме force). Читерам (отладочное меню) — не отправляем.
   LB.submit = function (force) {
     const s = G.s;
-    if (!LB.configured() || !s || s.flags.dbg || s.flags.imported || s.phase === 'new') return; // читы и вручную импортированные сохранения в рейтинг не идут
+    if (!LB.configured() || !s || G.headless || LB.isJunk(s.name) || s.flags.dbg || s.flags.imported || s.phase === 'new') return; // читы и вручную импортированные сохранения в рейтинг не идут
     const now = Date.now();
     if (!force && now - LB.last < 45000) return;
     LB.last = now;
