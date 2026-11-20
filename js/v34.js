@@ -9,6 +9,8 @@
   G.fx = function (o, ctx) {
     if (o && typeof o === 'object' && o.health > 0) { o = Object.assign({}, o); o.health = o.health * (CFG.HEAL_FACTOR || 1); }
     const sat0 = G.s && G.s.st ? G.s.st.satiety : 0;
+    // Поел, когда было по-настоящему голодно, — настроение заметно поднимается (одним эффектом, чтобы сработали все потолки настроения)
+    if (o && typeof o === 'object' && o.satiety >= 10 && sat0 < (CFG.MOOD_EAT_BELOW || 30) && !(o.mood < 0)) { o = Object.assign({}, o); o.mood = (o.mood || 0) + (CFG.MOOD_EAT_BONUS === undefined ? 3 : CFG.MOOD_EAT_BONUS); }
     const r = _fx.call(this, o, ctx);
     try {
       const s = G.s;

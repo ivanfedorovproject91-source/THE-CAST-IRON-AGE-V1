@@ -1801,9 +1801,20 @@
     const _spf = G.npcSpecial; G.npcSpecial = function (id) { const o = _spf.apply(this, arguments); return G.noFight(id) ? o.filter(x => !/Нарваться на драку/.test(x.t)) : o; };
 
     // ---------- 2. Энергия и настроение падают быстрее (настраивается в config.js)
+    // Настроение связано с сытостью: сытый спокойнее (падает медленнее), голодный раздражён (падает быстрее).
+    // Считаем по средней сытости за прошедшие часы: тик в engine.js за это время уже снизил сытость.
+    G.moodDrainPerHour = function (sat, k) {
+      const base = (CFG.DRAIN_MOOD === undefined ? 0.45 : CFG.DRAIN_MOOD) * k;
+      let d = sat >= (CFG.MOOD_FED_AT || 70) ? base * (CFG.MOOD_FED_K || 0.8) : base;
+      if (sat < (CFG.MOOD_STARVE_AT || 20)) d += (CFG.MOOD_STARVE_PEN === undefined ? 0.9 : CFG.MOOD_STARVE_PEN);
+      else if (sat < (CFG.MOOD_HUNGRY_AT || 35)) d += (CFG.MOOD_HUNGRY_PEN === undefined ? 0.4 : CFG.MOOD_HUNGRY_PEN);
+      return d;
+    };
     const _adv = G.advance; G.advance = function (h) {
+      const sat0 = G.s && G.s.st ? G.s.st.satiety : 0;
       _adv.apply(this, arguments); const s = G.s, st = s.st, work = s.phase === 'work' || s.phase === 'lunch', k = work ? 1 : 0.5;
-      st.energy = C(st.energy - (CFG.DRAIN_ENERGY === undefined ? 0.7 : CFG.DRAIN_ENERGY) * k * h); st.mood = C(st.mood - (CFG.DRAIN_MOOD === undefined ? 0.45 : CFG.DRAIN_MOOD) * k * h); capMood();
+      const sat = (sat0 + st.satiety) / 2;
+      st.energy = C(st.energy - (CFG.DRAIN_ENERGY === undefined ? 0.7 : CFG.DRAIN_ENERGY) * k * h); st.mood = C(st.mood - G.moodDrainPerHour(sat, k) * h); capMood();
     };
     // Нервный срыв вместо мгновенного «ушёл сам»: раз в 8 недель
     const _ce = G.checkEnd; G.checkEnd = function () {

@@ -594,7 +594,8 @@
       const s = G.s; if (!s || !s.car) return h;
       const m = V().mood;
       if (s.st.mood <= 30 && s.phase !== 'new') h += '<div class="card" style="border-left:4px solid #e0605a"><b>' + (s.st.mood <= 10 ? '🚨' : '⚠') + ' Настроение критически низкое.</b> <span class="note">Отдохни, поешь, поговори с кем-нибудь — иначе будет срыв.' + (m.breaks && s.t.day - m.crisisDay <= 10 ? ' <b>Ты уже был(а) на грани: повторный срыв — конец работы.</b>' : '') + '</span></div>';
-      if (s.car.job && s.car.shifts >= 1 && ['work', 'lunch', 'locker'].indexOf(s.phase) >= 0 && (UI_TAB() === 'shift')) {
+      // «Репутация у начальства» — только вкладка «Смена», только локация «Цех» (не дома, не в раздевалке, не в других местах завода)
+      if (s.car.job && s.car.shifts >= 1 && ['work', 'lunch'].indexOf(s.phase) >= 0 && s.loc === 'shop' && (UI_TAB() === 'shift')) {
         const sd = G.bossStanding(), cl = Math.round(G.cleanLevel());
         h += '<div class="card" style="border-left:4px solid ' + sd.color + '"><b>👔 Репутация у начальства:</b> ' + sd.label + ' (' + (sd.score > 0 ? '+' : '') + sd.score + ') <button class="btn" onclick="G.bossRepInfo()">Подробнее</button><div class="note">🧹 Чистота в цеху: ' + cl + '%' + (charOk() ? ' · 📜 есть характеристика' : '') + '</div></div>';
       }
