@@ -74,18 +74,22 @@
     G.modal({ title: 'Вводный инструктаж', face: 'pelageya', bg: 'checkpoint', text: 'Пелагея Фёдоровна приносит журнал и пирожок:<br><i>«Без подписи на работу не пустят. А муж мой тоже… ладно. Слушай: ' + G.pick(K.jokes) + '»</i>', opts: [{ t: 'Слушать внимательно', fn: () => K.testInstr('vvod', 'pelageya') }] });
   };
   K.jokes = ['если станок упал на ногу — не тряси ногой, береги станок, ногу мы спишем.', 'каску надевай, даже если голова уже дырявая.', 'молоко — для вредности, а не для кота Чугунка.', 'огнетушитель стоит на месте, а ты — рядом с ним.', 'спецовка — это не декор, а последнее, что тебя спасёт.', 'при пожаре бежим спокойно, но очень быстро.'];
-  K.testInstr = function (kind, who) {
+  K.testInstr = function (kind, who, then) {
     const s = G.s, titles = { vvod: 'Вводный', perv: 'Первичный', povt: 'Повторный', vnepl: 'Внеплановый', celev: 'Целевой' };
     G.quiz(3, titles[kind] + ' инструктаж', (ok) => {
       if (ok >= 2) {
         s.instr[kind] = G.week(); if (kind === 'povt') delete s.flags.povtDue;
         G.fx({ know: 2, mood: 1 });
-        G.modal({ title: 'Подпись в журнале', face: who, text: ok === 3 ? 'Все ответы верны. Пелагея довольно кивает. <b>Подпись поставлена.</b>' : 'Два ответа верны. «Ну, пройдёт». <b>Подпись поставлена.</b>', opts: [{ t: 'Ок', fn: () => { if (kind === 'vvod') { s.phase = 'morning'; s.t.hour = 7; K.firstDayIntro(); } } }] });
+        G.modal({ title: 'Подпись в журнале', face: who, text: ok === 3 ? 'Все ответы верны. Пелагея довольно кивает. <b>Подпись поставлена.</b>' : 'Два ответа верны. «Ну, пройдёт». <b>Подпись поставлена.</b>', opts: [{ t: 'Ок', fn: () => { if (kind === 'vvod') { s.phase = 'morning'; s.t.hour = 7; K.firstDayIntro(); } else if (then) then(); } }] });
       } else {
         G.fx({ mood: -3, boss: -1 });
-        G.modal({ title: 'Не сдал', face: who, text: 'Ответов верно: ' + ok + ' из 3. «Приходи, когда выучишь». Потерян час.', opts: [{ t: 'Пересдать', fn: () => { G.advance(1); K.testInstr(kind, who); } }] });
+        G.modal({ title: 'Не сдал', face: who, text: 'Ответов верно: ' + ok + ' из 3. «Приходи, когда выучишь». Потерян час.', opts: [{ t: 'Пересдать', fn: () => { G.advance(1); K.testInstr(kind, who, then); } }] });
       }
     }, who);
+  };
+  // Первичный инструктаж у стажёра начинается сам, когда он берётся за работу (3 вопроса, проводит Палыч)
+  K.instrBeforeWork = function () {
+    G.modal({ title: 'Первичный инструктаж', face: 'palych', bg: 'checkpoint', text: 'Палыч перехватывает тебя у станка и протягивает журнал:<br><i>«Стоп. Сначала инструктаж — три вопроса, и работай на здоровье».</i>', opts: [{ t: 'К журналу', fn: () => K.testInstr('perv', 'palych', () => { if (G.s && G.s.phase === 'work' && !G.s.end) G.runAction('work'); }) }] });
   };
   K.firstDayIntro = function () {
     const s = G.s;
@@ -123,6 +127,7 @@
     s.phase = 'work'; s.t.hour = 8; s.loc = 'shop'; s.day.slots = 0;
     G.settle();
     if (!s.flags.firstDay) { s.flags.firstDay = 1; G.modal({ title: 'Первая смена', face: 'palych', text: 'Палыч встречает у станка: <i>«Я твой наставник. Первичный инструктаж на рабочем месте — и вперёд».</i>', opts: [{ t: 'К журналу', fn: () => K.testInstr('perv', 'palych') }] }); }
+    else if (s.instr.perv == null) K.instrBeforeWork();
     G.pump();
   };
 

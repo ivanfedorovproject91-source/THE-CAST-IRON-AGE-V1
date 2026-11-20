@@ -598,9 +598,7 @@
         const sd = G.bossStanding(), cl = Math.round(G.cleanLevel());
         h += '<div class="card" style="border-left:4px solid ' + sd.color + '"><b>👔 Репутация у начальства:</b> ' + sd.label + ' (' + (sd.score > 0 ? '+' : '') + sd.score + ') <button class="btn" onclick="G.bossRepInfo()">Подробнее</button><div class="note">🧹 Чистота в цеху: ' + cl + '%' + (charOk() ? ' · 📜 есть характеристика' : '') + '</div></div>';
       }
-      if (s.phase === 'morning' && G.isWorkday() && s.car.sickUntil < s.t.day && G.hash(s.t.day, 11, 3) < 0.6 && !s.day.gate) {
-        h += '<div class="card"><b>🧹 У проходной виднеется Тамара Ивановна</b> с ведром. <span class="note">Подходить или нет — решать тебе.</span><div class="cta"><button class="btn" onclick="G.tamaraTalk()">💬 Подойти поговорить</button></div></div>';
-      }
+      // карточка «Тамара у проходной» убрана с вкладки «Дом»: Тамара появляется только на самой проходной (js/v39.js)
     } catch (e) { console.error(e); }
     return h;
   };

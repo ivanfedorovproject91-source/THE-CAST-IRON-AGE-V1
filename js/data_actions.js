@@ -37,7 +37,7 @@
     req: s => (!s.car.job ? 'Нет должности' : (s.car.rank > 0 && s.flags.xferUntil > s.car.shifts && false) || null),
     fn: s => {
       const j = G.job(); const kind = s.car.rank >= 6 || j.mini === 'papers' ? 'papers' : 'rhythm';
-      if (s.instr.perv == null) { G.toast('Без первичного инструктажа допуска нет! Иди к Палычу или Пелагее.', 'bad'); return false; }
+      if (s.instr.perv == null) { G.career.instrBeforeWork(); return 'custom'; }
       G.mini(kind, { title: s.car.rank >= 8 ? 'Бумажки и подписи' : s.car.rank >= 6 ? 'Распределение людей' : (j.name + ': операция'), hint: kind === 'papers' ? 'Тапай по папкам, пока не кончилось время' : 'Тапай «РАБОТАТЬ», когда маркер в зелёной зоне', rounds: 3 + Math.min(2, Math.floor(G.physical() / 2)) }, r => G.doOp(r.score));
       return 'custom';
     } });
@@ -1440,7 +1440,7 @@
     const JOBGAME = { drob: 'rhythm', podsob: 'rhythm', liteyshik: 'rhythm', plavilshik: 'rhythm', stropalshik: 'sling', kran: 'crane', tokar: 'cut', chpu: 'cut', svarshik: 'weld', slesar: 'wires', elektrik: 'wires', laborant: 'papers', otk: 'tol', kladovshik: 'sort', deloproizv: 'papers' };
     const JT = { drob: 'ДРОБЬ', podsob: 'ПОДСОБКА', liteyshik: 'ЛИТЬЁ', plavilshik: 'ПЛАВКА', stropalshik: 'СТРОПОВКА', kran: 'КРАН', tokar: 'ТОЧЕНИЕ', chpu: 'ЧПУ', svarshik: 'СВАРКА', slesar: 'РЕМОНТ', elektrik: 'ЭЛЕКТРИКА', laborant: 'АНАЛИЗЫ', otk: 'КОНТРОЛЬ ОТК', kladovshik: 'СКЛАД', deloproizv: 'БУМАГИ' };
     G.ACT.work.fn = function (s) {
-      if (s.instr.perv == null) { msg('Без первичного инструктажа допуска нет! Иди к Палычу или Пелагее.', 'bad'); return false; }
+      if (s.instr.perv == null) { G.career.instrBeforeWork(); return 'custom'; }
       const r = s.car.rank, j = G.job(); let kind, title;
       if (r >= 8) { kind = 'decide'; title = 'СОВЕЩАНИЕ И РЕШЕНИЯ'; } else if (r === 7) { kind = 'papers'; title = 'ПРОВЕРКИ И УКАЗАНИЯ'; } else if (r === 6) { kind = 'assign'; title = 'РАСПРЕДЕЛЕНИЕ ЛЮДЕЙ'; }
       else { kind = JOBGAME[s.car.job] || 'rhythm'; title = JT[s.car.job] || j.name; }

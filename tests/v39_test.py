@@ -181,6 +181,29 @@ with sync_playwright() as p:
     m0 = ev("[G.s.st.satiety, G.s.st.mood]"); click('в гости'); m1 = ev("[G.s.st.satiety, G.s.st.mood]")
     check('«Сходить в гости»: сытость и настроение растут', m1[0] > m0[0] and m1[1] > m0[1], (m0, m1))
 
+    # ---- Доп. замечания: инструктаж и утро на вкладке «Дом»
+    reset(); setup(rank=0, shifts=0, phase='work', hour=8); ev("G.s.instr.perv=null; G.s.flags.firstDay=1; G.ui.tab='shift'; G.runAction('work')")
+    check('стажёр без инструктажа: вместо отказа сам начинается инструктаж Палыча', ev("/инструктаж/i.test((G.cur&&G.cur.title)||'')") and ev("G.cur.face==='palych'"), ev("G.cur&&G.cur.title"))
+    check('текста «Без первичного инструктажа допуска нет» больше нет', 'допуска нет' not in src('js/data_actions.js'))
+    click('К журналу'); check('после «К журналу» идёт тест (3 вопроса)', ev("!!G.cur"), ev("G.cur&&G.cur.title"))
+    reset(); setup(rank=0, shifts=3, phase='locker', hour=7); ev("G.s.instr.perv=null; G.s.flags.firstDay=1; G.career.toWorkplace()")
+    check('при выходе к станку без инструктажа он начинается автоматически', ev("/инструктаж/i.test((G.cur&&G.cur.title)||'')"), ev("G.cur&&G.cur.title"))
+    for d in range(40):
+        setup(rank=1, shifts=5, phase='morning', hour=7); ev("G.s.t.day=%d; G.ui.tab='shift'"%(300+d))
+        h = ev("G.shiftTop()")
+        if 'Тамара' in h or 'Нужно расписаться' in h or 'Репутация у начальства' in h:
+            check('утром на вкладке «Дом» нет Тамары, росписи и репутации (день %d)'%d, False, h[:120]); break
+    else:
+        check('утром на вкладке «Дом» нет Тамары, росписи и репутации (40 дней)', True)
+    seen_g=0; none_g=0
+    for d in range(40):
+        reset(); setup(rank=1, shifts=5, phase='morning', hour=7, money=20000); ev("G.s.t.day=%d; G.s.day.gate=0; G.s.day.commute=1; G.s.st.drunk=0; G.s.smell=0; G.s.st.neat=90"%(300+d))
+        ev("G.career.goToWork(); if (G.cur && G.cur.title==='Егорыч') { G.cur=null; G.busy=false; } G.gatePass()")
+        if ev("G.s.phase")=='locker':
+            if ev("/Тамара/.test((G.cur&&G.cur.title)||'')"): seen_g+=1
+            else: none_g+=1
+    check('Тамара на проходной бывает, но не каждый день', seen_g>0 and none_g>0, (seen_g, none_g))
+
     check('нет ошибок страницы', not errs, errs)
     b.close()
 print('\nИТОГ:', 'ВСЁ ПРОШЛО' if not fails else 'ПРОВАЛЕНО: %d' % len(fails))
