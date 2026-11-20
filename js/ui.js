@@ -6,9 +6,9 @@
   const UI = (G.ui = { tab: 'shift', sub: 'file', place: null, mode: 'title', draft: null, step: 0, cleanup: null, taps: 0 });
   const $ = id => document.getElementById(id);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const IMG = { gate: 'assets/bg_gate.jpg', checkpoint: 'assets/bg_checkpoint.jpg', admin: 'assets/bg_admin.gif' };
+  const IMG = { gate: 'assets/bg_gate.jpg', checkpoint: 'assets/bg_checkpoint.jpg', admin: 'assets/bg_admin.gif', home: 'assets/bg_home.jpg', city: 'assets/bg_city.jpg' };
   // Баннеры локаций во вкладке «Смена» (цех — без картинки, остаётся узкая полоска)
-  const LOC_IMG = { admin: IMG.admin, otk: 'assets/bg_otk.gif', yard: 'assets/bg_yard.jpg', med: 'assets/bg_med.gif', locker: 'assets/bg_locker.gif', canteen: 'assets/bg_canteen.gif' };
+  const LOC_IMG = { shop: 'assets/bg_shop.jpg', admin: IMG.admin, otk: 'assets/bg_otk.gif', yard: 'assets/bg_yard.jpg', med: 'assets/bg_med.gif', locker: 'assets/bg_locker.gif', canteen: 'assets/bg_canteen.gif' };
 
   const LOCS = {
     shop: { n: 'Цех', i: '🏭', d: 'Гул станков, масло, запах горячего металла.' },
@@ -104,7 +104,7 @@
     let h = '';
     if (ph === 'morning') {
       const sick = s.car.sickUntil >= s.t.day;
-      h += scene(IMG.gate, 'Утро. ' + wd, G.dateStr() + ', ' + G.season() + '. ' + (sick ? 'Ты на больничном/в отпуске.' : G.weekday() === 2 ? 'Среда — день проверки охраны труда!' : 'Впереди смена с 8:00.'), 'smoke');
+      h += scene(IMG.home, 'Утро. ' + wd, G.dateStr() + ', ' + G.season() + '. ' + (sick ? 'Ты на больничном/в отпуске.' : G.weekday() === 2 ? 'Среда — день проверки охраны труда!' : 'Впереди смена с 8:00.'), 'loc-home');
       if (s.hang) h += '<div class="card"><b>🤕 Похмелье.</b> <span class="note">Рассол, молоко или плотный завтрак помогут. Пока похмелье не прошло, настроение выше ' + (G.hangMoodCap ? G.hangMoodCap() : 100) + ' не поднимется.</span></div>';
       if (G.weekday() === 2) h += '<div class="card note">⚠ Сегодня проверяющая Надежда Николаевна. Нужны чистота, форма и трезвость. Дядя Лёша принюхается на проходной.</div>';
       if (s.flags.povtDue) h += '<div class="card note">⚠ Просрочен повторный инструктаж — зайди к Пелагее Фёдоровне.</div>';
@@ -137,7 +137,7 @@
     }
     // вечер / выходной
     const free = G.shiftEnd ? 26 - s.t.hour : 0;
-    h += scene(IMG.gate, ph === 'weekend' ? wd + ' — выходной' : 'Вечер после смены', G.dateStr() + ', ' + G.hourStr() + '. Свободных часов до глубокой ночи: ' + Math.max(0, free) + '. Город — во вкладке «Город».', 'smoke');
+    h += scene(IMG.home, ph === 'weekend' ? wd + ' — выходной' : 'Вечер после смены', G.dateStr() + ', ' + G.hourStr() + '. Свободных часов до глубокой ночи: ' + Math.max(0, free) + '. Город — во вкладке «Город».', 'loc-home');
     h += people('home');
     if (s.car.sickUntil >= s.t.day) h += '<div class="card note">Ты на больничном/в отпуске до ' + G.dateStrOf(s.car.sickUntil) + '.</div>';
     if (G.friendsBlock) h += G.friendsBlock();
@@ -149,7 +149,7 @@
   // ---------- Город
   function cityTab() {
     const s = G.s;
-    if (!G.isFree()) return scene(IMG.gate, 'Город закрыт до вечера', 'После смены или в выходной можно пойти в магазин, баню, рюмочную, на подработку.', 'sm') + '<div class="card note">Сейчас ты на заводе. ' + (s.phase === 'morning' ? 'Иди на работу.' : '') + '</div>';
+    if (!G.isFree()) return scene(IMG.city, 'Город закрыт до вечера', 'После смены или в выходной можно пойти в магазин, баню, рюмочную, на подработку.', 'loc-city') + '<div class="card note">Сейчас ты на заводе. ' + (s.phase === 'morning' ? 'Иди на работу.' : '') + '</div>';
     let h = '';
     if (UI.place) {
       const p = D.PLACES.find(x => x.id === UI.place);
@@ -160,6 +160,7 @@
       h += groupActs(visibleActs(a => a.loc === p.id && (a.ph || []).indexOf('free') >= 0));
       return h;
     }
+    h += scene(IMG.city, '🏙️ Город Едрёносталь', 'Панельки, трубы и автобусы. Выбери, куда пойти.', 'loc-city');
     h += '<div class="card"><h3>Куда пойдёшь?</h3><div class="note">Каждое место — часы вечера. Сейчас ' + G.hourStr() + ' (доступно до 02:00).</div></div><div class="grid2">';
     h += D.PLACES.filter(p => p.id !== 'home').map(p => '<button class="tile" onclick="G.ui.openPlace(\'' + p.id + '\')"><b>' + p.i + '</b>' + p.n + '<small>' + p.d + '</small></button>').join('');
     return h + '</div>';
