@@ -283,7 +283,8 @@
     if (!work) st.energy = C(st.energy - 0.7);
     st.neat = Math.max(0, st.neat - (ph === 'work' ? 1.4 : 0.4));
     if (ph === 'work') { const j = G.job(); if (j) st.tox = C(st.tox + j.harm * 0.35 * (s.car.rank >= 8 ? 0.2 : 1)); }
-    if (st.satiety < 20) { st.energy = C(st.energy - 1); st.mood = C(st.mood - 0.8); }
+    // голод: энергия падает здесь, а потеря настроения от голода считается в G.advance (data_actions.js, G.moodDrainPerHour)
+    if (st.satiety < 20) { st.energy = C(st.energy - 1); }
     if (st.satiety <= 0) st.health = C(st.health - 1.2);
     if (st.drunk > 0 && st.drunk < 3) st.drunk = 0;
   }
@@ -556,7 +557,8 @@
     const gain = (hang ? 35 : 60) * Math.min(1.25, hours / 8);
     st.energy = C(st.energy + gain);
     if (hours >= 7) st.health = C(st.health + 1.5);
-    st.mood = C(st.mood + (hours >= 7 ? 3 : 0));
+    // на голодный желудок не выспишься: при низкой сытости сон почти не улучшает настроение
+    st.mood = C(st.mood + (hours >= 7 ? (st.satiety < ((G.CONFIG || {}).MOOD_SLEEP_BELOW || 25) ? 1 : 3) : 0));
     st.satiety = Math.max(0, st.satiety - 8);
     st.drunk = 0;
     st.tox = C(st.tox - 1.5);

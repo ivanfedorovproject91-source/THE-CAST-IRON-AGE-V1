@@ -129,7 +129,8 @@
       if (s.loc === 'admin' && G.adminCard) h += G.adminCard();
       if (ph === 'lunch') h += '<div class="card note">Обед: осталось действий — <b>' + s.lunchAP + '</b>. Можно поесть, выпить молока, поболтать.</div>';
       const acts = visibleActs(a => a.loc === s.loc && ((a.ph || ['work']).indexOf('work') >= 0));
-      if (G.friendsBlock) h += G.friendsBlock();
+      // «Свои люди» на заводе — только в локации «Цех» (в ОТК, курилке, столовой и т.д. блока нет); дома он показывается ниже
+      if (G.friendsBlock && s.loc === 'shop') h += G.friendsBlock();
       h += groupActs(acts);
       if (s.dwg.none) h += '<div class="card note">⚠ Чертежа нет — Субрыкин в запое. Работать нечем.</div>';
       if (ph === 'lunch') h += '<div class="cta"><button class="btn big hazard" onclick="G.endLunch()">ЗАКОНЧИТЬ ОБЕД →</button></div>';
