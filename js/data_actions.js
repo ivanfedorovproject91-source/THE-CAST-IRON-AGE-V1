@@ -976,9 +976,14 @@
     const holKey = d => { const m = d.getMonth() + 1, dd = d.getDate(), wd = d.getDay();
       if (dd === 4 && m === 11) return 'unity'; if (dd === 1 && m === 9) return 'knowledge'; if (dd === 23 && m === 2) return 'feb23'; if (dd === 8 && m === 3) return 'mar8';
       if (m === 7 && wd === 0 && dd >= 15 && dd <= 21) return 'metal'; if (m === 4 && wd === 6 && dd >= 24) return 'subbotnik'; if (m === 4 && dd === 14) return 'doors'; return null; };
+    const WORK_HOL = ['unity', 'knowledge', 'feb23', 'mar8', 'doors'];
     G.holidayCheck = function () {
       const s = G.s; if (!s || s.end || s.phase === 'new' || s.flags.holSeen === s.t.day) return;
-      const k = holKey(G.dateObj()); s.flags.holSeen = s.t.day; if (!k) return;
+      const k = holKey(G.dateObj());
+      // праздники «на заводе» объявляются только на работе (смена/обед), а не дома после сна;
+      // пока игрок не на заводе — не помечаем день просмотренным и ждём начала смены
+      if (k && WORK_HOL.indexOf(k) >= 0 && s.phase !== 'work' && s.phase !== 'lunch') return;
+      s.flags.holSeen = s.t.day; if (!k) return;
       const h = HOL[k]; s.flags.holiN = (s.flags.holiN || 0) + 1;
       G.modal({ title: h[0], text: h[1], opts: h[2].map(o => ({ t: o[0], fn: () => { o[1](); G.rumor('hol', 'Все обсуждают, как ты отметил «' + h[0].replace(/^\S+\s/, '') + '».', { coll: 1 }, 40); } })) });
     };
