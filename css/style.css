@@ -50,7 +50,8 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .scene h2 { margin: 0; font-family: var(--f-head); font-size: 20px; text-shadow: 0 2px 6px #000; }
 .scene p { margin: 2px 0 0; font-size: 13px; color: #d4cfc4; }
 .scene.sm { height: 92px; }
-.scene.admin { background-position: center 55% !important; }
+.scene[class*="loc-"] { background-position: center 55% !important; }
+.scene.loc-yard { background-position: center 62% !important; }
 .scene.smoke::after { content: ''; position: absolute; top: 0; left: 40%; width: 46%; height: 70%; background: radial-gradient(ellipse at 50% 100%, rgba(200,200,200,.28), transparent 70%); animation: smoke 5s infinite ease-in; opacity: 0; }
 @keyframes smoke { 0% { transform: translateY(30px) scale(.6); opacity: 0 } 40% { opacity: .8 } 100% { transform: translateY(-60px) scale(1.4); opacity: 0 } }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; margin: 10px 10px 0; padding: 10px; }
