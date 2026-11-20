@@ -6,7 +6,7 @@
   const UI = (G.ui = { tab: 'shift', sub: 'file', place: null, mode: 'title', draft: null, step: 0, cleanup: null, taps: 0 });
   const $ = id => document.getElementById(id);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const IMG = { gate: 'assets/bg_gate.jpg', checkpoint: 'assets/bg_checkpoint.jpg', admin: 'assets/bg_admin.gif', home: 'assets/bg_home.jpg', city: 'assets/bg_city.jpg' };
+  const IMG = { gate: 'assets/bg_gate.jpg', checkpoint: 'assets/bg_checkpoint.jpg', admin: 'assets/bg_admin.gif', home: 'assets/bg_home.jpg', homeEvening: 'assets/bg_home_evening.jpg', city: 'assets/bg_city.jpg' };
   // Баннеры локаций во вкладке «Смена» (цех — без картинки, остаётся узкая полоска)
   const LOC_IMG = { shop: 'assets/bg_shop.jpg', admin: IMG.admin, otk: 'assets/bg_otk.gif', yard: 'assets/bg_yard.jpg', med: 'assets/bg_med.gif', locker: 'assets/bg_locker.gif', canteen: 'assets/bg_canteen.gif' };
 
@@ -138,7 +138,7 @@
     }
     // вечер / выходной
     const free = G.shiftEnd ? 26 - s.t.hour : 0;
-    h += scene(IMG.home, ph === 'weekend' ? wd + ' — выходной' : 'Вечер после смены', G.dateStr() + ', ' + G.hourStr() + '. Свободных часов до глубокой ночи: ' + Math.max(0, free) + '. Город — во вкладке «Город».', 'loc-home');
+    h += scene(ph === 'weekend' ? IMG.home : IMG.homeEvening, ph === 'weekend' ? wd + ' — выходной' : 'Вечер после смены', G.dateStr() + ', ' + G.hourStr() + '. Свободных часов до глубокой ночи: ' + Math.max(0, free) + '. Город — во вкладке «Город».', 'loc-home');
     h += people('home');
     if (s.car.sickUntil >= s.t.day) h += '<div class="card note">Ты на больничном/в отпуске до ' + G.dateStrOf(s.car.sickUntil) + '.</div>';
     if (G.friendsBlock) h += G.friendsBlock();
