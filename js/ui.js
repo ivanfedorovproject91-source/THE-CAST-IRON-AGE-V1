@@ -6,7 +6,7 @@
   const UI = (G.ui = { tab: 'shift', sub: 'file', place: null, mode: 'title', draft: null, step: 0, cleanup: null, taps: 0 });
   const $ = id => document.getElementById(id);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const IMG = { gate: 'assets/bg_gate.jpg', checkpoint: 'assets/bg_checkpoint.jpg' };
+  const IMG = { gate: 'assets/bg_gate.jpg', checkpoint: 'assets/bg_checkpoint.jpg', admin: 'assets/bg_admin.gif' };
 
   const LOCS = {
     shop: { n: 'Цех', i: '🏭', d: 'Гул станков, масло, запах горячего металла.' },
@@ -121,7 +121,7 @@
     if (ph === 'work' || ph === 'lunch') {
       const L = LOCS[s.loc] || LOCS.shop;
       const chips = ['shop', 'admin', 'otk', 'yard', 'med', 'locker'].concat(ph === 'lunch' ? ['canteen'] : []);
-      h += scene(s.loc === 'yard' ? IMG.gate : s.loc === 'locker' ? IMG.checkpoint : null, L.i + ' ' + L.n, L.d + ' ' + (ph === 'lunch' ? 'Обеденный перерыв.' : 'Слотов до конца смены: ' + G.slotsLeft() + '.'), s.loc === 'yard' ? 'smoke' : 'sm');
+      h += scene(s.loc === 'yard' ? IMG.gate : s.loc === 'admin' ? IMG.admin : s.loc === 'locker' ? IMG.checkpoint : null, L.i + ' ' + L.n, L.d + ' ' + (ph === 'lunch' ? 'Обеденный перерыв.' : 'Слотов до конца смены: ' + G.slotsLeft() + '.'), s.loc === 'yard' ? 'smoke' : s.loc === 'admin' ? 'admin' : 'sm');
       h += '<div class="chips">' + chips.map(c => '<button class="chip ' + (s.loc === c ? 'on' : '') + '" onclick="G.ui.go(\'' + c + '\')">' + LOCS[c].i + ' ' + LOCS[c].n + '</button>').join('') + '</div>';
       h += people(s.loc);
       if (s.loc === 'admin' && G.adminCard) h += G.adminCard();
