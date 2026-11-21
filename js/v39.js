@@ -343,7 +343,7 @@
     if (G.rumor && sev >= 1) G.rumor('stunt_m', 'Говорят, ' + (rk >= 9 ? 'начальник цеха' : 'руководство цеха') + ' опять «выдал» — слухи гуляют по заводу.', { coll: -1 }, 60);
     if (G.buzz) G.buzz('error');
     G.modal({
-      title: '📞 ВЫЗОВ НА КОВЁР', cls: 'bad', vib: 'error', wide: true,
+      title: '🏢 ВЫЗОВ НА КОВЁР', cls: 'bad', vib: 'error', wide: true,
       text: 'Выходка руководителя не прошла незамеченной: «' + x.n + '». ' + who + ' вызывает к себе: «Вы — должностное лицо. От вас ждут примера, а не этого». Возможный штраф: <b>' + G.rub(fine) + '</b>' + (sev >= 1 ? ', вероятен выговор.' : '.'),
       opts: [
         { t: '🙏 Признать ошибку и принять меры', fn: () => { G.addMoney(-Math.round(fine / 2)); G.fx({ boss: 2, cons: 2, mood: -2 }); if (sev >= 2) G.fx({ rep: 1 }); msg('Ты признал(а) ошибку. Штраф ' + G.rub(Math.round(fine / 2)) + '. Репутация терпит, но выживает.', 'warn'); G.checkEnd(); } },
@@ -431,7 +431,7 @@
       const s = G.s;
       if (s && live() && F().catHome && !atWork()) {
         const p = F().petCat;
-        h += '<div class="card" style="border-left:4px solid #e0a03a"><b>🐈 Чугунок дома.</b> <span class="note">Погладишь — настроение заметно поднимется' + (p ? ' (сейчас у него ' + Math.round(p.mood) + '/100)' : '') + '.</span><div class="cta"><button class="btn" onclick="G.petMenu(\'cat\')">🐾 К Чугунку</button></div></div>';
+        h += '<div class="card" style="border-left:4px solid #e0a03a"><b>🐈 Чугунок дома.</b> <span class="note">Погладишь — настроение заметно поднимется' + (p ? ' (сейчас у него ' + Math.round(p.mood) + '/100)' : '') + '.</span>' + (G.litterDirt && G.litterDirt() > 0 ? '<div class="note" style="margin-top:6px">🚽 Лоток: ' + (G.litterDirt() === 1 ? 'нужно убрать после смены.' : 'не убирали ' + G.litterDirt() + ' дн. — запах уже чувствуется!') + '</div>' : '') + '<div class="cta"><button class="btn" onclick="G.petMenu(\'cat\')">🐾 К Чугунку</button>' + (G.litterDirt && G.litterDirt() > 0 ? ' <button class="btn" onclick="G.litterGame()">🚽 Убрать туалет</button>' : '') + '</div></div>';
       }
       if (s && live() && !atWork() && G.nyuraHere() && G.R(NY).met && nyJobToday() && !nyDone(s, 'nyJob') && hour() < 24) {
         h += '<div class="card" style="border-left:4px solid #bba"><b>👵 У бабы Нюры сегодня есть дело.</b> <span class="note">Можно подзаработать и подружиться.</span><div class="cta"><button class="btn" onclick="G.nyuraMenu()">Зайти к ней</button></div></div>';

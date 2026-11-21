@@ -54,7 +54,7 @@
 
   E('friend_in_need', { where: ['evening'], w: 1.8, cd: 12, cond: s => presentFriends(s).length >= 1 && s.car.shifts >= 10, fn: s => {
     const id = G.pick(presentFriends(s));
-    G.modal({ title: '📞 ' + first(id) + ' просит помощи', face: id, text: '«Выручай, ' + (s.name || 'друг') + '. Прижало: нужно или три тысячи до получки, или чтобы ты помог разобраться с проблемой на работе. Я бы не просил».', opts: [
+    G.modal({ title: (G.hasPhone() ? '📞 ' : '🚪 ') + first(id) + ' просит помощи', face: id, text: (G.hasPhone() ? '' : first(id) + ' пришёл(ла) лично: ') + '«Выручай, ' + (s.name || 'друг') + '. Прижало: нужно или три тысячи до получки, или чтобы ты помог разобраться с проблемой на работе. Я бы не просил».', opts: [
       { t: 'Одолжить 3 000 ₽', dis: s.money < 3000 ? 'Нет денег' : null, fn: () => { G.addMoney(-3000); G.relAdd(id, 8); G.fx({ coll: 1 }); G.later('friend_repay', G.ri(10, 20), { id, amt: 3000 }); } },
       { t: 'Помочь делом (2 часа)', fn: () => { G.relAdd(id, 6); G.R(id).help = (G.R(id).help || 0) + 1; G.fx({ energy: -6, coll: 2 }); G.later('friend_favor', G.ri(7, 14), { id }); G.spend(2); } },
       { t: 'Отказать', fn: () => { G.relAdd(id, -6); G.fx({ mood: -2 }); G.later('friend_cold', 5, { id }); } }

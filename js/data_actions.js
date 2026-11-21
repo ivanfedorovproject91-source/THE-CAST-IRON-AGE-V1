@@ -60,8 +60,8 @@
   A('check_dwg', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Проверить чертёж', i: '📐', h: 1, once: 'day',
     req: s => s.dwg.none ? 'Чертежа нет' : s.dwg.checked ? 'Уже проверен' : null,
     fn: s => { s.dwg.checked = true; const p = Math.min(95, 70 + s.st.know / 2); if (s.dwg.bad) { if (G.chance(p)) { s.dwg.fixed = true; G.fx({ know: 2, rel: { ekaterina: 1 } }); G.toast('Нашёл ошибку в чертеже и исправил! Качество +10.', 'good'); } else G.toast('Ничего не нашёл… (но чертёж кривой).', 'warn'); } else G.toast('Чертёж в порядке. Редкий случай.'); s.flags.ekDwg = (s.flags.ekDwg || 0) + 1; } });
-  A('oil', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Смазать станок', i: '🛢️', h: 1, fx: { wear: -25, know: 2, energy: -3, neat: -3 }, txt: 'Станок скрипит, но дышит.' });
-  A('study_ws', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Читать инструкции', i: '📖', h: 1, fx: { know: 6, energy: -3, mood: -1 }, txt: 'Прочитал инструкцию. Выяснил, что всё делал неправильно.' });
+  A('oil', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Смазать станок', i: '🛢️', h: 1, once: 'day', req: s => s.day.done.oil ? 'Уже смазано в эту смену' : null, fx: { wear: -25, know: 2, energy: -3, neat: -3 }, txt: 'Станок скрипит, но дышит.' });
+  A('study_ws', { ph: ['work'], loc: 'shop', g: 'Работа и учёба', n: 'Читать инструкции', i: '📖', h: 1, once: 'day', req: s => s.day.done.study_ws ? 'Уже читал(а) в эту смену' : null, fx: { know: 6, energy: -3, mood: -1 }, txt: 'Прочитал инструкцию. Выяснил, что всё делал неправильно.' });
   A('smoke_shop', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Перекур у станка', i: '🚬', h: 1, cost: 20, req: s => s.day.smokedShop ? 'Перекур у станка — 1 раз за смену' : null, fn: s => { s.day.smokedShop = 1; }, fx: { mood: 4, energy: 3, health: -1 }, risk: 30, fine: [100, 300], tag: 'risky', what: 'Курение не в курилке', txt: 'Затянулся. Дым смешался с цеховым.' });
   A('tea', { ph: ['work'], loc: 'shop', g: 'Перерыв и здоровье', n: 'Чай в каптёрке', i: '🫖', h: 1, lunch: true, fx: { mood: 3, energy: 3 }, risk: 8, fine: [50, 150], what: 'Чаепитие в рабочее время', txt: 'Тёплый чай и тишина.' });
   A('milk', { ph: ['work'], loc: 'shop', anywhere: true, g: 'Перерыв и здоровье', n: 'Выпить заводское молоко', i: '🥛', menu: true, lunch: true, once: 'day', fx: { tox: -8, health: 2, cure: 1 }, txt: 'Заводское молоко. Белое и подозрительное.',
@@ -108,8 +108,27 @@
   S('drink_h', 'home', 'Дом', 'Напиться дома', '🍾', 2, {}, '', { req: s => (G.has('vodka') || G.has('beer')) ? null : 'Нужна выпивка (магазин)', fn: s => { const id = G.has('vodka') ? 'vodka' : 'beer'; const n = id === 'vodka' ? 2 : 3; for (let i = 0; i < n && G.has(id); i++) G.useItem(id); G.fx({ mood: 4 }); }, tag: 'x' });
   S('courses_h', 'home', 'Дом', 'Учёба и курсы (платно)', '🎓', 0, {}, '', { menu: true, fn: () => { G.coursesMenu(); return 'custom'; } });
   S('phone_h', 'home', 'Дом', 'Телефон / банк / блог', '📱', 0, {}, '', { menu: true, fn: () => { G.phoneMenu(); return 'custom'; } });
-  S('overtime', 'home', 'Дом', 'Задержаться на 2 часа (×1.5)', '⏰', 2, { boss: 3, energy: -12, mood: -6, health: -2 }, 'Остался сверхурочно. Начальство довольно, ты — нет.', { req: s => !G.isWorkday() || s.day.skip ? 'Только в рабочий день' : s.phase !== 'evening' ? 'Только в рабочий день' : s.t.hour > G.shiftEnd() + 1 ? 'Поздно' : s.day.overtime ? 'Уже сегодня' : null, fn: s => { s.day.overtime = 1; s.pay.acc += G.monthlyPay() / 20 / 8 * 2 * 1.5; } });
-  S('vacation', 'home', 'Дом', 'Взять отпуск (5 дней)', '🏖️', 0, { health: 25, energy: 40, mood: 30, know: -10 }, 'Отпуск! Дача, огурцы, тишина.', { menu: true, noTrainee: true, req: s => s.car.vac < 5 ? 'Дней отпуска: ' + s.car.vac + ' (нужно 5)' : null, fn: s => { s.car.vac -= 5; s.car.sickUntil = s.t.day + 6; G.toast('Ты в отпуске до ' + G.dateStrOf(s.t.day + 6) + '.'); } });
+
+  // ===== Правка 4-5: отпуск — в Заводоуправлении, сверхурочные — в Цехе (внизу) =====
+  A('overtime', { ph: ['work'], loc: 'shop', g: 'Сверхурочно', bottom: true, n: 'Задержаться на 2 часа (×1.5)', i: '⏰', menu: true, once: 'day', fx: { boss: 3, energy: -12, mood: -6, health: -2 }, txt: 'Остался сверхурочно. Начальство довольно, ты — нет.',
+    req: s => !G.isWorkday() ? 'Только в рабочий день' : s.day.overtime ? 'Уже сегодня' : G.slotsLeft() !== 1 ? 'Можно в последний час смены' : null,
+    fn: s => { s.day.overtime = 1; s.pay.acc += G.monthlyPay() / 20 / 8 * 2 * 1.5; } });
+  const VAC_NO = [
+    'Максим Гогенович смотрит поверх очков: «Отпуск? Работать некому, план горит. Приходи после квартала».',
+    'Соплежуйкин вздыхает: «Ты один у нас такой. Кто будет точить? Нет, нет и ещё раз нет».',
+    'Начальство листает график: «Людей не хватает. В отпуск пойдёшь, когда завод закроют».',
+    'В кабинете пахнет валерьянкой: «Заявление положи на край стола. Он у нас завален с прошлого года».',
+    'Секретарь разводит руками: «Все в отпуске, то есть никто не в отпуске. Работать некому».'
+  ];
+  A('vacation', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Взять отпуск (5 дней)', i: '🏖️', h: 1, once: 'day', noTrainee: true,
+    req: s => s.car.vac < 5 ? 'Дней отпуска: ' + s.car.vac + ' (нужно 5)' : s.day.done.vacation ? 'Сегодня уже просился(ась)' : null,
+    fn: s => {
+      const p = Math.min(12, 4 + Math.max(0, s.st.boss) / 25); // шанс очень мал: 4–12 %
+      if (!G.chance(p)) { G.fx({ boss: -1 }); G.info('В отпуске отказано', G.pick(VAC_NO) + '<br><br><i>Шанс получить отпуск — около ' + Math.round(p) + '% на попытку. Попытка стоит час.</i>'); G.spend(1); return 'custom'; }
+      s.car.vac -= 5; s.car.sickUntil = s.t.day + 6; G.fx({ health: 25, energy: 40, mood: 30, know: -10 });
+      G.modal({ title: 'Отпуск одобрен!', text: 'Начальство неохотно подписывает заявление: «Только никому не говори. Ладно, иди». Ты в отпуске до ' + G.dateStrOf(s.t.day + 6) + '. Дача, огурцы, тишина.', opts: [{ t: 'Домой', fn: () => { s.phase = 'evening'; s.loc = 'home'; s.t.hour = Math.max(Math.floor(s.t.hour), G.shiftEnd()); G.settle && G.settle(); } }] });
+      return 'custom';
+    } });
   S('buy_sick_h', 'c_hosp', 'Больница', 'Купить больничный (2 000 ₽)', '🩹', 1, {}, '', { noTrainee: true, req: s => s.money < 2000 ? 'Нет денег' : null, fn: s => { G.buySick(); return 'custom'; }, menu: true });
 
   // ===== ГОРОД =====
@@ -1045,31 +1064,44 @@
           tot += dt; if (Math.abs(x - 0.5) <= 0.14) inz += dt; m.style.left = (x * 100) + '%'; tt.textContent = Math.max(0, T - el).toFixed(1) + ' с';
           if (el >= T) fin(tot ? inz / tot : 0); else requestAnimationFrame(loop); };
         requestAnimationFrame(loop);
-      } else {
+      } else if (kind === 'tol') {
         let i = 0, ok = 0, timer = null; const N = 10;
         box.innerHTML = '<h3>📏 ДОПУСКИ</h3><div class="gym-info">Эталон 10.00 мм, допуск ±0.05. Годен или брак? Время идёт!</div><div class="gym-rep" id="td-s" style="font-size:30px"></div><div class="gym-rep" id="td-r">&nbsp;</div><div class="fi-btns"><button class="btn big" id="td-g">✅ ГОДЕН</button><button class="btn big" id="td-b">❌ БРАК</button></div>';
         const sz = box.querySelector('#td-s'), rs = box.querySelector('#td-r'); let good = true, lock = false;
         const next = () => { if (i >= N) return fin(ok / N); lock = false; const d = Math.round(Math.random() * 12) / 100 * (Math.random() < 0.5 ? -1 : 1); good = Math.abs(d) <= 0.05; sz.textContent = (10 + d).toFixed(2) + ' мм'; rs.innerHTML = '&nbsp;'; timer = setTimeout(() => ans(null), Math.max(900, 1800 - i * 90)); };
         const ans = c => { if (lock) return; lock = true; clearTimeout(timer); if (c === good) { ok++; rs.textContent = 'Верно'; rs.className = 'gym-rep good'; } else { rs.textContent = c === null ? 'Не успел' : 'Ошибка'; rs.className = 'gym-rep bad'; } i++; setTimeout(next, 350); };
         box.querySelector('#td-g').onclick = () => ans(true); box.querySelector('#td-b').onclick = () => ans(false); next();
+      } else {
+        // «Починить технику»: к каждой поломке нужно выбрать верный инструмент, пока не вышло время
+        const TOOLS = { key: '🔧 Ключ', screw: '🪛 Отвёртка', hammer: '🔨 Молоток', oil: '🧴 Смазка', plunger: '🪠 Вантуз', tester: '🔌 Тестер' };
+        const PROB = [['Течёт кран на кухне', 'key'], ['Не работает розетка', 'tester'], ['Расшаталась ножка стола', 'hammer'], ['Скрипит дверная петля', 'oil'], ['Забит сифон в раковине', 'plunger'], ['Не греет утюг', 'tester'], ['Разболтался шкафчик', 'screw'], ['Заедает дверной замок', 'oil'], ['Капает смеситель', 'key'], ['Не включается удлинитель', 'tester']];
+        let i = 0, ok = 0, timer = null; const N = 8;
+        box.innerHTML = '<h3>🔧 ПОЧИНИТЬ ТЕХНИКУ</h3><div class="gym-info">Выбери подходящий инструмент. Время идёт!</div><div class="gym-rep" id="fx-s" style="font-size:20px"></div><div class="gym-rep" id="fx-r">&nbsp;</div><div class="fi-btns" id="fx-b"></div>';
+        const pr = box.querySelector('#fx-s'), rs = box.querySelector('#fx-r'), bt = box.querySelector('#fx-b'); let right = '', lock = false;
+        const next = () => { if (i >= N) return fin(ok / N); lock = false; const p = G.pick(PROB); right = p[1]; pr.textContent = p[0];
+          const wrong = Object.keys(TOOLS).filter(k => k !== right).sort(() => Math.random() - 0.5).slice(0, 2), opts = [right].concat(wrong).sort(() => Math.random() - 0.5);
+          bt.innerHTML = opts.map(k => '<button class="btn big" data-k="' + k + '">' + TOOLS[k] + '</button>').join(''); rs.innerHTML = '&nbsp;'; rs.className = 'gym-rep';
+          bt.querySelectorAll('button').forEach(b2 => { b2.onclick = () => ans(b2.getAttribute('data-k')); }); timer = setTimeout(() => ans(null), Math.max(1200, 2600 - i * 130)); };
+        const ans = c => { if (lock) return; lock = true; clearTimeout(timer); if (c === right) { ok++; rs.textContent = 'Верно'; rs.className = 'gym-rep good'; } else { rs.textContent = c === null ? 'Не успел' : 'Не тот инструмент'; rs.className = 'gym-rep bad'; } i++; setTimeout(next, 350); };
+        next();
       }
     };
     const CUST = ['Заказчик: «Нужен шов на мангале, чтобы выдержал тёщу».', 'Заказчик: «Детали для самовара-вездехода».', 'Заказчик: «Калитка, которая сама закрывается — и открывается».', 'Заказчик: «Шестерня для кота-робота. Кот согласен».'];
     G.sideJob = function (kind, risky) {
       const s = G.s;
-      G.modal({ title: kind === 'weld' ? 'Левый заказ: сварка' : 'Левый заказ: допуски', text: G.pick(CUST) + (risky ? '<br><i>Делать придётся в рабочее время. Рискованно, зато платят больше.</i>' : ''), opts: [
+      G.modal({ title: kind === 'weld' ? 'Левый заказ: сварка' : 'Левый заказ: ремонт', text: G.pick(CUST) + (risky ? '<br><i>Делать придётся в рабочее время. Рискованно, зато платят больше.</i>' : ''), opts: [
         { t: 'Приступить', fn: () => G.sideGame(kind, sc => {
           const base = kind === 'weld' ? G.ri(1800, 3500) : G.ri(1400, 2800), pay = Math.round(base * (0.3 + 0.9 * sc) * (risky ? 1.5 : 1));
-          G.fx({ money: pay, energy: -12, mood: sc >= 0.6 ? 3 : -2 }); msg(sc >= 0.8 ? 'Работа сделана на отлично. Заказчик платит и целует руку.' : sc >= 0.5 ? 'Работа сделана «в целом». Заказчик заплатил с лёгким вздохом.' : 'Получилось криво. Заказчик заплатил из жалости.', sc >= 0.5 ? 'good' : 'warn');
+          if (!risky) s.day.sideDone = 1; G.fx({ money: pay, energy: -12, mood: sc >= 0.6 ? 3 : -2 }); msg(sc >= 0.8 ? 'Работа сделана на отлично. Заказчик платит и целует руку.' : sc >= 0.5 ? 'Работа сделана «в целом». Заказчик заплатил с лёгким вздохом.' : 'Получилось криво. Заказчик заплатил из жалости.', sc >= 0.5 ? 'good' : 'warn');
           if (sc >= 0.95) G.achieve('golden', 'Золотые руки');
           if (risky && G.chance((F().chiefLoy || 0) >= 40 ? 12 : 30)) { G.fx({ boss: -6 }); G.punish({ risk: 100, what: 'Левый заказ в рабочее время', fine: [300, 800], sev: 1 }); }
           sp(3); }) },
         { t: 'Отказаться', fn: () => {} }
       ] });
     };
-    const pickJob = risky => G.modal({ title: 'Подработка', text: 'Что берёшь?', opts: [{ t: '🔥 Сварить шов', fn: () => G.sideJob('weld', risky) }, { t: '📏 Подобрать допуски', fn: () => G.sideJob('tol', risky) }, { t: 'Передумал', fn: () => {} }] });
+    const pickJob = risky => G.modal({ title: 'Подработка', text: 'Что берёшь?', opts: [{ t: '🔥 Сварить шов', fn: () => G.sideJob('weld', risky) }, { t: '🔧 Починить технику', fn: () => G.sideJob('fix', risky) }, { t: 'Передумал', fn: () => {} }] });
     A('side_work', { ph: ['work'], loc: 'shop', g: 'Левые заказы', n: 'Левый заказ в рабочее время', i: '🤫', menu: true, once: 'day', fn: () => { pickJob(true); return 'custom'; } });
-    A('side_home', { ph: ['free'], loc: 'home', g: 'Подработка', n: 'Халтура на дому', i: '🛠️', menu: true, once: 'day', fn: () => { pickJob(false); return 'custom'; } });
+    A('side_home', { ph: ['free'], loc: 'home', g: 'Подработка', n: 'Халтура на дому', i: '🛠️', menu: true, once: 'day', fn: () => { if (G.sideMenu) G.sideMenu(pickJob); else pickJob(false); return 'custom'; } });
 
     // ---------- Быт: обустройство комнаты и кот Чугунок
     const UPG = [['mattress', '🛏 Новый матрас (энергия по утрам +6)', 3500], ['wallpaper', '🖼 Обои и занавески (настроение +2 в день)', 2500], ['heater', '🔥 Обогреватель (здоровье и настроение +1)', 5000], ['plant', '🪴 Фикус «Геннадий» (настроение +1)', 800], ['kettle', '🫖 Чайник и плитка (кнопка «Чай с печеньем»)', 1500], ['tv', '📺 Телевизор (кнопка «Смотреть телевизор»)', 8000]];
@@ -1435,7 +1467,7 @@
     G.workGame = function (kind, title, cb, extra) {
       try {
         if (kind === 'bank') return GAMES.quiz(title, cb, extra);
-        if (kind === 'weld' || kind === 'tol') return G.sideGame(kind, cb);
+        if (kind === 'weld' || kind === 'tol' || kind === 'fix') return G.sideGame(kind, cb);
         if (kind === 'sling') return GAMES.sort(title, cb, 'sling');
         if (kind === 'assign') return GAMES.quiz(title, cb, ASSIGN);
         if (kind === 'decide') return GAMES.quiz(title, cb, DECIDE);

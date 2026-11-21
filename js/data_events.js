@@ -117,12 +117,16 @@
   E('milk_drop', { where: ['lunch'], w: 2, cd: 8, fn: () => { G.fx({ mood: -2 }); G.toast('Кто-то опрокинул молоко. Лужа в столовой.'); } });
   E('lunch_gossip', { where: ['lunch'], w: 2, cd: 4, fn: () => { G.fx({ mood: 3, coll: 1 }); G.toast('За соседним столом спорят про премию.'); } });
   // вечер/выходные
-  E('kolyan_call', { where: ['evening'], w: 3, cd: 6, cond: s => s.car.shifts >= 4, fn: () => G.modal({ title: '📞 Колян звонит', face: 'kolyan', text: '«Ну что, трудяга? Пошли в «У Палыча»! Я угощаю».', opts: [
+  E('kolyan_call', { where: ['evening'], w: 3, cd: 6, cond: s => s.car.shifts >= 4 && G.hasPhone(), fn: () => G.modal({ title: '📞 Колян звонит', face: 'kolyan', text: '«Ну что, трудяга? Пошли в «У Палыча»! Я угощаю».', opts: [
+    { t: 'Пойти', fn: () => { G.fx({ drunk: 28, mood: 9, craving: -22, coll: 1, rel: { kolyan: 6 } }); G.spend(3); } },
+    { t: 'Отказаться', fn: () => { G.fx({ rel: { kolyan: -2 } }); } }
+  ] }) });
+  E('kolyan_knock', { where: ['evening'], w: 3, cd: 6, cond: s => s.car.shifts >= 4 && !G.hasPhone(), fn: () => G.modal({ title: '🚪 Колян в дверях', face: 'kolyan', text: 'Колян барабанит в дверь: «Телефона у тебя нет, так я лично! Пошли в «У Палыча», я угощаю».', opts: [
     { t: 'Пойти', fn: () => { G.fx({ drunk: 28, mood: 9, craving: -22, coll: 1, rel: { kolyan: 6 } }); G.spend(3); } },
     { t: 'Отказаться', fn: () => { G.fx({ rel: { kolyan: -2 } }); } }
   ] }) });
   E('neighbors', { where: ['evening'], w: 2, cd: 4, fn: () => { G.fx({ energy: -5, mood: -4 }); G.toast('Соседи за стенкой устроили вечеринку до трёх ночи.'); } });
-  E('mom', { where: ['evening'], w: 2, cd: 7, fn: () => G.modal({ title: '📞 Мама', text: '«Сынок, ты кушаешь? Не простудился? А внуки?..»', opts: [{ t: 'Поговорить', fn: () => { G.fx({ mood: G.pick([-5, 6]), energy: -2 }); G.spend(1); } }, { t: 'Скинуть', fn: () => { G.fx({ mood: -3, cons: -2 }); } }] }) });
+  E('mom', { where: ['evening'], w: 2, cd: 7, cond: () => G.hasPhone(), fn: () => G.modal({ title: '📞 Мама', text: '«Сынок, ты кушаешь? Не простудился? А внуки?..»', opts: [{ t: 'Поговорить', fn: () => { G.fx({ mood: G.pick([-5, 6]), energy: -2 }); G.spend(1); } }, { t: 'Скинуть', fn: () => { G.fx({ mood: -3, cons: -2 }); } }] }) });
   E('dorm_check', { where: ['evening'], w: 1.5, cd: 14, fn: () => { if (G.has('vodka') || G.has('beer')) { G.toast('Комендант в общаге нашёл бутылку: штраф 300 ₽.', 'bad'); G.fx({ money: -300 }); G.give(G.has('vodka') ? 'vodka' : 'beer', -1); } else G.toast('Комендант проверил комнату. Всё чисто.'); } });
   E('mugging', { where: ['evening'], w: 0.8, cd: 25, cond: s => s.money > 500, fn: () => G.modal({ title: 'Тёмный двор', vib: 'warning', text: 'Двое в капюшонах преграждают дорогу: «Закурить не найдётся?»', opts: [{ t: 'Отдать 300 ₽', fn: () => { G.addMoney(-300); G.fx({ mood: -4 }); } }, { t: 'Драться', fn: () => { if (G.chance(35 + G.s.st.cool / 3)) { G.fx({ cool: 8, mood: 6 }); G.toast('Отбился! Герой двора.', 'good'); } else { G.fx({ health: -10, mood: -8, money: -300 }); } } }, { t: 'Убежать', fn: () => { G.fx({ energy: -8, cool: -3 }); } }] }) });
   E('lottery', { where: ['evening'], w: 0.8, cd: 20, cond: s => s.money > 100, fn: () => G.modal({ title: 'Лотерейка «Спортлото»', text: 'У ларька продают билет: 100 ₽.', opts: [{ t: 'Взять', fn: () => { G.addMoney(-100); if (G.chance(1)) { G.addMoney(100000); G.toast('ВЫИГРАЛ 100 000 ₽!!!', 'good'); } else if (G.chance(12)) { G.addMoney(500); G.toast('+500 ₽ — отбил.'); } else G.toast('Не повезло.'); } }, { t: 'Пройти мимо', fn: () => {} }] }) });

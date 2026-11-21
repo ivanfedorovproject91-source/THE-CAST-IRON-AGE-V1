@@ -247,10 +247,11 @@
     o.push({ t: '💳 Кредит наличными (от 30 000 ₽)', dis: s.car.rank < 1 ? 'Стажёрам не дают' : blocked, fn: () => G.modal({ title: 'Кредит наличными', text: 'Выбери сумму. Ставка зависит от суммы, срок выберешь дальше. Все платежи считаются аннуитетом: каждый месяц одинаковая сумма.', opts: CASH.map(c => ({ t: rub(c.amount) + ' — ' + Math.round(c.rate * 100) + '%', fn: () => offerCashTerms(c) })).concat([{ t: 'Назад', fn: () => G.bankMenu() }]) }) });
     o.push({ t: '⚡ Микрозайм 5 000 ₽ (1%/день)', fn: offerMicro });
     if (s.car.rank >= MORT.minRank) o.push({ t: '🏠 Ипотека: квартира в центре', dis: s.own.flat ? 'Уже есть' : blocked, fn: offerMortgage });
+    o.push({ t: '🏘️ Недвижимость: каталог квартир и домов', fn: () => { if (G.realtyMenu) G.realtyMenu(); } });
     if (s.debt > 0) o.push({ t: 'Погасить долг (' + G.rub(Math.min(s.debt, s.money)) + ')', dis: s.money < 1 ? 'Нет денег' : null, fn: () => { const p = Math.min(s.debt, s.money); s.money -= p; s.debt -= p; G.toast('Долг погашен частично/полностью: ' + G.rub(p)); } });
     o.push({ t: 'Выйти', fn: () => {} });
     G.modal({ title: '🏦 «Рубль-Банк»', face: 'rublev', text: t, opts: o, wide: true });
   };
 
-  G.loanInfo = { annuity, schedule, totals, monthsLeft, legacyProjection, restructure, prepay, convert, offerCash: (a, t) => offerCash(CASH.filter(c => c.amount === a)[0], t) };
+  G.loanInfo = { annuity, schedule, totals, monthsLeft, legacyProjection, restructure, prepay, convert, sign, limitCheck, lateAny, MORT, LIMIT_MORT, offerCash: (a, t) => offerCash(CASH.filter(c => c.amount === a)[0], t) };
 })();

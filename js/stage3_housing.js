@@ -45,6 +45,7 @@
       else if (deposit && s.money < deposit) why = 'Нужен залог ' + G.rub(deposit);
       return { t: h.i + ' ' + h.n + ' — ' + G.rub(total) + '/мес' + (deposit ? ' (залог ' + G.rub(deposit) + ')' : ''), dis: why, fn: () => move(k) };
     });
+    if (G.realtyMenu) opts.push({ t: '🏘️ Купить жильё: квартиры, коттеджи (сразу или в ипотеку)', fn: () => G.realtyMenu() });
     opts.push({ t: 'Закрыть', fn: () => {} });
     const h = H[now];
     G.modal({
