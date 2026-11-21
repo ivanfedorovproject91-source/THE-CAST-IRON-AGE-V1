@@ -20,6 +20,7 @@ window.__fuzz = function (cfg) {
     while ((G.cur || G.mq.length) && guard++ < 40 && !s.end) {
       if (!G.cur && G.mq.length) { G.cur = G.mq.shift(); }
       const m = G.cur; if (!m) break; out.modals++; lastModal = m.title || '';
+      if (m.type === 'mini') { G.choose(0, { score: 0.3 + rnd() * 0.6 }); continue; } // мини-игра: завершаем со случайным результатом, как это сделал бы игрок
       let ok = (m.opts || []).map((o, i) => (o.dis ? -1 : i)).filter(i => i >= 0);
       if (!cfg.chaos) { const good = ok.filter(i => !BAD.test(String(m.opts[i].t || ''))); if (good.length) ok = good; }
       if (!ok.length) { G.cur = null; G.busy = false; break; }
@@ -44,6 +45,8 @@ window.__fuzz = function (cfg) {
       if (ph === 'morning' && (phSteps >= 2 || !ids.length || rnd() < 0.4)) { G.career.goToWork(); resolve('goToWork'); check('goToWork'); continue; }
       if (ph === 'locker' && (phSteps >= 2 || !ids.length || rnd() < 0.5)) { G.career.toWorkplace(); resolve('toWorkplace'); check('toWorkplace'); continue; }
       if (ph === 'lunch' && (phSteps >= 3 || s.lunchAP <= 0 || !ids.length || rnd() < 0.3)) { G.endLunch(); resolve('endLunch'); check('endLunch'); continue; }
+      { const hk = s.t.day + ':' + s.t.hour + ':' + ph; if (hk === (out._hk || '')) out._na = (out._na || 0) + 1; else { out._hk = hk; out._na = 0; } }
+      if (ph === 'work' && out._na >= 6) { try { G.spend(1); } catch (e) { err('advance', e); } out._na = 0; resolve('wait'); check('wait'); continue; } // бот не сдал инструктаж и не может работать: ждёт час, как игрок
       if (!ids.length) { try { G.advance(1); } catch (e) { err('advance', e); } resolve('adv'); check('adv'); continue; }
       let id;
       const hungry = s.st.satiety < 55 || (s.flags.starveH || 0) >= 10, eats = ids.filter(i => EAT.test(i)), glum = s.st.mood < 40, fun = ids.filter(i => { const f = G.ACT[i].fx; return f && typeof f === 'object' && f.mood > 0 && !(f.health < 0); });

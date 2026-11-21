@@ -54,9 +54,10 @@
       {t:'🧶 Поиграть',dis:p.energy<15?'Кот устал':null,fn:()=>result('cat','Охота на верёвочку','Чугунок крадётся, прыгает за игрушкой и в конце победно валится на бок.',{mood:7},{mood:12,trust:5,energy:-18,satiety:-7})},
       {t:'👀 Наблюдать за поведением',fn:()=>{const mood=p.mood>70?'довольно мурлычет и ищет компанию':p.mood<30?'прячется и просит оставить его в покое':'умывается и внимательно следит за происходящим';G.modal({title:'Наблюдение за Чугунком',face:'chugunok',text:'Чугунок '+mood+'.<br><br>'+bars(p),opts:[{t:'Продолжить',fn:()=>{}}]});}},
       {t:'🧼 Ухаживать',fn:()=>result('cat','Уход за котом','Ты проверил воду, чистоту места отдыха и шерсть. Чугунок доволен спокойным уходом.',{mood:3},{health:5,mood:5,trust:4,energy:3})},
+      {t:'🚽 Убрать туалет ('+litterLabel()+')',dis:litterWhy(),fn:()=>G.litterGame()},
       {t:'🏠 Забрать домой (500 ₽)',dis:!G.isFree()?'Забрать домой можно после смены':F().catHome?'Уже дома':s.money<500?'Нет денег':null,fn:()=>{G.addMoney(-500);F().cat=1;F().catHome=1;F().petCat=p;G.fx({mood:8});G.modal({title:'Чугунок переезжает',face:'chugunok',bg:'gate',text:'Чугунок осмотрел комнату, выбрал самое тёплое место и улёгся. На заводе теперь появится новый хвостатый знакомый — пёс Чугун.',opts:[{t:'Добро пожаловать домой',fn:()=>{F().dog=1;F().petDog=F().petDog||{satiety:70,mood:70,trust:25,health:95,energy:80,lastFed:s.t.day,lastCare:s.t.day,lastWalk:s.t.day};G.R('chugun').met=true;}}]});}}
     ];
-    G.modal({title:'🐈 Чугунок — заводской кот',face:'chugunok',text:'Рыжий кот — самостоятельное животное. Не разговаривает как человек, а отвечает позой, мурлыканьем и поведением.<br><br>'+bars(p),opts:opts.concat([{t:'Закрыть',fn:()=>{}}]),wide:true});
+    G.modal({title:'🐈 Чугунок — заводской кот',face:'chugunok',text:'Рыжий кот — самостоятельное животное. Не разговаривает как человек, а отвечает позой, мурлыканьем и поведением.<br><br>'+bars(p)+(F().catHome?'<div class="kv"><span>🚽 Лоток</span><b>'+litterLabel()+'</b></div>':''),opts:opts.concat([{t:'Закрыть',fn:()=>{}}]),wide:true});
   }
   function dogBite(p,reason){
     p.mood=C(p.mood-12);p.trust=C(p.trust-16);
@@ -78,6 +79,84 @@
     ];
     G.modal({title:'🐕 Чугун — добрая дворняга',face:'chugun',text:'Чугун — ласковый пёс, который любит внимание, прогулки и спокойное обращение.<br><br>'+bars(p),opts:opts.concat([{t:'Закрыть',fn:()=>{}}]),wide:true});
   }
+  // ---------- Лоток: убирать каждый день после смены, иначе последствия
+  const dirt=()=>F().litterDirt||0;
+  function litterLabel(){const n=dirt();return n<=0?'чисто':n===1?'нужно убрать':'не убирали '+n+' дн.';}
+  function litterWhy(){
+    const f=F();
+    if(!f.catHome)return 'Кот живёт не дома';
+    if(!G.isFree())return 'Лоток убирают дома, после смены';
+    if(dirt()<=0)return 'Лоток чистый';
+    if(G.s.t.hour+1>26)return 'Слишком поздно';
+    return null;
+  }
+  G.litterDirt=dirt;
+  // мини-игра: тапни комок (он в совке) → тапни унитаз, чтобы смыть. Пока совок полон, новый комок не взять.
+  G.litterGame=function(){
+    const w=litterWhy();if(w){G.toast(w,'warn');return;}
+    const root=document.getElementById('app');if(!root)return;
+    const N=Math.min(8,3+dirt());let flushed=0,carrying=false,time=16,fin=false;
+    const ov=document.createElement('div');ov.className='gym-ov';const box=document.createElement('div');box.className='gym-box';ov.appendChild(box);root.appendChild(ov);
+    box.innerHTML='<h3>🚽 УБРАТЬ ЛОТОК</h3><div class="gym-info">Тапни комок — он попадёт в совок. Потом тапни унитаз, чтобы смыть. Пока совок полон, новый комок не взять.</div><div id="lt-tray" style="position:relative;height:170px;background:#d9c79a;border:3px solid #6b5a3a;border-radius:8px;margin-bottom:8px;overflow:hidden"></div><div class="gym-rep" id="lt-st"></div><div class="fi-btns"><button class="btn big" id="lt-wc">🚽 Унитаз</button></div>';
+    const tray=box.querySelector('#lt-tray'),st=box.querySelector('#lt-st'),wc=box.querySelector('#lt-wc');
+    const cells=[];for(let r=0;r<2;r++)for(let c=0;c<4;c++)cells.push([c,r]);
+    cells.sort(()=>Math.random()-0.5);
+    cells.slice(0,N).forEach(cl=>{
+      const b=document.createElement('button');b.textContent='💩';
+      b.style.cssText='position:absolute;background:none;border:0;font-size:30px;line-height:1;padding:6px;left:'+(cl[0]*25+4+Math.random()*6)+'%;top:'+(cl[1]*50+8+Math.random()*14)+'%';
+      b.onclick=()=>{
+        if(fin)return;
+        if(carrying){time=Math.max(0,time-1);st.textContent='Совок занят! Сначала в унитаз (−1 с)';st.className='gym-rep bad';return;}
+        carrying=true;b.remove();show();
+      };
+      tray.appendChild(b);
+    });
+    function show(){st.className='gym-rep';st.textContent=(carrying?'🥄 В совке комок! Неси в унитаз. ':'🥄 Совок пуст. ')+'Осталось: '+(N-flushed)+' · '+Math.ceil(time)+' с';}
+    wc.onclick=()=>{
+      if(fin)return;
+      if(!carrying){st.className='gym-rep bad';st.textContent='Совок пуст — смывать нечего';return;}
+      carrying=false;flushed++;
+      if(G.buzz)G.buzz('light');
+      if(flushed>=N)finish();else show();
+    };
+    const timer=setInterval(()=>{if(fin)return clearInterval(timer);time-=0.1;if(time<=0){time=0;finish();}else show();},100);
+    show();
+    function finish(){
+      if(fin)return;fin=true;clearInterval(timer);ov.remove();litterDone(flushed,N);
+    }
+  };
+  function litterDone(flushed,N){
+    const f=F(),p=petState('cat'),sc=flushed/N,day=G.s.t.day;let text,title;
+    if(sc>=0.999){
+      f.litterDirt=0;p.mood+=4;p.trust+=2;p.lastCare=day;G.fx({mood:1,neat:-3});
+      title='Лоток чист';text='Все комки в унитазе, свежий наполнитель насыпан. Чугунок сразу проверил лоток и одобрительно прищурился.';
+    }else if(sc>=0.5){
+      f.litterDirt=Math.max(1,dirt()-1);p.mood+=1;G.fx({neat:-3});
+      title='Убрано не всё';text='Основное убрано, но часть комков осталась. Лоток надо будет доделать — иначе запах вернётся.';
+    }else{
+      G.fx({neat:-3,mood:-1});
+      title='Не успел(а)';text='Комки остались в лотке. Руки пахнут, толку мало. Попробуй ещё раз.';
+    }
+    clampPet(p);
+    G.info('🚽 '+title,text+'<br>Убрано комков: <b>'+flushed+' из '+N+'</b>.'+(dirt()>0?'<br>Лоток: '+litterLabel()+'.':''));
+    G.spend(1);
+  }
+  // за каждую ночь лоток пачкается; чем дольше не убирали, тем хуже последствия
+  function litterNight(){
+    const s=G.s,f=F(),p=petState('cat');
+    f.litterDirt=dirt()+1;const n=f.litterDirt;
+    if(n===1)G.toast('🚽 Лоток Чугунка нужно убрать — лучше сразу после смены.');
+    else if(n===2){G.fx({mood:-2});p.mood-=3;G.toast('Из угла тянет лотком. Чугунок воротит нос.','warn');}
+    else if(n===3){G.fx({mood:-4,neat:-8,coll:-1});p.mood-=6;p.trust-=3;p.health-=1;G.toast('Запах лотка въелся в одежду: на заводе морщат носы. Чугунок обижен.','bad');}
+    else if(n===4){const c=Math.min(s.money,500);if(c>0)G.addMoney(-c);G.fx({mood:-6});p.mood-=8;p.trust-=5;G.toast('Чугунок не выдержал и пометил ботинки. Чистка и новая стелька: −'+G.rub(c)+'.','bad');}
+    else if(n<7){p.health-=4;p.mood-=8;G.fx({mood:-5,health:-1});if(n===5){const c=Math.min(s.money,300);if(c>0)G.addMoney(-c);G.toast('Соседи пожаловались на запах коменданту: штраф '+G.rub(c)+'. Кот хандрит и болеет.','bad');}else G.toast('Чугунок хандрит и плохо ест: стресс от грязи.','bad');}
+    else{
+      f.catHome=0;f.litterDirt=0;p.trust-=20;p.mood-=10;
+      G.modal({title:'Чугунок ушёл',face:'chugunok',vib:'warning',text:'Неделя без уборки — это было слишком. Кот ушёл обратно на завод и смотрит на тебя издалека без мурлыканья. Забрать его домой можно снова, но доверие придётся зарабатывать заново.',opts:[{t:'Понятно',fn:()=>{}}]});
+    }
+    clampPet(p);
+  }
+  G.litterNight=litterNight;
   G.petMenu=function(type){init();if(type==='cat')catMenu();else dogMenu();};
   const _daily=G.dailyTick;
   G.dailyTick=function(){
@@ -93,6 +172,7 @@
       if(p.health<25)G.toast((type==='cat'?'Чугунок':'Чугун')+' выглядит нездоровым. Не забудь об уходе.', 'warn');
       clampPet(p);
     });
+    if(f.catHome && f.petCat){try{litterNight();}catch(e){if(window.console)console.error(e);}}
     if(f.catHome && f.petCat){f.catLove=f.petCat.trust;f.catFed=f.petCat.lastFed;}
     return r;
   };
@@ -108,6 +188,7 @@
   ['cat_feed','cat_play'].forEach(id=>{const a=G.ACT[id];if(a){a.once=null;a.fx=null;a.txt='';a.menu=true;a.fn=()=>{G.petMenu('cat');return 'custom';};}});
   if(G.ACT.cat_feed){G.ACT.cat_feed.n='Уход и общение с Чугунком';G.ACT.cat_feed.i='🐈';G.ACT.cat_feed.req=s=>!s.flags.cat?'Кот пока не дома':null;}
   if(G.ACT.cat_play)G.ACT.cat_play.ph=[];
+  if(G.A)G.A('cat_litter',{ph:['free'],loc:'home',g:'Чугунок',n:'Убрать туалет Чугунка',i:'🚽',menu:true,noEvent:true,req:s=>!s.flags.catHome?'Кот живёт не дома':dirt()<=0?'Лоток чистый':null,fn:()=>{G.litterGame();return 'custom';}});
   const _npcMenu=G.npcMenu;
   G.npcMenu=function(id){if(id==='chugunok')return G.petMenu('cat');if(id==='chugun')return G.petMenu('dog');return _npcMenu.apply(this,arguments);};
   const _talk=G.talkTo;

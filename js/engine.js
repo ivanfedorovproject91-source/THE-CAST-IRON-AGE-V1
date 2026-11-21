@@ -64,7 +64,7 @@
   G.week = () => Math.floor(G.s.t.day / 7);
   G.isWorkday = () => G.weekday() < 5;
   G.shiftStart = () => 8;
-  G.shiftEnd = () => (G.weekday() === 4 ? 16 : 17);
+  G.shiftEnd = () => (G.weekday() === 4 ? 16 : 17) + (G.s && G.s.day && G.s.day.overtime ? 2 : 0);
   G.dateObj = () => new Date(2026, 10, 2 + G.s.t.day);
   const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const WDF = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
@@ -73,6 +73,10 @@
   G.dateStr = () => { const d = G.dateObj(); return d.getDate() + ' ' + MON[d.getMonth()]; };
   G.hourStr = h => { h = h == null ? G.s.t.hour : h; return String(Math.floor(h) % 24).padStart(2, '0') + ':00'; };
   G.timeStr = () => WD[G.weekday()] + ' ' + G.hourStr();
+  // Смайлик настроения: весёлый / средний / грустный
+  G.moodFace = v => (v >= 66 ? '😄' : v >= 36 ? '😐' : '😢');
+  // Есть ли у игрока хоть какой-то телефон (кнопочный или смартфон). Без него звонков не бывает.
+  G.hasPhone = () => !!(G.phoneTier && G.phoneTier() > 0);
   G.season = () => { const m = G.dateObj().getMonth(); return m === 11 || m < 2 ? 'зима' : m < 5 ? 'весна' : m < 8 ? 'лето' : 'осень'; };
   G.newbie = () => G.week() < 3;
   G.monthIdx = () => Math.floor(G.week() / 4);
@@ -396,7 +400,8 @@
     if (s.car.rank >= 1 && G.week() >= s.world.nextCall && s.car.job) {
       s.world.nextCall = G.week() + G.ri(2, 4);
       const who = G.chance(50) ? 'truhanov' : 'soplezhuykin';
-      G.modal({ title: '☎ Звонок в выходной', text: (who === 'truhanov' ? 'Звонит Труханов: «Эй, {tn}! Выходи, аврал! Миллиарды… то есть план горит!»' : 'Звонит Соплежуйкин: «Максим Гогенович беспокоит. Нужно выйти. Это не обсуждается. Хотя обсуждается».').replace('{tn}', G.pick(D.TRUH_NAMES)), vib: 'warning', opts: [
+      const ph = G.hasPhone();
+      G.modal({ title: ph ? '☎ Звонок в выходной' : '🚪 Посыльный из цеха', text: (who === 'truhanov' ? (ph ? 'Звонит Труханов: ' : 'Прибежал посыльный (телефона-то у тебя нет): ') + '«Эй, {tn}! Выходи, аврал! Миллиарды… то есть план горит!»' : (ph ? 'Звонит Соплежуйкин: ' : 'Вахтёрша стучит в дверь, передаёт слова Соплежуйкина: ') + '«Максим Гогенович беспокоит. Нужно выйти. Это не обсуждается. Хотя обсуждается».').replace('{tn}', G.pick(D.TRUH_NAMES)), vib: 'warning', opts: [
         { t: 'Выйти (оплата ×2)', fn: () => { G.s.flags.callOut = G.s.t.day; G.fx({ boss: 6, energy: -20, mood: -10, coll: -1 }); G.s.pay.acc += G.monthlyPay() / 20 * 2; G.toast('Вышел в выходной. Оплата ×2, силы ушли.'); G.s.t.hour = 17; } },
         { t: 'Соврать: «Я далеко / болею»', fn: () => { const p = 60 + (G.s.st.boss - 40) / 4; if (G.chance(p)) { G.toast('Поверили. Выходной спасён.', 'good'); if (who === 'truhanov') G.note('Не вышел в выходной'); } else { G.fx({ boss: -6, mood: -4 }); G.toast('Раскусили! Замечание.', 'bad'); G.punish({ risk: 100, what: 'Не вышел в выходной (ложь)', fine: [0, 300] }); } } },
         { t: 'Отказать прямо', fn: () => { G.fx({ boss: -9 }); if (G.s.st.boss >= 55 && G.chance(40)) G.toast('Начальство вздохнуло и поняло.'); else G.toast('Начальство обиделось.', 'bad'); if (who === 'truhanov') G.note('Отказался выходить'); } }
@@ -605,7 +610,8 @@
 
   G.collectors = function () {
     const s = G.s;
-    G.modal({ title: '📞 Коллекторы', text: 'Звонят с незнакомого номера: «Вы нам должны. Мы знаем, где вы работаете». Настроение падает.', vib: 'warning', opts: [{ t: 'Бросить трубку', fn: () => G.fx({ mood: -8 }) }, { t: 'Пообещать погасить', fn: () => G.fx({ mood: -4, cons: -1 }) }] });
+    const ph = G.hasPhone();
+    G.modal({ title: ph ? '📞 Коллекторы' : '🚪 Коллекторы у двери', text: (ph ? 'Звонят с незнакомого номера: ' : 'Двое в кожанках ждут у входа в общагу: ') + '«Вы нам должны. Мы знаем, где вы работаете». Настроение падает.', vib: 'warning', opts: [{ t: ph ? 'Бросить трубку' : 'Закрыть дверь', fn: () => G.fx({ mood: -8 }) }, { t: 'Пообещать погасить', fn: () => G.fx({ mood: -4, cons: -1 }) }] });
     if (s.debt > 60000 && G.chance(30)) { G.toast('Приставы удерживают 50% зарплаты.', 'bad'); s.flags.bailiff = G.week() + 4; }
   };
 

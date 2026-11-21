@@ -407,3 +407,9 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .cab-cat { position: relative; display: flex; justify-content: space-between; font-size: 13px; padding: 2px 4px; margin: 2px 0; z-index: 0; }
 .cab-cat i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(181,83,42,.3); z-index: -1; }
 .cab-loan, .cab-cand, .cab-cat2 { border-top: 1px dotted #3a352f; padding: 6px 0; }
+
+/* Дата и время в шапке: крупнее, будни — зелёные, выходные (сб, вс) — синие */
+.tb-clock { font-family: var(--f-head); font-size: 17px; line-height: 1.15; white-space: nowrap; font-weight: 700; }
+.tb-date { font-size: 13px; white-space: nowrap; font-weight: 700; }
+.tb-clock.wk, .tb-date.wk { color: #6fd36a; }
+.tb-clock.we, .tb-date.we { color: #5aa9ff; }

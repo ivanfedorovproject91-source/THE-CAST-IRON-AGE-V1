@@ -60,7 +60,10 @@ with sync_playwright() as p:
     check('аватар без цвета кожи не падает', ev("(()=>{try{return G.avatar({}).length>50}catch(e){return false}})()"))
     # 8. звонки в выходной после стажировки
     ev(SETUP); ev("G.s.car.rank=1; G.s.world.nextCall=0; G.s.t.day=5; G.weekendEvents()")
-    check('«Звонок в выходной» после стажировки работает', ev("window.__m.some(m=>/Звонок/.test(m.title||''))"), ev("window.__m.map(m=>m.title)"))
+    check('«Звонок в выходной» (без телефона — посыльный)', ev("window.__m.some(m=>/Звонок|Посыльный/.test(m.title||''))"), ev("window.__m.map(m=>m.title)"))
+    ev(SETUP); ev("G.s.own.phone1=1; G.s.car.rank=1; G.s.world.nextCall=0; G.s.t.day=5; G.weekendEvents()")
+    check('«Звонок в выходной» после стажировки работает (телефон есть)', ev("window.__m.some(m=>/Звонок/.test(m.title||''))"), ev("window.__m.map(m=>m.title)"))
+    check('без телефона звонка нет: приходит посыльный', ev("(()=>{G.s.car.rank=1;return true})()") and 'Посыльный' in str(ev("(()=>{window.__m.length=0;delete G.s.own.phone1;G.s.world.nextCall=0;G.weekendEvents();return window.__m.map(m=>m.title)})()")))
     # 9. стажёра не вызывают на ковёр
     check('стажёр не получает «ковёр» (условие rank>=1)', 'c.rank >= 1 && G.chance(G.fireRisk()' in open(os.path.join(ROOT,'js/career.js'),encoding='utf-8').read())
     print('ERR',errs[:3]); check('нет ошибок страницы', not errs, errs)

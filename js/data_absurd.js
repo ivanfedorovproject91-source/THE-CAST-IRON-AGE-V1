@@ -58,7 +58,7 @@
   ev('abs_soup', { where: ['lunch'], w: 1.5, cd: 8, fn: () => { G.fx({ mood: 3 }); G.toast('В борще нашёлся автограф повара. Почерк красивый.'); } });
   ev('abs_compote', { where: ['lunch'], w: 1.5, cd: 8, fn: () => { G.fx({ mood: 2 }); G.toast('В компоте плавает лимон. Он что-то знает.'); } });
   ev('abs_pigeon', { where: ['evening'], w: 1.5, cd: 10, fn: () => { G.fx({ mood: -2, cool: 2 }); G.toast('Голубь принёс в общагу записку: «Всё знаю». Ты не стал выяснять, что именно.'); } });
-  ev('abs_vacation', { where: ['evening'], w: 1, cd: 14, fn: () => G.modal({ title: '📞 Неизвестный номер', text: '«Вы выиграли отпуск. Отпуск выиграл вас».', opts: [
+  ev('abs_vacation', { where: ['evening'], w: 1, cd: 14, cond: () => G.hasPhone(), fn: () => G.modal({ title: '📞 Неизвестный номер', text: '«Вы выиграли отпуск. Отпуск выиграл вас».', opts: [
     { t: 'Взять трубку', fn: () => { G.fx({ mood: 5, energy: -2 }); G.toast('Голос поблагодарил и положил трубку первым.'); G.spend(1); } },
     { t: 'Сбросить', fn: () => { G.fx({ mood: -1 }); } }
   ] }) });

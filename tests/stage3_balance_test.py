@@ -77,7 +77,7 @@ with sync_playwright() as pw:
     r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; s.car.job = 'tokar'; s.car.rank = 5; s.money = 30000; s.phase = 'free';
       G.mq.length = 0; G.cur = null; G.busy = false; G.ACT.housing.fn(s); const m = G.cur || G.modal.cur || null;
       const titles = (G.cur && G.cur.opts) ? G.cur.opts.map(o => o.t + '|' + (o.dis || '')) : null; return { titles, has: !!G.cur }; }""")
-    check('окно «Жильё» открывается и содержит 4 варианта + закрыть', r['has'] and r['titles'] and len(r['titles']) == 5, r)
+    check('окно «Жильё» открывается: 4 варианта + каталог покупки + закрыть', r['has'] and r['titles'] and len(r['titles']) == 6 and any('Купить жильё' in t for t in r['titles']), r)
     r = p.evaluate("""() => { const s = G.s; const i = G.cur.opts.findIndex(o => /Съёмная комната/.test(o.t)); G.choose(i); return { h: G.housing(), money: s.money, fixed: G.fixedCosts().total }; }""")
     check('переезд в комнату: залог 9 000 списан, расходы 11 500', r['h'] == 'room' and r['money'] == 21000 and r['fixed'] == 11500, r)
     # 8. темп карьеры: PACE 1.5 для новых; текущий шаг старого сохранения идёт по прежнему темпу, следующий — по новому

@@ -30,6 +30,7 @@
   function groupActs(list) {
     const g = {}, order = [];
     list.forEach(a => { const k = a.g || 'Разное'; if (!g[k]) { g[k] = []; order.push(k); } g[k].push(a); });
+    order.sort((a, b) => (g[a][0].bottom ? 1 : 0) - (g[b][0].bottom ? 1 : 0));
     return order.map(k => '<div class="grp">' + k + '</div><div class="btns">' + g[k].map(actBtn).join('') + '</div>').join('');
   }
   function actBtn(a) {
@@ -73,7 +74,7 @@
   function topbar() {
     const s = G.s, st = s.st;
     const nick = G.nickLabel();
-    const bars = bar('❤ Здоровье', st.health) + bar('⚡ Энергия', st.energy) + bar('🙂 Настроение', st.mood) + bar('🍲 Сытость', st.satiety)
+    const bars = bar('❤ Здоровье', st.health) + bar('⚡ Энергия', st.energy) + bar(G.moodFace(st.mood) + ' Настроение', st.mood) + bar('🍲 Сытость', st.satiety)
       + (st.drunk > 2 ? bar('🍺 Опьянение', st.drunk, 'rust', 1) : '') + (s.hang > 0 ? bar('🤕 Похмелье', s.hang * 50, 'bad') : '') + (st.craving >= 40 ? bar('🥃 Тяга', st.craving, '', 1) : '') + (st.neat < 50 ? bar('🧼 Опрятность', st.neat) : '');
     const ri = G.rankInfo ? G.rankInfo() : { stars: 0, mgmt: false, line: '' };
     let starsH = '';
@@ -81,7 +82,7 @@
     const rankH = '<div class="tb-rank"><b>' + esc(G.jobTitle()) + '</b>' + (ri.noStars ? '' : '<span class="stars">' + starsH + '</span>') + '</div>';
     const subH = '<div class="tb-prog">' + ri.line + '</div>';
     const nickH = '<div class="tb-nick">' + (nick ? '<span class="nk">«' + esc(nick) + '»</span> ' : '') + esc(G.status()) + (G.admirerMark ? G.admirerMark() : '') + '</div>';
-    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div>' + (G.cars ? G.cars.topIcon() : '') + '<div class="tb-info"><div class="tb-name">' + esc(s.name) + '</div>' + rankH + subH + nickH + '</div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-time">' + G.timeStr() + '</div><div class="tb-time">' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
+    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div>' + (G.cars ? G.cars.topIcon() : '') + '<div class="tb-info"><div class="tb-name">' + esc(s.name) + '</div>' + rankH + subH + nickH + '</div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-clock ' + (G.isWorkday() ? 'wk' : 'we') + '">' + G.WD[G.weekday()] + ' ' + G.hourStr() + '</div><div class="tb-date ' + (G.isWorkday() ? 'wk' : 'we') + '">' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
   }
   function navHTML() {
     const ph = G.s && G.s.phase, home = !(ph === 'locker' || ph === 'work' || ph === 'lunch');
