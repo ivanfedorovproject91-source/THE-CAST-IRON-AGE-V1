@@ -37,7 +37,14 @@ function makeEnv() {
       },
       newBlob: s => ({ getBytes: () => [...Buffer.from(s)].map(b => (b > 127 ? b - 256 : b)) }),
       computeDigest: (a, s) => { if (typeof s !== 'string' && !Array.isArray(s)) throw new Error('bad digest arg'); return [...crypto.createHash('sha256').update(typeof s === 'string' ? Buffer.from(s) : Buffer.from(s.map(b => (b + 256) % 256))).digest()].map(b => (b > 127 ? b - 256 : b)); },
-      DigestAlgorithm: { SHA_256: 1 }, getUuid: () => crypto.randomUUID()
+      DigestAlgorithm: { SHA_256: 1 }, getUuid: () => crypto.randomUUID(),
+      // Utilities.formatDate: «день» считается в заданном поясе; ctx.__dayShift сдвигает время на N суток (проверка выплаты «раз в сутки»)
+      formatDate: (d, tz, fmt) => {
+        const t = new Date(d.getTime() + (ctx.__dayShift || 0) * 86400000);
+        const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(t);
+        if (fmt !== 'yyyyMMdd') throw new Error('тест поддерживает только yyyyMMdd');
+        return p.replace(/-/g, '');
+      }
     },
     console
   };
@@ -153,4 +160,107 @@ ok(adm(3001, 'me').error === 'forbidden', 'снятый админ сразу т
 const log = adm(1000, 'audit', { limit: 300 }).list;
 ok(['БАН', 'МУТ', 'Удаление сообщения', 'Назначен администратор', 'Снят администратор', 'Чат закрыт'].every(a => log.some(x => x.action === a && x.actor && x.t && (x.reason || a === 'Назначен администратор'))), 'журнал: кто, над кем, что, когда, причина');
 ok(log.find(x => x.action === 'БАН').target === '4002' && log.find(x => x.action === 'БАН').reason === 'читерство', 'в журнале указан объект и причина');
+// =====================================================================
+// --- премиум-аккаунты
+// =====================================================================
+const admc = (id, op, args) => { const r = adm(id, op, args); return r && r.needConfirm ? adm(id, op, args, r.token) : r; }; // с автоподтверждением
+const clearRate = uid => { ['c_', 'vip_', 'pp_'].forEach(p => { delete env.__cache[p + 'tg:' + uid]; }); };
+const GOLD = 'За тестировку игры';
+// чат был закрыт в тесте выше — открываем
+ok(admc(1000, 'chat_lock', { locked: false, reason: 'открываем чат' }).ok, 'чат открыт для проверки премиума');
+post({ action: 'ping', initData: initData(5001, 'Олег'), name: 'Олег Золотой', job: 'Токарь', rank: 1, shifts: 10, oj: 300, money: 100, days: 12, v: '3.18.0' });
+post({ action: 'ping', initData: initData(5002, 'Игорь'), name: 'Игорь Простой', job: 'Слесарь', rank: 1, shifts: 10, oj: 300, money: 100, days: 12, v: '3.18.0' });
+
+// выдача — только владелец
+ok(post({ action: 'ping', initData: initData(5001, 'Олег') }).premium === null, 'премиум: до выдачи его нет');
+ok(adm(2001, 'premium_grant', { uid: '5001', reason: GOLD }).error === 'forbidden', 'премиум: обычный игрок не может выдать премиум');
+ok(adm(3002, 'premium_grant', { uid: '5001', reason: GOLD }).error === 'forbidden', 'премиум: назначенный админ (не владелец) не может выдать премиум');
+ok(adm(2001, 'premium_revoke', { uid: '5001', reason: 'просто так' }).error === 'forbidden', 'премиум: обычный игрок не может снять премиум');
+ok(adm(2001, 'premium_list').error === 'forbidden', 'премиум: список для админа закрыт для игроков');
+ok(post({ action: 'premium_claim', initData: initData(5001, 'Олег') }).ok === false, 'премиум: выплата без премиума не выдаётся');
+ok(adm(1000, 'premium_grant', { uid: '5001' }).error.indexOf('причину') > 0, 'премиум: запись для игрока обязательна');
+ok(adm(1000, 'premium_grant', { uid: 'abc', reason: GOLD }).ok === false, 'премиум: некорректный ID отклонён');
+let gr = adm(1000, 'premium_grant', { uid: '5001', reason: GOLD });
+ok(gr.ok && gr.granted, 'премиум: владелец выдал премиум с записью «' + GOLD + '»');
+
+// что видит сам игрок
+let pp = post({ action: 'ping', initData: initData(5001, 'Олег') }).premium;
+ok(pp && pp.note === GOLD && pp.payout.amount === 2500 && pp.payout.claimable === true && pp.title === '', 'премиум: ping отдаёт игроку статус, запись админа и выплату 2500');
+ok(post({ action: 'ping', initData: initData(5002, 'Игорь'), premium: { note: 'взлом' } }).premium === null, 'премиум: у остальных премиума нет, поле premium от клиента игнорируется');
+
+// публичный список (для золотых имён в рейтинге и плашки)
+const pl = get({ action: 'premium_list' });
+ok(pl.ok && pl.list.length === 1 && pl.list[0].uid === 'tg:5001' && pl.list[0].name === 'Олег Золотой' && pl.list[0].note === GOLD, 'премиум: публичный список — uid, игровое имя и запись админа');
+ok(pl.list[0].unique === true, 'премиум: имя игрока уникально — золото в рейтинге по имени разрешено');
+post({ action: 'ping', initData: initData(5003, 'Двойник'), name: 'олег  золотой', job: 'Слесарь', rank: 1, shifts: 10, oj: 300, money: 100, days: 12, v: '3.18.0' });
+delete env.__cache['prem_pub'];
+ok(get({ action: 'premium_list' }).list[0].unique === false, 'премиум: игрок с таким же именем делает имя неоднозначным — золото по имени не показывается (защита от двойников)');
+post({ action: 'ping', initData: initData(5003, 'Двойник'), name: 'Двойник', job: 'Слесарь', rank: 1, shifts: 10, oj: 300, money: 100, days: 12, v: '3.18.0' });
+ok(!JSON.stringify(pl).includes('tg:1000') && !('by' in pl.list[0]), 'премиум: публичный список не раскрывает, кто выдал премиум');
+ok(adm(1000, 'players_search', { q: '5001' }).players[0].premium === true && adm(1000, 'players_search', { q: '5002' }).players[0].premium === false, 'премиум: в поиске игроков видна отметка');
+ok(adm(1000, 'player_get', { uid: '5001' }).premium.note === GOLD, 'премиум: профиль игрока в админке показывает запись');
+
+// ежедневная выплата
+ok(post({ action: 'premium_claim', initData: '' }).error === 'auth', 'выплата: без подписи Telegram отклонена');
+ok(post({ action: 'premium_claim', initData: initData(5002, 'Игорь') }).ok === false, 'выплата: не премиум-игрок получить не может');
+let c1 = post({ action: 'premium_claim', initData: initData(5001, 'Олег') });
+ok(c1.ok && c1.amount === 2500, 'выплата: 2500 ₽ в день выдаются');
+ok(post({ action: 'premium_claim', initData: initData(5001, 'Олег') }).error === 'already', 'выплата: второй раз в тот же день не выдаётся');
+ok(post({ action: 'ping', initData: initData(5001, 'Олег') }).premium.payout.claimable === false, 'выплата: после получения ping сообщает, что сегодня уже получено');
+env.__dayShift = 1; // наступили следующие сутки
+ok(post({ action: 'ping', initData: initData(5001, 'Олег') }).premium.payout.claimable === true, 'выплата: на следующий день снова доступна');
+ok(post({ action: 'premium_claim', initData: initData(5001, 'Олег') }).ok === true, 'выплата: на следующий день получена');
+ok(adm(1000, 'premium_list').list[0].payoutTotal === 5000, 'выплата: сервер ведёт учёт выданного (2 × 2500)');
+let bn = admc(1000, 'ban', { uid: '5001', hours: 0, reason: 'проверка бана' });
+ok(post({ action: 'premium_claim', initData: initData(5001, 'Олег') }).ok === false, 'выплата: забаненный получить не может (и в день выплаты — тоже)');
+ok(adm(1000, 'unban', { uid: '5001', reason: 'проверка окончена' }).ok, 'выплата: проверка бана завершена');
+
+// титулы
+ok(post({ action: 'premium_title', initData: initData(5002, 'Игорь'), title: 'Король завода' }).ok === false, 'титулы: без премиума недоступны');
+ok(post({ action: 'premium_title', initData: initData(5001, 'Олег'), title: 'Президент Земли' }).ok === false, 'титулы: свой титул придумать нельзя — только из списка');
+ok(['Олигарх Едрёностали', 'Король завода', 'Человек с деньгами'].every(t => post({ action: 'premium_title', initData: initData(5001, 'Олег'), title: t }).ok), 'титулы: доступны все три эксклюзивных');
+ok(get({ action: 'premium_list' }).list[0].title === 'Человек с деньгами', 'титулы: выбранный титул виден всем');
+ok(post({ action: 'premium_title', initData: initData(5001, 'Олег'), title: '' }).ok && get({ action: 'premium_list' }).list[0].title === '', 'титулы: титул можно снять');
+ok(post({ action: 'premium_title', initData: initData(5001, 'Олег'), title: 'Король завода' }).ok, 'титулы: выбран «Король завода»');
+
+// достижения для VIP-профиля
+clearRate(5001); clearRate(5002);
+post({ action: 'ping', initData: initData(5001, 'Олег'), name: 'Олег Золотой', rank: 1, shifts: 10, oj: 300, money: 100, days: 12, ach: ['Первая зарплата', '<b>Выжил в среду</b>'] });
+ok(get({ action: 'premium_list' }).list[0].ach.length === 2 && get({ action: 'premium_list' }).list[0].ach[0] === 'Первая зарплата', 'VIP-профиль: достижения сохраняются на сервере');
+ok(!/[<>]/.test(JSON.stringify(get({ action: 'premium_list' }).list[0].ach)), 'VIP-профиль: из достижений вычищена разметка');
+
+// VIP-объявления в общем чате
+ok(/премиум/i.test(post({ action: 'chat_post', initData: initData(5002, 'Игорь'), name: 'Игорь Простой', text: 'Продаю гараж', vip: true }).error), 'VIP-чат: не премиум-игрок объявление опубликовать не может');
+delete env.__cache['c_tg:5001'];
+ok(post({ action: 'chat_post', initData: initData(5001, 'Олег'), name: 'Олег Золотой', job: 'Токарь', text: 'Всем привет от VIP!', vip: true }).ok, 'VIP-чат: премиум-игрок публикует объявление');
+delete env.__cache['c_tg:5001'];
+ok(/раз в/.test(post({ action: 'chat_post', initData: initData(5001, 'Олег'), name: 'Олег Золотой', text: 'Ещё одно объявление', vip: true }).error), 'VIP-чат: частота объявлений ограничена');
+delete env.__cache['c_tg:5001'];
+ok(post({ action: 'chat_post', initData: initData(5001, 'Олег'), name: 'Олег Золотой', job: 'Токарь', text: 'Обычное сообщение' }).ok, 'VIP-чат: обычные сообщения премиум-игрока не ограничены паузой');
+const cl = get({ action: 'chat_list' });
+const vipMsgs = cl.msgs.filter(m => m.vip);
+ok(vipMsgs.length === 1 && vipMsgs[0].text === 'Всем привет от VIP!' && cl.msgs.some(m => !m.vip && m.text === 'Обычное сообщение'), 'VIP-чат: объявление помечено, обычное сообщение — нет');
+ok(cl.prem['tg:5001'] && cl.prem['tg:5001'].note === GOLD && cl.prem['tg:5001'].title === 'Король завода' && !cl.prem['tg:5002'], 'VIP-чат: чат отдаёт данные премиум-авторов (для золотого имени и плашки)');
+
+// снятие премиума
+let rv = adm(1000, 'premium_revoke', { uid: '5001', reason: 'Тестирование окончено' });
+ok(rv.needConfirm, 'снятие: требует подтверждения');
+ok(admc(1000, 'premium_revoke', { uid: '5001', reason: 'Тестирование окончено' }).ok, 'снятие: премиум снят после подтверждения');
+ok(post({ action: 'ping', initData: initData(5001, 'Олег') }).premium === null, 'снятие: у игрока премиум пропал сразу');
+ok(post({ action: 'premium_claim', initData: initData(5001, 'Олег') }).ok === false, 'снятие: выплата больше не выдаётся');
+ok(post({ action: 'premium_title', initData: initData(5001, 'Олег'), title: 'Король завода' }).ok === false, 'снятие: титулы недоступны');
+clearRate(5001); delete env.__cache['vip_tg:5001'];
+ok(/премиум/i.test(post({ action: 'chat_post', initData: initData(5001, 'Олег'), name: 'Олег', text: 'Снова объявление', vip: true }).error), 'снятие: VIP-объявления недоступны');
+ok(get({ action: 'premium_list' }).list.length === 0 && !get({ action: 'chat_list' }).prem['tg:5001'], 'снятие: золотое имя пропало из списков и чата');
+ok(admc(1000, 'premium_revoke', { uid: '5001', reason: 'ещё раз' }).ok === false, 'снятие: повторное снятие отклоняется');
+ok(adm(1000, 'premium_list').list[0].active === false, 'снятие: в списке владельца запись осталась как неактивная');
+ok(adm(1000, 'premium_grant', { uid: '5001', reason: 'Вернули за помощь' }).granted === true, 'выдача: премиум можно выдать повторно');
+ok(post({ action: 'ping', initData: initData(5001, 'Олег') }).premium.payout.claimable === false, 'выдача: снять и выдать заново — не способ получить вторую выплату за день');
+ok(adm(1000, 'premium_grant', { uid: '5001', reason: 'Новая запись' }).granted === false && post({ action: 'ping', initData: initData(5001, 'Олег') }).premium.note === 'Новая запись', 'выдача: запись админа можно менять у действующего премиума');
+const alog = adm(1000, 'audit', { limit: 300 }).list;
+ok(['Премиум выдан', 'Премиум снят', 'Премиум выдан повторно', 'Премиум: изменена запись'].every(a => alog.some(x => x.action === a && x.actorId === '1000' && x.target === '5001')), 'журнал: выдача, изменение записи и снятие премиума записаны');
+ok(alog.find(x => x.action === 'Премиум выдан').reason === GOLD, 'журнал: запись админа сохранена в причине');
+ok(alog.some(x => x.action.indexOf('ОТКАЗ') === 0 && x.actorId === '3002' && /premium_grant/.test(x.details)), 'журнал: попытка выдать премиум не владельцем зафиксирована');
+env.__dayShift = 0;
+
 console.log('\nВсего проверок:', n, '— всё прошло');

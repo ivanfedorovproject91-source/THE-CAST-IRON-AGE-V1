@@ -12,7 +12,7 @@
   // ключевые функции по модулям: если файл загрузился, но не определил своё — тоже сообщаем
   const NEED = [['engine.js', 'G.modal'], ['engine.js', 'G.save'], ['career.js', 'G.career'], ['ui.js', 'G.ui'], ['ceo.js', 'G.ceo'], ['company.js', 'G.co'], ['stage3_credit.js', 'G.loanSchema'], ['stage3_housing.js', 'G.housing'],
     ['stage3_lifestyle.js', 'G.lifestyle'], ['stage4_events.js', 'G.later'], ['stage4_social.js', 'G.friendCooling'], ['stage4_ceo.js', 'G.continueFree'], ['stage4_hierarchy.js', 'G.aboveMe'], ['stage5_saves.js', 'G.saveSane'],
-    ['leaderboard.js', 'G.lb'], ['srv.js', 'G.srv'], ['cloud.js', 'G.cloud'], ['v38.js', 'G.bossTalk'], ['v34.js', 'G.friends'], ['actions.js', 'G.runAction']];
+    ['leaderboard.js', 'G.lb'], ['srv.js', 'G.srv'], ['cloud.js', 'G.cloud'], ['v38.js', 'G.bossTalk'], ['v34.js', 'G.friends'], ['actions.js', 'G.runAction'], ['premium.js', 'G.premium']];
   const dig = path => path.split('.').slice(1).reduce((o, k) => (o == null ? o : o[k]), G);
 
   DG.note = function (kind, text) {

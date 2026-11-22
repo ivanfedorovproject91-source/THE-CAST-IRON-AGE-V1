@@ -82,7 +82,7 @@
     const rankH = '<div class="tb-rank"><b>' + esc(G.jobTitle()) + '</b>' + (ri.noStars ? '' : '<span class="stars">' + starsH + '</span>') + '</div>';
     const subH = '<div class="tb-prog">' + ri.line + '</div>';
     const nickH = '<div class="tb-nick">' + (nick ? '<span class="nk">«' + esc(nick) + '»</span> ' : '') + esc(G.status()) + (G.admirerMark ? G.admirerMark() : '') + '</div>';
-    return '<div class="tb-row"><div class="tb-face" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div>' + (G.cars ? G.cars.topIcon() : '') + '<div class="tb-info"><div class="tb-name">' + esc(s.name) + '</div>' + rankH + subH + nickH + '</div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-clock ' + (G.isWorkday() ? 'wk' : 'we') + '">' + G.WD[G.weekday()] + ' ' + G.hourStr() + '</div><div class="tb-date ' + (G.isWorkday() ? 'wk' : 'we') + '">' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
+    return '<div class="tb-row"><div class="tb-face' + (G.premium ? G.premium.frame() : '') + '" onclick="G.ui.dbgTap()">' + G.playerFace() + '</div>' + (G.cars ? G.cars.topIcon() : '') + '<div class="tb-info"><div class="tb-name">' + (G.premium ? G.premium.ownName(s.name) : esc(s.name)) + '</div>' + rankH + subH + nickH + '</div><div class="tb-right"><div class="tb-money">' + G.rub(s.money) + '</div><div class="tb-clock ' + (G.isWorkday() ? 'wk' : 'we') + '">' + G.WD[G.weekday()] + ' ' + G.hourStr() + '</div><div class="tb-date ' + (G.isWorkday() ? 'wk' : 'we') + '">' + G.dateStr() + '</div></div></div><div class="bars">' + bars + '</div>';
   }
   function navHTML() {
     const ph = G.s && G.s.phase, home = !(ph === 'locker' || ph === 'work' || ph === 'lunch');
@@ -230,7 +230,7 @@
       if (d.last && d.last.top && d.last.top.length) h += '<div class="card note">Итоги прошлой недели (' + esc(d.last.week) + '): ' + d.last.top.map((x, i) => (medals[i] || '') + ' ' + esc(x.name) + ' — ' + fmt(x.pts)).join(' · ') + '</div>';
       if (d.my) {
         h += '<div class="card"><b>Твоя бригада: «' + esc(d.my.name) + '»</b>' + (d.my.owner ? ' (ты бригадир)' : '') + ' · место №' + (d.my.pos || '—') + ' · очки недели: ' + fmt(d.my.pts)
-          + '<div class="note">' + d.my.members.map(m => (m.me ? '<b>' + esc(m.name) + '</b>' : esc(m.name)) + ' — ' + fmt(m.pts)).join(' · ') + '</div>'
+          + '<div class="note">' + d.my.members.map(m => (m.me ? '<b>' + (G.premium ? G.premium.name(m.name, G.premium.forRow(m, true)) : esc(m.name)) + '</b>' : (G.premium ? G.premium.name(m.name, G.premium.forRow(m)) : esc(m.name))) + ' — ' + fmt(m.pts)).join(' · ') + '</div>'
           + '<div class="btns"><button class="btn" onclick="G.ui.brigLeave()">Выйти из бригады</button></div></div>';
       } else {
         h += '<div class="card"><b>Ты пока не в бригаде.</b><div class="note">Создай свою (до ' + (d.max || 10) + ' человек) или вступи в готовую. Для вступления нужно хотя бы раз отправить результат (доиграй смену).</div><div class="btns"><button class="btn" onclick="G.ui.brigCreate()">➕ Создать бригаду</button></div></div>';
@@ -240,9 +240,9 @@
       h += '<div class="btns"><button class="btn" onclick="G.ui.reloadLb()">↻ Обновить</button></div>';
       return h;
     }
-    if (d.me) h += '<div class="card"><b>Твоё место: №' + d.me.pos + '</b> из ' + d.total + '<div class="note">' + esc(d.me.name) + ' · ' + esc(valOf(by, d.me)) + '</div></div>';
+    if (d.me) h += '<div class="card"><b>Твоё место: №' + d.me.pos + '</b> из ' + d.total + '<div class="note">' + (G.premium ? G.premium.name(d.me.name, G.premium.forRow(d.me, true)) : esc(d.me.name)) + ' · ' + esc(valOf(by, d.me)) + '</div></div>';
     else h += '<div class="card note">Всего в таблице: ' + d.total + '. ' + (sec === 'co' ? 'Предприятие появляется в рейтинге, когда у тебя есть сотрудники (должность бригадира и выше).' : 'Тебя в таблице пока нет — доработай смену до конца.') + '</div>';
-    h += '<div style="padding:6px 10px 0">' + d.rows.map(r => '<div class="lbrow ' + (r.me ? 'me' : '') + '"><b>' + (medals[r.pos - 1] || '#' + r.pos) + '</b><div><span class="nm">' + esc(sec === 'co' ? (r.shop || r.name) : r.name) + '</span><small>' + (sec === 'co' ? esc(r.name) + ' · штат ' + r.staff + ' · выпуск ' + fmt(r.made) + ' · качество ' + r.quality + '%' : esc(r.job || '—') + ' · ' + r.shifts + ' смен' + (r.brigade ? ' · 👥 ' + esc(r.brigade) : '') + (r.end ? ' · ' + (D.ENDINGS[r.end] ? D.ENDINGS[r.end].e : '') : '')) + '</small></div><em>' + esc(valOf(by, r)) + '</em></div>').join('') + '</div>';
+    h += '<div style="padding:6px 10px 0">' + d.rows.map(r => '<div class="lbrow ' + (r.me ? 'me' : '') + '"><b>' + (medals[r.pos - 1] || '#' + r.pos) + '</b><div><span class="nm">' + (sec === 'co' || !G.premium ? esc(sec === 'co' ? (r.shop || r.name) : r.name) : G.premium.name(r.name, G.premium.forRow(r))) + '</span><small>' + (sec === 'co' ? esc(r.name) + ' · штат ' + r.staff + ' · выпуск ' + fmt(r.made) + ' · качество ' + r.quality + '%' : esc(r.job || '—') + ' · ' + r.shifts + ' смен' + (r.brigade ? ' · 👥 ' + esc(r.brigade) : '') + (r.end ? ' · ' + (D.ENDINGS[r.end] ? D.ENDINGS[r.end].e : '') : '')) + '</small></div><em>' + esc(valOf(by, r)) + '</em></div>').join('') + '</div>';
     h += '<div class="btns"><button class="btn" onclick="G.ui.reloadLb()">↻ Обновить</button></div>';
     if (LB.status) h += '<div class="note" style="padding:4px 12px;opacity:.6">Отправка результата: ' + esc(LB.status) + '</div>';
     return h;
@@ -283,7 +283,8 @@
     }
     if (UI.sub === 'log') return h + s.log.slice(0, 60).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('');
     // досье
-    h += '<div class="card" style="display:flex;gap:12px;align-items:center"><div class="prev" style="margin:0;flex:none;width:96px;height:96px">' + G.playerFace() + '</div><div><b style="font-family:var(--f-head);font-size:17px">' + esc(s.name) + '</b><div class="note">' + G.status() + '</div><div class="note">Очки жизни: <b style="color:var(--haz)">' + G.ojScore() + '</b></div>' + (s.nicks.length ? '<div class="note">Клички: ' + s.nicks.map(n => '«' + D.NICKS[n].n + '»').join(', ') + '</div>' : '') + '</div></div>';
+    h += '<div class="card" style="display:flex;gap:12px;align-items:center"><div class="prev' + (G.premium ? G.premium.frame() : '') + '" style="margin:0;flex:none;width:96px;height:96px">' + G.playerFace() + '</div><div><b style="font-family:var(--f-head);font-size:17px">' + (G.premium ? G.premium.ownName(s.name) : esc(s.name)) + '</b><div class="note">' + G.status() + '</div><div class="note">Очки жизни: <b style="color:var(--haz)">' + G.ojScore() + '</b></div>' + (s.nicks.length ? '<div class="note">Клички: ' + s.nicks.map(n => '«' + D.NICKS[n].n + '»').join(', ') + '</div>' : '') + '</div></div>';
+    if (G.premium) h += G.premium.dossierCard();
     if (G.cars) h += G.cars.dossierCard();
     h += '<div class="card"><h3>Показатели</h3><div class="bars" style="grid-template-columns:1fr">' + [['❤ Здоровье', st.health], ['⚡ Энергия', st.energy], ['🙂 Настроение', st.mood], ['🍲 Сытость', st.satiety], ['🧼 Опрятность', st.neat], ['👔 Начальство', st.boss, 'blue'], ['🤝 Коллеги', st.coll, 'blue'], ['💪 Сила', (G.s.flags.str || 0), 'blue'], ['😎 Крутизна', st.cool, 'blue'], ['⚖ Совесть', st.cons, 'blue'], ['📘 Знания', st.know, 'blue'], ['☣ Токсичность', st.tox, '', 1], ['🥃 Тяга', st.craving, '', 1], ['🍾 Привычка', st.habit, '', 1], ['🍺 Опьянение', st.drunk, 'rust', 1]].map(x => bar(x[0], x[1], x[2], x[3])).join('') + '</div></div>';
     if (G.plantStats) { const ps = G.plantStats(); h += '<div class="card"><h3>🏭 Завод</h3><div class="bars" style="grid-template-columns:1fr">' + [['🏭 Состояние завода', ps.plant, 'blue'], ['📊 Выполнение плана', ps.plan, 'blue'], ['🎵 Настроение цеха', ps.morale, 'blue']].map(x => bar(x[0], x[1], x[2])).join('') + '</div></div>'; }
