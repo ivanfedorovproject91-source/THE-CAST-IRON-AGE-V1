@@ -153,6 +153,32 @@ with sync_playwright() as p:
     call = ev("window.__calls.filter(c => c.op === 'premium_grant')[0]")
     check('админка: выдача отправляет ID и запись для игрока', call and call['args']['uid'] == '5003' and call['args']['reason'] == 'За тестировку игры', call)
 
+    # ---- 7b. вкладка «Рейтинг» в админ-кабинете
+    ev("(() => { G.CONFIG.API_URL = 'https://rating.test/exec'; window.__rc = []; const _f = window.fetch; window.fetch = (u, x) => { if (String(u).indexOf('rating.test') >= 0 && x && x.body) { const b = JSON.parse(x.body); window.__rc.push(b); if (b.action === 'admin_list') return Promise.resolve({ json: () => ({ ok: true, total: 3, blockedTotal: 1, list: [ { id: 'dev:abc', name: 'Т', job: 'Генеральный директор', oj: 5405, shifts: 0, days: 0, updated: '2026-11-20T10:00:00Z', brigade: '', blocked: false }, { id: 'tg:2001', name: 'Сергей', job: 'Оператор', oj: 400, shifts: 86, days: 90, updated: '2026-11-21T10:00:00Z', brigade: '', blocked: true } ] }) }); return Promise.resolve({ json: () => ({ ok: true }) }); } return _f(u, x); }; G.srv.initData = () => 'init=1'; return true; })()")
+    ev("document.querySelector('.adm-tabs [data-t=rating]').click()"); pg.wait_for_timeout(300)
+    t2 = ev("document.getElementById('admBody').innerText")
+    check('админка «Рейтинг»: список с «Т», счётчики и пометка «скрыт»', 'Т' in t2 and '5 405' in t2 and 'скрыто: 1' in t2 and 'Сергей' in t2, t2[:300])
+    check('админка «Рейтинг»: запрос ушёл на сервер рейтинга с подписью Telegram', ev("window.__rc[0].action") == 'admin_list' and ev("window.__rc[0].initData") == 'init=1')
+    ev("document.querySelector('[data-a=rblock][data-id=\"dev:abc\"]').click()"); pg.wait_for_timeout(100)
+    ev("document.querySelector('.adm-dbox input').value = 'тестовый'; document.querySelector('.adm-dbox [data-x=\"1\"]').click()"); pg.wait_for_timeout(300)
+    rb = ev("window.__rc.filter(c => c.action === 'admin_block')[0]")
+    check('админка «Рейтинг»: «Скрыть» отправляет id, blocked=true и заметку', rb and rb['id'] == 'dev:abc' and rb['blocked'] is True and rb['note'] == 'тестовый', rb)
+    ev("document.querySelector('[data-a=rdel][data-id=\"tg:2001\"]').click()"); pg.wait_for_timeout(100)
+    ev("document.querySelector('.adm-dbox [data-x=\"1\"]').click()"); pg.wait_for_timeout(300)
+    check('админка «Рейтинг»: «Удалить» отправляет admin_delete', ev("window.__rc.some(c => c.action === 'admin_delete' && c.id === 'tg:2001')"))
+
+    # ---- 8. рейтинг с uid: золото строго по uid, без догадок по имени
+    ev("""() => { const o = window.fetch; window.fetch = (u, x) => { if (/action=top/.test(String(u))) return Promise.resolve({ ok: true, json: () => ({ ok: true, total: 3, me: null, rows: [
+        { pos: 1, name: 'Гена Уникальный', uid: 'tg:6001', oj: 900, job: 'Токарь', shifts: 50 },
+        { pos: 2, name: 'Гена Уникальный', uid: 'tg:7777', oj: 800, job: 'Токарь', shifts: 40 },
+        { pos: 3, name: 'Веб Игрок', uid: '', oj: 100, job: 'Слесарь', shifts: 2 } ] }) }); return o(u, x); }; return true; }""")
+    ev("G.premium.load(true)"); pg.wait_for_timeout(200)
+    ev("G.ui.setTab('rating'); G.lb.cache={}; G.ui.render()"); pg.wait_for_timeout(500); ev("G.ui.render()")
+    rows = ev("[...document.querySelectorAll('.lbrow')].map(r => ({ nm: r.querySelector('.nm').textContent, gold: !!r.querySelector('.nm .pn') }))")
+    check('рейтинг с uid: золото у премиума по его uid', rows and rows[0]['gold'], rows)
+    check('рейтинг с uid: тёзка с другим uid золота НЕ получает (имя не используется)', rows and rows[1]['gold'] is False, rows)
+    check('рейтинг: веб-игрок без uid без золота', rows and rows[2]['gold'] is False, rows)
+
     check('нет ошибок страницы', not errs, errs)
     b.close()
 print('\nИТОГ:', 'ВСЁ ПРОШЛО' if not fails else 'ПРОВАЛЕНО: %d' % len(fails))

@@ -56,9 +56,10 @@
     if (!r) return null;
     if (isMe || r.me) return P.mineRec();
     P.load();
-    const u = r.uid || r.id; if (okUid(u) && P.byUid[u]) return P.byUid[u];
-    if (/^\d{1,20}$/.test(String(u || '')) && P.byUid['tg:' + u]) return P.byUid['tg:' + u];
-    return P.byName[nk(r.name)] || null;
+    const u = r.uid || r.id;
+    if (okUid(u)) return P.byUid[u] || null; // сервер рейтинга отдал uid — доверяем только ему, по имени не гадаем
+    if (/^\d{1,20}$/.test(String(u || ''))) return P.byUid['tg:' + u] || null;
+    return P.byName[nk(r.name)] || null; // uid нет (веб-игрок или старый сервер рейтинга) — только по уникальному имени
   };
 
   /* ---------- отображение ---------- */
