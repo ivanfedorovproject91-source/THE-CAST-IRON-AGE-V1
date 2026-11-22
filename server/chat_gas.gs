@@ -31,12 +31,20 @@ var PARAMS = { // допустимые игровые параметры (зна
   WALK_LATE: { def: 22, min: 0, max: 100 }, MOOD_CAP_TRAINEE: { def: 90, min: 10, max: 100 }
 };
 var HEAD = {
-  chat: ['t', 'uid', 'name', 'job', 'text', 'deleted', 'del_by', 'del_reason'],
+  chat: ['t', 'uid', 'name', 'job', 'text', 'deleted', 'del_by', 'del_reason', 'kind'],
   players: ['uid', 'tg_name', 'name', 'job', 'rank', 'shifts', 'oj', 'money', 'days', 'ver', 'first', 'last', 'msgs'],
   sanctions: ['uid', 'type', 'until', 'reason', 'by_uid', 'by_name', 'at', 'active'],
   admins: ['uid', 'name', 'perms', 'added_by', 'at'],
-  audit: ['t', 'actor_uid', 'actor_name', 'target_uid', 'target_name', 'action', 'reason', 'details']
+  audit: ['t', 'actor_uid', 'actor_name', 'target_uid', 'target_name', 'action', 'reason', 'details'],
+  // Премиум-аккаунты. Меняет только этот код (операции доступны лишь владельцу). since/last_payout — числа, не даты:
+  // Google Таблицы превращают строки вида 2026-11-22 в даты, и проверка «уже получал сегодня» ломалась бы.
+  premium: ['uid', 'since', 'note', 'by_uid', 'by_name', 'active', 'title', 'last_payout', 'payout_total', 'ach']
 };
+/* ---------- премиум: настройки ---------- */
+var PREMIUM_PAYOUT = 2500;                 // ежедневная VIP-выплата, ₽ игровой валюты
+var PREMIUM_TZ = 'Europe/Moscow';          // «день» для выплаты считается по этому часовому поясу
+var PREMIUM_TITLES = ['Олигарх Едрёностали', 'Король завода', 'Человек с деньгами']; // эксклюзивные титулы
+var VIP_COOLDOWN_S = 1800;                 // VIP-объявление в общем чате — не чаще раза в 30 минут
 
 /* ---------- утилиты ---------- */
 function prop_(k) { return PropertiesService.getScriptProperties().getProperty(k) || ''; }
@@ -138,11 +146,72 @@ function audit_(actor, targetUid, action, reason, details) {
   S_('audit').appendRow([now_(), actor.uid, actor.name, targetUid || '', tn, action, reason || '', clean_(details, 400)]);
 }
 
+/* ---------- премиум-аккаунты ----------
+   Выдаёт и снимает ТОЛЬКО владелец (операции premium_* в OPS). Всё, что влияет на деньги, титулы и VIP-чат,
+   проверяется здесь по подписи Telegram; клиент только показывает результат. */
+function dayKey_() { return +Utilities.formatDate(new Date(), PREMIUM_TZ, 'yyyyMMdd'); }
+function achClean_(list) { var out = []; (Array.isArray(list) ? list : []).forEach(function (x) { var t = clean_(x, 60); if (t && out.length < 8) out.push(t); }); return out; }
+function achParse_(v) { try { var a = JSON.parse(String(v || '[]')); return achClean_(a); } catch (e) { return []; } }
+function dropPremiumCache_() { var c = CacheService.getScriptCache(); c.remove('prem'); c.remove('prem_pub'); }
+function premiumMap_() { // {uid: {since, note, title, ach}} — только действующие премиум-игроки
+  var cache = CacheService.getScriptCache(), c = cache.get('prem');
+  if (c) { try { return JSON.parse(c); } catch (e) {} }
+  var m = {};
+  rows_('premium').forEach(function (r) {
+    var id = digits_(r[0]); if (!id || +r[5] !== 1) return;
+    m['tg:' + id] = { since: +r[1] || 0, note: String(r[2] || ''), title: PREMIUM_TITLES.indexOf(String(r[6])) >= 0 ? String(r[6]) : '', ach: achParse_(r[9]) };
+  });
+  cache.put('prem', JSON.stringify(m), 120); return m;
+}
+function premiumRow_(uid) { var r = rows_('premium'); for (var i = 0; i < r.length; i++) if (r[i][0] === uid) return { row: i + 2, vals: r[i] }; return null; }
+function playerNames_() { var m = {}; rows_('players').forEach(function (r) { m[r[0]] = String(r[2] || r[1] || ''); }); return m; }
+function nameKey_(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function premiumPublic_() { // публичный список (виден всем игрокам: нужен для золотых имён и плашки Premium)
+  var cache = CacheService.getScriptCache(), c = cache.get('prem_pub');
+  if (c) { try { return JSON.parse(c); } catch (e) {} }
+  var m = premiumMap_(), names = playerNames_(), out = [], cnt = {};
+  Object.keys(names).forEach(function (u) { var k = nameKey_(names[u]); cnt[k] = (cnt[k] || 0) + 1; });
+  // unique: имя в таблице игроков принадлежит только этому игроку. Клиент по имени золото показывает лишь при unique,
+  // поэтому «двойник» с таким же именем золотого имени не получит (рейтинг не отдаёт uid — сопоставляем по имени).
+  Object.keys(m).forEach(function (uid) { var p = m[uid], nm = names[uid] || ''; out.push({ uid: uid, name: nm, unique: !!nm && cnt[nameKey_(nm)] === 1, since: p.since, note: p.note, title: p.title, ach: p.ach }); });
+  cache.put('prem_pub', JSON.stringify(out), 120); return out;
+}
+function premiumState_(uid) { // то, что видит сам игрок в ping
+  var p = premiumMap_()[uid]; if (!p) return null;
+  var pr = premiumRow_(uid);
+  return { since: p.since, note: p.note, title: p.title, payout: { amount: PREMIUM_PAYOUT, claimable: !pr || +pr.vals[7] !== dayKey_() } };
+}
+function premiumSaveAch_(uid, list) { // достижения для VIP-профиля (чисто для показа другим игрокам)
+  var a = achClean_(list), p = premiumMap_()[uid]; if (!a.length || !p || JSON.stringify(p.ach) === JSON.stringify(a)) return;
+  withLock_(function () { var pr = premiumRow_(uid); if (pr) { S_('premium').getRange(pr.row, 10).setValue(JSON.stringify(a)); dropPremiumCache_(); } });
+}
+/** Выплата раз в сутки (по московскому дню). Проверка и запись — под блокировкой, поэтому двойной выплаты не будет. */
+function premiumClaim_(b) {
+  var u = verify_(b.initData, AUTH_MAX); if (!u) return { ok: false, error: 'auth' };
+  if (sanction_(u.uid, 'ban')) return fail_('Вы заблокированы');
+  return withLock_(function () {
+    var pr = premiumRow_(u.uid); if (!pr || +pr.vals[5] !== 1) return fail_('Нет премиум-аккаунта');
+    var today = dayKey_(); if (+pr.vals[7] === today) return { ok: false, error: 'already' };
+    S_('premium').getRange(pr.row, 8, 1, 2).setValues([[today, (+pr.vals[8] || 0) + PREMIUM_PAYOUT]]);
+    return { ok: true, amount: PREMIUM_PAYOUT };
+  });
+}
+function premiumTitle_(b) { // выбор эксклюзивного титула (пустая строка — снять титул)
+  var u = verify_(b.initData, AUTH_MAX); if (!u) return { ok: false, error: 'auth' };
+  var t = String(b.title == null ? '' : b.title);
+  if (t && PREMIUM_TITLES.indexOf(t) < 0) return fail_('Неизвестный титул');
+  return withLock_(function () {
+    var pr = premiumRow_(u.uid); if (!pr || +pr.vals[5] !== 1) return fail_('Титулы доступны только премиум-аккаунтам');
+    S_('premium').getRange(pr.row, 7).setValue(t); dropPremiumCache_(); return { ok: true, title: t };
+  });
+}
+
 /* ---------- публичные точки входа ---------- */
 function doGet(e) {
   var p = (e && e.parameter) || {};
   if (p.action === 'chat_list') return out_(chatList_(+p.limit));
   if (p.action === 'config') return out_({ ok: true, cfg: publicCfg_() });
+  if (p.action === 'premium_list') return out_({ ok: true, list: premiumPublic_(), titles: PREMIUM_TITLES, payout: PREMIUM_PAYOUT });
   return out_({ ok: false, error: 'unknown action' });
 }
 function doPost(e) {
@@ -150,6 +219,8 @@ function doPost(e) {
   try {
     if (b.action === 'ping') return out_(ping_(b));
     if (b.action === 'chat_post') return out_(chatPost_(b));
+    if (b.action === 'premium_claim') return out_(premiumClaim_(b));
+    if (b.action === 'premium_title') return out_(premiumTitle_(b));
     if (b.action === 'admin') return out_(admin_(b));
   } catch (err) { return out_({ ok: false, error: 'server error' }); }
   return out_({ ok: false, error: 'unknown action' });
@@ -158,18 +229,21 @@ function doPost(e) {
 function chatList_(limit) {
   var s = S_('chat'), n = s.getLastRow(), lim = Math.min(100, Math.max(1, limit || 60));
   var cfg = cfg_();
-  if (n < 2) return { ok: true, msgs: [], locked: !!cfg.chatLocked };
-  var from = Math.max(2, n - lim - 40 + 1), rows = s.getRange(from, 1, n - from + 1, 6).getValues(), msgs = [];
-  rows.forEach(function (r, i) { if (+r[5] !== 1) msgs.push({ id: from + i, t: r[0], uid: r[1], name: r[2], job: r[3], text: r[4] }); });
-  return { ok: true, msgs: msgs.slice(-lim), locked: !!cfg.chatLocked };
+  if (n < 2) return { ok: true, msgs: [], locked: !!cfg.chatLocked, prem: {} };
+  var from = Math.max(2, n - lim - 40 + 1), rows = s.getRange(from, 1, n - from + 1, 9).getValues(), msgs = [];
+  rows.forEach(function (r, i) { if (+r[5] !== 1) msgs.push({ id: from + i, t: r[0], uid: r[1], name: r[2], job: r[3], text: r[4], vip: r[8] === 'vip' }); });
+  msgs = msgs.slice(-lim);
+  var pm = premiumMap_(), prem = {}; // данные премиум-авторов, чьи сообщения вошли в выдачу (золотое имя и плашка Premium)
+  msgs.forEach(function (m) { if (pm[m.uid] && !prem[m.uid]) prem[m.uid] = pm[m.uid]; });
+  return { ok: true, msgs: msgs, locked: !!cfg.chatLocked, prem: prem };
 }
 function ping_(b) {
   var u = verify_(b.initData, AUTH_MAX); if (!u) return { ok: false, error: 'auth' };
   var cfg = cfg_(), r = roleOf_(u.id);
   var key = 'pp_' + u.uid, cache = CacheService.getScriptCache();
-  if (!cache.get(key)) { cache.put(key, '1', 60); upsertPlayer_(u, b); }
+  if (!cache.get(key)) { cache.put(key, '1', 60); upsertPlayer_(u, b); if (b.ach) premiumSaveAch_(u.uid, b.ach); }
   return { ok: true, role: r.role, perms: r.perms, ban: sanction_(u.uid, 'ban'), mute: sanction_(u.uid, 'mute'),
-    forceName: (cfg.forced || {})[u.uid] || '', cfg: publicCfg_(), now: now_() };
+    forceName: (cfg.forced || {})[u.uid] || '', premium: premiumState_(u.uid), cfg: publicCfg_(), now: now_() };
 }
 function num_(v, lo, hi) { v = Math.round(+v); return isNaN(v) ? lo : Math.max(lo, Math.min(hi, v)); }
 // Минимум смен для каждой должности (по карьерной лестнице V2, с запасом 50% на разные темпы PACE)
@@ -200,14 +274,18 @@ function chatPost_(b) {
   if (mute) return { ok: false, error: 'Вы в муте' + (mute.until ? ' до ' + new Date(mute.until).toLocaleString('ru-RU') : '') + ': ' + mute.reason };
   var text = clean_(b.text, 200); if (text.length < 2) return { ok: false, error: 'empty' };
   var cache = CacheService.getScriptCache();
+  var vip = !!b.vip; // VIP-объявление: только для премиум-игроков, не чаще раза в VIP_COOLDOWN_S секунд
+  if (vip && !premiumMap_()[u.uid]) return { ok: false, error: 'VIP-объявления доступны только премиум-аккаунтам' };
+  if (vip && cache.get('vip_' + u.uid)) return { ok: false, error: 'VIP-объявление можно публиковать раз в ' + Math.round(VIP_COOLDOWN_S / 60) + ' минут' };
   if (cache.get('c_' + u.uid)) return { ok: false, error: 'слишком часто' };
   cache.put('c_' + u.uid, '1', 6);
-  withLock_(function () { S_('chat').appendRow([now_(), u.uid, clean_(b.name, 30) || u.name, clean_(b.job, 40), text, 0, '', '']); });
+  if (vip) cache.put('vip_' + u.uid, '1', VIP_COOLDOWN_S);
+  withLock_(function () { S_('chat').appendRow([now_(), u.uid, clean_(b.name, 30) || u.name, clean_(b.job, 40), text, 0, '', '', vip ? 'vip' : '']); });
   return { ok: true };
 }
 
 /* ---------- админ-кабинет ---------- */
-var DANGEROUS = { ban: 1, chat_delete_user: 1, chat_lock: 1, params_reset: 1, admin_add: 1, admin_perms: 1, admin_remove: 1, radio_set: 1, player_rename: 1 };
+var DANGEROUS = { ban: 1, chat_delete_user: 1, chat_lock: 1, params_reset: 1, admin_add: 1, admin_perms: 1, admin_remove: 1, radio_set: 1, player_rename: 1, premium_revoke: 1 };
 function cleanReason_(r) { r = clean_(r, 200); return r.length >= 3 ? r : ''; }
 function confirm_(u, op, a, token) {
   var cache = CacheService.getScriptCache(), sig = sha_(u.uid + '|' + op + '|' + stable_(a));
@@ -246,10 +324,10 @@ function targetOk_(u, r, id) {
   return '';
 }
 function fail_(m) { return { ok: false, error: m }; }
-function playerRow_(r, sn) {
+function playerRow_(r, sn, pm) {
   var uid = r[0];
   return { uid: uid, id: uid.replace('tg:', ''), tg: r[1], name: r[2], job: r[3], rank: r[4], shifts: r[5], oj: r[6], money: r[7], days: r[8], ver: r[9], first: r[10], last: r[11],
-    banned: !!(sn && sn.ban[uid]), muted: !!(sn && sn.mute[uid]) };
+    banned: !!(sn && sn.ban[uid]), muted: !!(sn && sn.mute[uid]), premium: !!(pm && pm[uid]) };
 }
 function setSanction_(u, type, id, until, reason) {
   var uid = 'tg:' + id, s = S_('sanctions'), n = s.getLastRow();
@@ -261,7 +339,7 @@ function clearSanction_(type, id) {
   rows_('sanctions').forEach(function (r, i) { if (r[0] === uid && r[1] === type && +r[7] === 1) { s.getRange(i + 2, 8).setValue(0); c++; } });
   dropSanctionCache_(uid); return c;
 }
-function chatRows_(limit) { var s = S_('chat'), n = s.getLastRow(); if (n < 2) return []; var from = Math.max(2, n - limit + 1); return s.getRange(from, 1, n - from + 1, 8).getValues().map(function (r, i) { return { id: from + i, t: r[0], uid: r[1], name: r[2], job: r[3], text: r[4], deleted: +r[5] === 1, by: r[6], why: r[7] }; }); }
+function chatRows_(limit) { var s = S_('chat'), n = s.getLastRow(); if (n < 2) return []; var from = Math.max(2, n - limit + 1); return s.getRange(from, 1, n - from + 1, 9).getValues().map(function (r, i) { return { id: from + i, t: r[0], uid: r[1], name: r[2], job: r[3], text: r[4], deleted: +r[5] === 1, by: r[6], why: r[7], vip: r[8] === 'vip' }; }); }
 function stationsClean_(list) {
   var ids = ['mayak', 'retro', 'seven'], out = [];
   ids.forEach(function (id) {
@@ -285,13 +363,14 @@ var OPS = {
   } },
   online: { perm: 'online', fn: function () {
     var t = now_(), sn = activeSanctions_();
-    var list = rows_('players').filter(function (r) { return t - +r[11] < ONLINE_MS; }).sort(function (a, b) { return +b[11] - +a[11]; }).map(function (r) { return playerRow_(r, sn); });
+    var pm = premiumMap_();
+    var list = rows_('players').filter(function (r) { return t - +r[11] < ONLINE_MS; }).sort(function (a, b) { return +b[11] - +a[11]; }).map(function (r) { return playerRow_(r, sn, pm); });
     return { ok: true, players: list, now: t };
   } },
   players_search: { perm: 'players', fn: function (u, r, a) {
-    var q = clean_(a.q, 40).toLowerCase(), sn = activeSanctions_();
+    var q = clean_(a.q, 40).toLowerCase(), sn = activeSanctions_(), pm = premiumMap_();
     var list = rows_('players').filter(function (x) { if (!q) return true; var d = digits_(q); if (d && x[0] === 'tg:' + d) return true; return String(x[2]).toLowerCase().indexOf(q) >= 0 || String(x[1]).toLowerCase().indexOf(q) >= 0; })
-      .sort(function (a, b) { return +b[11] - +a[11]; }).slice(0, 30).map(function (x) { return playerRow_(x, sn); });
+      .sort(function (a, b) { return +b[11] - +a[11]; }).slice(0, 30).map(function (x) { return playerRow_(x, sn, pm); });
     return { ok: true, players: list };
   } },
   player_get: { perm: 'players', fn: function (u, r, a) {
@@ -300,7 +379,8 @@ var OPS = {
     var role = roleOf_(id).role;
     var msgs = chatRows_(600).filter(function (m) { return m.uid === uid; }).slice(-10).reverse();
     var log = rows_('audit').filter(function (x) { return x[3] === uid; }).slice(-10).reverse().map(function (x) { return { t: x[0], actor: x[2], action: x[5], reason: x[6] }; });
-    return { ok: true, found: !!row, player: row ? playerRow_(row, sn) : { uid: uid, id: id }, role: role, ban: sn.ban[uid] || null, mute: sn.mute[uid] || null, msgs: msgs, log: log };
+    var pm = premiumMap_();
+    return { ok: true, found: !!row, player: row ? playerRow_(row, sn, pm) : { uid: uid, id: id }, role: role, ban: sn.ban[uid] || null, mute: sn.mute[uid] || null, premium: pm[uid] || null, msgs: msgs, log: log };
   } },
   player_rename: { perm: 'players', reason: 1, write: 1, title: function (a) { return 'Принудительно сменить игровое имя игрока ' + clean_(a.uid, 20) + ' на «' + clean_(a.name, 18) + '»'; },
     fn: function (u, r, a) {
@@ -358,6 +438,38 @@ var OPS = {
     return { ok: true, list: list };
   } },
   /* --- только владелец --- */
+  premium_list: { owner: 1, fn: function () {
+    var names = playerNames_(), out = [];
+    rows_('premium').forEach(function (r) {
+      var id = digits_(r[0]); if (!id) return;
+      out.push({ id: id, name: names['tg:' + id] || '', active: +r[5] === 1, since: +r[1] || 0, note: String(r[2] || ''), by: String(r[4] || ''), title: String(r[6] || ''), lastPayout: +r[7] || 0, payoutTotal: +r[8] || 0 });
+    });
+    out.sort(function (a, b) { return (b.active - a.active) || (b.since - a.since); });
+    return { ok: true, list: out, payout: PREMIUM_PAYOUT, titles: PREMIUM_TITLES };
+  } },
+  /* Выдать премиум или изменить запись для игрока (поле reason — это и есть «запись от администратора», её видит игрок) */
+  premium_grant: { owner: 1, reason: 1, write: 1,
+    fn: function (u, r, a) {
+      var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID');
+      var uid = 'tg:' + id, note = clean_(a.reason, 120), s = S_('premium'), pr = premiumRow_(uid);
+      if (!pr) {
+        s.appendRow([uid, now_(), note, u.uid, u.name, 1, '', 0, 0, '[]']); dropPremiumCache_();
+        audit_(u, uid, 'Премиум выдан', note, ''); return { ok: true, granted: true };
+      }
+      if (+pr.vals[5] === 1) { // уже действует — обновляем запись
+        s.getRange(pr.row, 3).setValue(note); dropPremiumCache_();
+        audit_(u, uid, 'Премиум: изменена запись', note, ''); return { ok: true, granted: false };
+      }
+      s.getRange(pr.row, 2, 1, 5).setValues([[now_(), note, u.uid, u.name, 1]]); dropPremiumCache_(); // повторная выдача: дата вступления обновляется
+      audit_(u, uid, 'Премиум выдан повторно', note, ''); return { ok: true, granted: true };
+    } },
+  premium_revoke: { owner: 1, reason: 1, write: 1, title: function (a) { return 'СНЯТЬ премиум-аккаунт у игрока ' + clean_(a.uid, 20) + '. Причина: ' + clean_(a.reason, 80); },
+    fn: function (u, r, a) {
+      var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID');
+      var pr = premiumRow_('tg:' + id); if (!pr || +pr.vals[5] !== 1) return fail_('У игрока нет действующего премиума');
+      S_('premium').getRange(pr.row, 6).setValue(0); dropPremiumCache_();
+      audit_(u, 'tg:' + id, 'Премиум снят', a.reason, ''); return { ok: true };
+    } },
   admins_list: { owner: 1, fn: function () { var m = admins_(); return { ok: true, perms: PERMS, list: Object.keys(m).map(function (id) { return { id: id, name: m[id].name, perms: m[id].perms }; }) }; } },
   admin_add: { owner: 1, reason: 1, write: 1, title: function (a) { return 'НАЗНАЧИТЬ администратором игрока ' + clean_(a.uid, 20) + ' с правами: ' + ((a.perms || []).join(', ') || 'нет'); },
     fn: function (u, r, a) {

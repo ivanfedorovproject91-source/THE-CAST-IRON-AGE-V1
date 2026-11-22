@@ -128,7 +128,7 @@
     const fin = () => { CH.loading = false; CH.loaded = Date.now(); CH.draw(); };
     if (!url()) { CH.msgs = localGet(); CH.err = ''; fin(); return; }
     fetch(url() + (url().indexOf('?') >= 0 ? '&' : '?') + 'action=chat_list&limit=60')
-      .then(r => r.json()).then(j => { if (!j || !j.ok) throw new Error((j && j.error) || 'ошибка'); CH.msgs = j.msgs || []; CH.err = ''; })
+      .then(r => r.json()).then(j => { if (!j || !j.ok) throw new Error((j && j.error) || 'ошибка'); CH.msgs = j.msgs || []; CH.err = ''; if (G.premium) G.premium.addChat(j.prem); })
       .catch(e => { CH.err = 'нет связи с чатом'; CH.msgs = CH.msgs.length ? CH.msgs : localGet(); }).then(fin);
   };
   CH.send = function () {
@@ -137,19 +137,21 @@
     if (text.length < 2) { G.toast('Напиши хоть пару букв.'); return; }
     if (Date.now() - CH.lastSend < 8000) { G.toast('Не так часто: подожди пару секунд.', 'warn'); return; }
     CH.lastSend = Date.now();
-    const m = { t: Date.now(), uid: CH.uid(), name: G.s.name, job: G.jobTitle(), text: text.slice(0, 200) };
+    const vipBox = document.getElementById('chatVip'), vip = !!(vipBox && vipBox.checked && G.premium && G.premium.mine);
+    const m = { t: Date.now(), uid: CH.uid(), name: G.s.name, job: G.jobTitle(), text: text.slice(0, 200), vip: vip };
     inp.value = '';
     if (!url()) { const a = localGet(); a.push(m); localSet(a); CH.msgs = a; CH.draw(); return; }
     CH.msgs = CH.msgs.concat([m]); CH.draw();
-    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chat_post', initData: (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) || '', name: m.name, job: m.job, text: m.text }) })
-      .then(r => r.json()).then(j => { if (!j || !j.ok) throw new Error((j && j.error) || '?'); CH.load(); })
+    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chat_post', initData: (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) || '', name: m.name, job: m.job, text: m.text, vip: m.vip }) })
+      .then(r => r.json()).then(j => { if (!j || !j.ok) throw new Error((j && j.error) || '?'); if (m.vip) { const b = document.getElementById('chatVip'); if (b) b.checked = false; } CH.load(); })
       .catch(e => { CH.msgs = CH.msgs.filter(x => x !== m); CH.err = 'не отправлено: ' + (e.message || e); CH.draw(); });
   };
   const fmtT = t => { try { const d = new Date(t), p = n => ('0' + n).slice(-2); return p(d.getDate()) + '.' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); } catch (e) { return ''; } };
   CH.list = function () {
     const me = CH.uid();
     if (!CH.msgs.length) return '<div class="note">Пока тихо. Напиши первым — сообщение останется навсегда.</div>';
-    return CH.msgs.slice(-40).map(m => '<div class="chm' + (m.uid === me ? ' me' : '') + '"><small>' + esc(m.name || '?') + (m.job ? ' · ' + esc(m.job) : '') + ' · ' + fmtT(m.t) + '</small><div>' + esc(m.text || '') + '</div></div>').join('');
+    return CH.msgs.slice(-40).map(m => { const pr = G.premium ? G.premium.forUid(m.uid) : null;
+      return '<div class="chm' + (m.uid === me ? ' me' : '') + (m.vip ? ' vip' : '') + '"><small>' + (m.vip ? '📣 VIP-объявление · ' : '') + (pr ? G.premium.name(m.name || '?', pr) : esc(m.name || '?')) + (m.job ? ' · ' + esc(m.job) : '') + ' · ' + fmtT(m.t) + '</small><div>' + esc(m.text || '') + '</div></div>'; }).join('');
   };
   CH.draw = function () {
     const el = document.getElementById('chatList'); if (!el) return;
@@ -161,6 +163,7 @@
     if (!CH.loaded || Date.now() - CH.loaded > 30000) setTimeout(CH.load, 30);
     return '<div class="card" id="chatCard"><h3>💬 Общий чат игроков</h3><div class="note" id="chatSt"></div><div id="chatList" class="chat-list">' + CH.list() + '</div>'
       + '<div class="chat-in"><input id="chatIn" type="text" maxlength="200" placeholder="Сообщение (до 200 знаков)…" onkeydown="if(event.key===\'Enter\')G.chat.send()"><button class="btn hazard" onclick="G.chat.send()">➤</button></div>'
+      + (G.premium && G.premium.mine ? '<label class="vip-chk"><input type="checkbox" id="chatVip"> 📣 VIP-объявление (золотое, раз в 30 минут)</label>' : '')
       + '<button class="btn" onclick="G.chat.load()">🔄 Обновить</button><div class="note">Сообщения остаются навсегда. Будь вежлив: Труханов читает всё.</div></div>';
   };
 
