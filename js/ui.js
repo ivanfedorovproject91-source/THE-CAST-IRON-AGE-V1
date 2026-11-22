@@ -132,7 +132,7 @@
       h += scene(IMG.checkpoint, 'Проходная и раздевалка', 'Турникет щёлкнул. Влажный пол отражает лампы.');
       h += people('locker');
       h += groupActs(visibleActs(a => (a.ph || []).indexOf('locker') >= 0));
-      if (s.flags.loot && s.flags.loot.length) h += '<div class="card note">Ты уже принёс с собой «добычу» на смену?</div>';
+      if (G.lootCard) h += G.lootCard();
       h += '<div class="cta"><button class="btn big hazard" onclick="G.career.toWorkplace()">К РАБОЧЕМУ МЕСТУ →</button></div>';
       return h;
     }
@@ -143,6 +143,7 @@
       h += '<div class="chips">' + chips.map(c => '<button class="chip ' + (s.loc === c ? 'on' : '') + '" onclick="G.ui.go(\'' + c + '\')">' + LOCS[c].i + ' ' + LOCS[c].n + '</button>').join('') + '</div>';
       h += people(s.loc);
       if (s.loc === 'admin' && G.adminCard) h += G.adminCard();
+      if (G.locCard) h += G.locCard(s.loc);
       if (ph === 'lunch') h += '<div class="card note">Обед: осталось действий — <b>' + s.lunchAP + '</b>. Можно поесть, выпить молока, поболтать.</div>';
       const acts = visibleActs(a => a.loc === s.loc && ((a.ph || ['work']).indexOf('work') >= 0));
       // «Свои люди» на заводе — только в локации «Цех» (в ОТК, курилке, столовой и т.д. блока нет); дома он показывается ниже
@@ -159,6 +160,7 @@
     if (s.car.sickUntil >= s.t.day) h += '<div class="card note">Ты на больничном/в отпуске до ' + G.dateStrOf(s.car.sickUntil) + '.</div>';
     if (G.friendsBlock) h += G.friendsBlock();
     h += groupActs(visibleActs(a => a.loc === 'home' && (a.ph || []).indexOf('free') >= 0));
+    if (G.stashCard) h += G.stashCard();
     return h;
   }
   UI.go = function (loc) { G.s.loc = loc; UI.keepScroll = true; UI.render(); };
@@ -293,7 +295,7 @@
       h += '<div class="card"><h3>Рюкзак</h3>' + (ids.length ? ids.map(id => '<div class="kv"><span>' + (D.ITEMS[id] ? D.ITEMS[id].e + ' ' + D.ITEMS[id].n : id) + '</span><span>×' + s.inv[id] + '</span></div>').join('') : '<div class="note">Пусто.</div>') + '<button class="btn" onclick="G.useMenu()">Использовать вещь</button></div>';
       const own = Object.keys(s.own);
       h += '<div class="card"><h3>Статус</h3>' + (own.length ? own.map(k => '<div class="kv"><span>' + D.STATUS[k].e + ' ' + D.STATUS[k].n + '</span><span>✔</span></div>').join('') : '<div class="note">Ни часов, ни машины. Один паспорт.</div>') + '</div>';
-      if (s.flags.loot && s.flags.loot.length) h += '<div class="card"><h3>Добыча</h3>' + s.flags.loot.map(x => '<div class="kv"><span>' + x.n + '</span><span>≈' + G.rub(x.v) + '</span></div>').join('') + '</div>';
+      if (G.lootBagHTML) h += G.lootBagHTML();
       return h;
     }
     if (UI.sub === 'log') return h + s.log.slice(0, 60).map(l => '<div class="log ' + l.c + '"><small>' + l.d + ' ' + l.t + '</small>' + l.x + '</div>').join('');

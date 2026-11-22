@@ -72,21 +72,16 @@
   A('drink_w', { ph: ['work'], loc: 'shop', g: 'Крайности и криминал', n: 'Пропустить стопочку', i: '🥃', h: 1, lunch: true, menu: true, req: s => (G.has('vodka') || G.has('beer')) ? null : 'Нужна бутылка (магазин)',
     fn: s => { G.useItem(G.has('vodka') ? 'vodka' : 'beer'); G.fx({ coll: 3, cool: 2 }); G.spend(1); return 'custom'; } });
   A('otchib', { ph: ['work'], loc: 'shop', g: 'Отчибучить', n: 'Отчибучить…', i: '🎭', menu: true, noEvent: true, lunch: true, fn: () => { G.stuntMenu(); return 'custom'; } });
-  A('loot', { ph: ['work'], loc: 'shop', g: 'Крайности и криминал', n: 'Присмотреть, что плохо лежит', i: '🧰', h: 1, noTrainee: true, menu: true, fn: () => { G.lootFind(); return 'custom'; } });
 
   // ===== ЗАВОДОУПРАВЛЕНИЕ (admin), ОТК, ДВОР, МЕДПУНКТ =====
   A('trud', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Жалоба в трудинспекцию', i: '📨', h: 1, noTrainee: true, req: s => s.flags.insp ? 'Жалоба уже подана' : null, fx: { cons: 3, boss: -3 }, txt: 'Жалоба подана. Ответ придёт через 2–3 недели.', fn: s => { s.flags.insp = s.t.day + G.ri(14, 21); } });
   A('courses_w', { ph: ['work'], loc: 'admin', g: 'Заводоуправление', n: 'Узнать про курсы', i: '🎓', menu: true, fn: () => { G.coursesMenu(); return 'custom'; } });
   A('smoke_yard', { ph: ['work'], loc: 'yard', g: 'Перерыв и здоровье', n: 'Перекур в курилке', i: '🚬', h: 1, lunch: true, cost: 20, fx: { mood: 4, energy: 3, health: -1, coll: 1 }, risk: 4, fine: [50, 150], what: 'Перекур', txt: 'Курилка. Все знают всё про всех.' });
-  A('hole', { ph: ['work'], loc: 'yard', g: 'Крайности и криминал', n: 'Вынести через дыру в заборе', i: '🕳️', h: 1, menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? null : 'Нечего выносить', fn: () => { G.carryOut('hole'); return 'custom'; } });
   A('yard_chat', { ph: ['work'], loc: 'yard', g: 'Перерыв и здоровье', n: 'Потрепаться с мужиками', i: '🗣️', h: 1, lunch: true, fx: { coll: 3, mood: 3 }, risk: 6, fine: [50, 100], what: 'Разговоры в рабочее время', txt: 'Разговор про футбол и начальство.' });
   A('locker_nap', { ph: ['work'], loc: 'locker', g: 'Перерыв и здоровье', n: 'Прикорнуть на лавке', i: '😴', h: 1, lunch: true, fx: { energy: 10, mood: 1 }, risk: 20, fine: [100, 250], what: 'Сон в раздевалке', txt: 'Лавка жёсткая, но сон — сладкий.' });
   A('change', { ph: ['work'], loc: 'locker', g: 'Перерыв и здоровье', n: 'Переодеться в чистую спецовку', i: '🦺', h: 1, lunch: true, req: s => G.has('spare') ? null : 'Нет запасной спецовки (магазин)', fx: { neat: 35, mood: 1 }, txt: 'Чистая спецовка — как новая жизнь.', fn: s => { G.give('spare', -1); } });
-  A('hide_loot', { ph: ['work'], loc: 'locker', g: 'Крайности и криминал', n: 'Спрятать добычу в шкафчик', i: '🔒', menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? 'Уже спрятано' : 'Нечего прятать', txt: '' });
   A('rest_lunch', { ph: ['work'], loc: 'canteen', g: 'Перерыв и здоровье', n: 'Просто посидеть', i: '🪑', menu: false, lunch: true, fx: { mood: 3, energy: 4 }, txt: 'Посидел, отдышался.' });
   A('eat', { ph: ['work'], loc: 'canteen', g: 'Перерыв и здоровье', n: 'Взять обед', i: '🍲', lunch: true, menu: true, fn: () => { G.eatMenu(); return 'custom'; } });
-  A('otk_chat', { ph: ['work'], loc: 'otk', g: 'Контроль качества', n: 'Сдать деталь на ОТК', i: '🔩', h: 1, fx: s => ({ rel: { ekaterina: s.dwg.bad && !s.dwg.fixed ? -2 : 2 }, boss: 1 }), txt: 'Екатерина Евгеньевна молча измеряет деталь.' });
-  A('med_visit', { ph: ['work'], loc: 'med', g: 'Перерыв и здоровье', n: 'Посидеть в медпункте', i: '⚕️', h: 1, lunch: true, fx: { mood: 2, health: 2, energy: 3 }, txt: 'В медпункте тихо. И пахнет зелёнкой.' });
 
   // ===== УТРО / РАЗДЕВАЛКА =====
   A('coffee_m', { ph: ['morning'], loc: 'home', anywhere: true, g: 'Утро', n: 'Кофе по дороге (50 ₽)', i: '☕', cost: 50, menu: true, once: 'day', fx: { energy: 20, mood: 2, mask: 20 }, txt: 'Двойной кофе из автомата у ворот. Бодрит так, что станок кажется другом.' });
@@ -143,7 +138,6 @@
   S('dk_kvn', 'c_dk', 'ДК «Металлург»', 'КВН-кружок', '🎙️', 2, { mood: 8, cool: 3 }, 'Шутка про начальство — смех в зале.');
   S('ryum', 'c_ryum', 'Рюмочная', 'Выпить с мужиками (400 ₽)', '🍻', 2, { drunk: 30, mood: 10, coll: 4, craving: -20, money: -400 }, 'У Палыча наливают и слушают.', { req: s => s.money < 400 ? 'Нет денег' : null });
   S('tamada', 'c_ryum', 'Рюмочная', 'Тамада на юбилее (4 ч)', '🎉', 4, { money: 2500, drunk: 18, cool: 4, mood: 4, energy: -10 }, 'Ты вёл юбилей. В конце заплатили и налили.', { risk: 0 });
-  S('market_sell', 'c_market', 'Барахолка', 'Продать краденое (60%)', '💰', 1, {}, '', { menu: true, req: s => (s.flags.loot && s.flags.loot.length) ? null : 'Нечего продавать', fn: s => { let v = 0; s.flags.loot.forEach(x => v += x.v); G.addMoney(Math.round(v * 0.6)); G.toast('Продал на барахолке за ' + G.rub(v * 0.6) + '. Продавцы не спрашивали откуда.'); s.flags.loot = []; G.fx({ cons: -2 }); }, txt: '' });
   S('market_buy', 'c_market', 'Барахолка', 'Купить дешёвую одежду (700 ₽)', '👕', 1, { neat: 10, mood: 2 }, 'Купил свитер. Пахнет чужой бабушкой.', { cost: 700, fn: s => { G.give('spare', 1); } });
   S('garage', 'c_garage', 'Гаражи', 'Посидеть с мужиками', '🔧', 2, { coll: 3, mood: 5, rel: { vityok: 2 } }, 'Чай, запчасти, разговор про всё.');
   S('bath', 'c_bath', 'Баня', 'Сходить в баню (500 ₽)', '♨️', 3, { health: 10, neat: 45, mood: 6, tox: -10, money: -500 }, 'Пар, веник, пиво. Жизнь удалась.', { req: s => s.money < 500 ? 'Нет денег' : null, fn: s => { s.flags.washDay = s.t.day; } });
@@ -202,29 +196,7 @@
     G.modal({ title: 'Биржа подработок', wide: true, text: 'Подработки копят «усталость от подработок»: на заводе качество падает.', opts: gigs.map(g => ({ t: g[0] + ' (' + g[1] + ' ч) ≈ ' + G.rub(g[2].money), dis: s.t.hour + g[1] > 26 ? 'Поздно' : null, fn: () => { G.fx(g[2]); s.day.fatigue = (s.day.fatigue || 0) + 3; s.flags.gigs = (s.flags.gigs || 0) + 1; G.toast(g[3] + ' (+' + G.rub(g[2].money) + ')'); if (g[4] === 'taxi' && G.chance(10)) { G.fx({ health: -8, mood: -8 }); G.toast('Хамы на заднем сиденье. Небольшое ДТП.', 'bad'); } G.spend(g[1]); } })).concat([{ t: 'Закрыть', fn: () => {} }]) });
   };
 
-  // ---------- Мелкая кража (разд. 17.11)
-  const LOOT = [['болты и гайки', 50, 150], ['моток медного провода', 400, 800], ['подшипник', 600, 1200], ['технический спирт', 300, 700, 'spirt'], ['инструмент', 500, 1500], ['лист металла', 200, 500], ['мешок цемента', 150, 150], ['спецодежда и валенки', 300, 300], ['бутыль масла', 200, 200], ['чугунная плита (тяжёлая)', 1000, 2500], ['удлинитель и фонарь', 250, 250], ['детали станка', 2000, 3500]];
-  G.lootFind = function () {
-    const s = G.s; const it = G.pick(LOOT); const v = G.ri(it[1], it[2]);
-    s.flags.loot = s.flags.loot || [];
-    G.modal({ title: 'Плохо лежит', text: 'Ты заметил: <b>' + it[0] + '</b> (≈ ' + G.rub(v) + '). Никто не смотрит… вроде.', opts: [
-      { t: 'Взять (спрятать в робу)', fn: () => { s.flags.loot.push({ n: it[0], v, spirt: !!it[3] }); G.fx({ cons: -4 }); s.car.thefts++; s.day.stole++; G.toast('Спрятал: ' + it[0] + '. Совесть тихо ворчит.', 'warn'); G.spend(1); } },
-      { t: 'Передать Хомяку', fn: () => { if (G.npcLoc('khomyak')) { G.addMoney(Math.round(v * 0.5)); G.fx({ cons: -4 }); s.car.thefts++; G.toast('Хомяк рассчитался на месте: ' + G.rub(v * 0.5)); } else G.toast('Хомяка нет рядом.'); G.spend(1); } },
-      { t: 'Оставить', fn: () => { G.fx({ cons: 2 }); G.spend(1); } }
-    ] });
-  };
-  G.carryOut = function (way) {
-    const s = G.s, loot = s.flags.loot || []; if (!loot.length) return;
-    let v = 0; loot.forEach(x => v += x.v);
-    const heavy = v > 1500;
-    let risk = (way === 'hole' ? 22 : 36) + (heavy ? 12 : 0) - G.rl('lyosha') / 3 - (G.rl('gosha') > 20 ? 10 : 0);
-    const cb = () => {
-      if (G.chance(C(risk, 10, 70))) { s.flags.loot = []; G.addNick('tashchilkin'); G.punish({ risk: 100, what: 'Хищение (' + G.rub(v) + ')', fine: [500, 2000], sev: heavy || s.car.thefts > 3 ? 2 : 1 }); if (s.end) return; }
-      else { G.addMoney(Math.round(v * 0.6)); G.toast('Вынес! Хомяк-«скупщик» рассчитался: +' + G.rub(v * 0.6) + '.', 'good'); s.flags.loot = []; s.flags.stolenTotal = (s.flags.stolenTotal || 0) + v; }
-    };
-    if (way === 'pay') { const cost = Math.round(v * 0.3); if (s.money < cost) { G.toast('Нет денег откупиться.'); return; } G.addMoney(-cost); risk = 5; cb(); return; }
-    cb();
-  };
+  // ---------- Мелкая кража и добыча: см. js/work_extras.js (V3.17)
 
   // ---------- Отчибучить (22)
   const STUNTS = [
@@ -1100,7 +1072,6 @@
       ] });
     };
     const pickJob = risky => G.modal({ title: 'Подработка', text: 'Что берёшь?', opts: [{ t: '🔥 Сварить шов', fn: () => G.sideJob('weld', risky) }, { t: '🔧 Починить технику', fn: () => G.sideJob('fix', risky) }, { t: 'Передумал', fn: () => {} }] });
-    A('side_work', { ph: ['work'], loc: 'shop', g: 'Левые заказы', n: 'Левый заказ в рабочее время', i: '🤫', menu: true, once: 'day', fn: () => { pickJob(true); return 'custom'; } });
     A('side_home', { ph: ['free'], loc: 'home', g: 'Подработка', n: 'Халтура на дому', i: '🛠️', menu: true, once: 'day', fn: () => { if (G.sideMenu) G.sideMenu(pickJob); else pickJob(false); return 'custom'; } });
 
     // ---------- Быт: обустройство комнаты и кот Чугунок

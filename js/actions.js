@@ -200,9 +200,9 @@
       if (c.union) o.push({ t: '📢 Пожаловаться на задержку зарплаты', fn: () => { G.fx({ mood: 3, boss: -1 }); G.toast('Семёныч: «Нужно подождать». Ты подождал. Что-то сдвинулось.'); G.spend(1); } });
     }
     if (id === 'rafik') o.push({ t: '🚗 Спросить расписание директора', dis: !s.flags.rafikTip ? 'Сначала угости сигаретой' : null, fn: () => { s.world.binocSafe = G.week(); G.toast('Рафик: «На этой неделе — бинокль только по пятницам». Полезно.'); G.spend(1); } });
-    if (id === 'khomyak') o.push({ t: '💰 Продать краденое', dis: !(s.flags.loot && s.flags.loot.length) ? 'Нечего продавать' : null, fn: () => { let v = 0; s.flags.loot.forEach(x => v += x.v); G.addMoney(Math.round(v * 0.6)); G.toast('Хомяк забрал товар и выдал ' + G.rub(v * 0.6) + '.'); s.flags.loot = []; G.fx({ cons: -2 }); G.spend(1); } });
+    if (id === 'khomyak') o.push({ t: '💰 Продать краденое (60%)', dis: !((s.flags.loot && s.flags.loot.length) || (s.flags.lockerLoot && s.flags.lockerLoot.length)) ? 'Нечего продавать' : null, fn: () => G.lootSellKhomyak() });
     if (id === 'alevtina') {
-      o.push({ t: '🩺 Лечиться (здоровье +8)', fn: () => { G.fx({ health: 8, tox: -4, mood: 2 }); G.toast('Алевтина послушала, смазала зелёнкой, дала таблетку.'); G.spend(1); } });
+      o.push({ t: '🩺 Осмотр и лечение', dis: s.day.medCheck ? 'Сегодня уже осматривалась' : (s.phase !== 'work' && s.phase !== 'lunch') ? 'Только на смене' : null, fn: () => G.medCheck() });
       o.push({ t: '📄 Купить больничный (2 000 ₽)', dis: s.money < 2000 ? 'Нет денег' : null, fn: () => G.buySick() });
     }
     if (id === 'tatishcheva') {
