@@ -9,7 +9,7 @@
   const fmt = n => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   const dt = t => { if (!t) return '—'; const d = new Date(+t), p = n => ('0' + n).slice(-2); return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + String(d.getFullYear()).slice(2) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'только что' : m < 60 ? m + ' мин. назад' : m < 1440 ? Math.round(m / 60) + ' ч. назад' : Math.round(m / 1440) + ' дн. назад'; };
-  const TABS = [['stats', '📊', 'Статистика', 'stats'], ['online', '🟢', 'Онлайн', 'online'], ['players', '👤', 'Игроки', 'players'], ['sanctions', '🚫', 'Баны и муты', 'bans'], ['chat', '💬', 'Чат', 'chat'], ['params', '⚙️', 'Параметры', 'params'], ['audit', '📜', 'Журнал', 'audit'], ['admins', '🛡', 'Админы', 'owner'], ['premium', '👑', 'Премиум', 'owner'], ['radio', '📻', 'Радио', 'owner']];
+  const TABS = [['stats', '📊', 'Статистика', 'stats'], ['online', '🟢', 'Онлайн', 'online'], ['players', '👤', 'Игроки', 'players'], ['sanctions', '🚫', 'Баны и муты', 'bans'], ['chat', '💬', 'Чат', 'chat'], ['params', '⚙️', 'Параметры', 'params'], ['audit', '📜', 'Журнал', 'audit'], ['admins', '🛡', 'Админы', 'owner'], ['premium', '👑', 'Премиум', 'owner'], ['rating', '🏆', 'Рейтинг', 'owner'], ['radio', '📻', 'Радио', 'owner']];
   const PERM_RU = { players: 'Игроки', bans: 'Баны/муты', chat: 'Чат', params: 'Параметры', online: 'Онлайн', stats: 'Статистика', audit: 'Журнал' };
   // Уведомления внутри кабинета (игровые тосты лежат под ним и не видны)
   function say(text, bad) {
@@ -77,6 +77,15 @@
     return '<button class="adm-row" data-a="player" data-id="' + esc(p.id) + '"><b>' + esc(p.name || p.tg || p.id) + '</b>' + (p.banned ? ' <span class="adm-tag r">БАН</span>' : '') + (p.muted ? ' <span class="adm-tag y">МУТ</span>' : '')
       + '<small>ID ' + esc(p.id) + ' · ' + esc(p.job || '—') + ' · ' + (p.shifts || 0) + ' смен · ' + fmt(p.oj) + ' оч. · ' + (p.last ? ago(p.last) : '—') + '</small></button>';
   }
+  // ---- рейтинг живёт на отдельном сервере (API_URL): владелец подтверждается там по подписи Telegram
+  async function rcall(action, args) {
+    const url = G.CONFIG && G.CONFIG.API_URL; if (!url) return { ok: false, error: 'не задан адрес сервера рейтинга (API_URL)' };
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action: action, initData: G.srv.initData() }, args || {})) });
+      return await r.json();
+    } catch (e) { return { ok: false, error: 'нет связи с сервером рейтинга' }; }
+  }
+  const rerr = r => '<div class="card">⛔ ' + esc(r.error === 'forbidden' ? 'Сервер рейтинга не признал вас владельцем (проверьте OWNER_ID в свойствах его скрипта).' : r.error === 'auth' ? 'Сервер рейтинга не принял подпись Telegram: в его скрипте должен быть задан BOT_TOKEN, а скрипт — обновлён до новой версии.' : r.error || 'ошибка') + '</div>';
   // ---- разделы
   const V = {
     async stats() {
@@ -133,6 +142,14 @@
           + '<div class="note">Запись: «' + esc(x.note) + '»</div><div class="note">Выплачено: ' + fmt(x.payoutTotal) + ' ₽ · последняя выплата: ' + day(x.lastPayout) + '</div>'
           + '<div class="btns">' + (x.active ? '<button class="btn" data-a="pedit" data-id="' + esc(x.id) + '" data-note="' + esc(x.note) + '">✎ Запись</button><button class="btn red" data-a="prevoke" data-id="' + esc(x.id) + '">Снять</button>' : '<button class="btn hazard" data-a="pgrant" data-id="' + esc(x.id) + '">Выдать снова</button>') + '<button class="btn" data-a="player" data-id="' + esc(x.id) + '">👤 Игрок</button></div></div>').join('') || '<div class="card note">Премиум-игроков пока нет.</div>'));
     },
+    async rating() {
+      const q = A.state.rq || '', r = await rcall('admin_list', { q: q }); if (!r.ok) return body(rerr(r));
+      body('<div class="card"><h3>🏆 Общий рейтинг</h3><div class="note">Игроков в таблице: ' + r.total + ', скрыто: ' + r.blockedTotal + '. <b>Скрыть</b> — игрок остаётся в игре, но пропадает из всех таблиц и сам вернуться не может. <b>Удалить</b> — стереть запись (появится снова, если игрок заново отправит результат).</div></div>'
+        + '<div class="adm-find"><input id="admRq" type="text" maxlength="40" placeholder="Имя, должность или ID" value="' + esc(q) + '"><button class="btn hazard" data-a="rfind">🔍</button></div>'
+        + (r.list.map(x => '<div class="card adm-san"><b>' + esc(x.name || '—') + '</b> ' + (x.blocked ? '<span class="adm-tag r">скрыт</span>' : '') + '<small>' + esc(x.job || '—') + ' · ' + fmt(x.oj) + ' оч. · ' + x.shifts + ' смен · ' + x.days + ' дн.' + (x.brigade ? ' · 👥 ' + esc(x.brigade) : '') + '</small><small style="word-break:break-all">ID ' + esc(x.id) + ' · ' + (x.updated ? dt(Date.parse(x.updated)) : '—') + '</small>'
+          + '<div class="btns"><button class="btn ' + (x.blocked ? 'hazard' : 'red') + '" data-a="rblock" data-id="' + esc(x.id) + '" data-v="' + (x.blocked ? '0' : '1') + '">' + (x.blocked ? '↩ Вернуть' : '🙈 Скрыть') + '</button><button class="btn" data-a="rdel" data-id="' + esc(x.id) + '">🗑 Удалить</button></div></div>').join('') || '<div class="card note">Никого не найдено.</div>'));
+      const i = document.getElementById('admRq'); if (i) i.onkeydown = e => { if (e.key === 'Enter') onClick({ target: document.querySelector('[data-a=rfind]') }); };
+    },
     async radio() {
       const r = await call('radio_get'); if (!r.ok) return body(err(r)); A.state.radio = r.radio;
       body('<div class="card"><h3>📻 Радиостанция</h3><div class="note">Радио в игре: <b>' + (r.radio.on ? 'включено' : 'ОТКЛЮЧЕНО для всех') + '</b>. Адрес потока — только <b>https</b> и только официальный/разрешённый источник. Игрок запускает звук сам.</div><div class="btns"><button class="btn ' + (r.radio.on ? 'red' : '') + '" data-a="rtoggle">' + (r.radio.on ? 'Отключить радио' : 'Включить радио') + '</button></div></div>'
@@ -168,6 +185,15 @@
         if (!v) return; if (notify(await call('premium_grant', { uid: d.id || v.uid, reason: v.reason }), edit ? 'Запись изменена' : 'Премиум выдан')) refresh(); return;
       }
       if (a === 'prevoke') { const v = await dialog({ title: 'Снять премиум у ' + d.id, fields: [reasonF], ok: 'Далее', danger: 1 }); if (v && notify(await call('premium_revoke', { uid: d.id, reason: v.reason }), 'Премиум снят')) { if (A.tab === 'premium') refresh(); else profile(d.id); } return; }
+      if (a === 'rfind') { A.state.rq = (document.getElementById('admRq') || {}).value || ''; return V.rating(); }
+      if (a === 'rblock') {
+        const on = d.v === '1', v = await dialog({ title: (on ? 'Скрыть из рейтинга: ' : 'Вернуть в рейтинг: ') + d.id, fields: [{ id: 'note', label: 'Заметка (необязательно)', max: 120 }], ok: on ? 'Скрыть' : 'Вернуть', danger: on });
+        if (!v) return; const r = await rcall('admin_block', { id: d.id, blocked: on, note: v.note }); if (notify(r.ok ? r : { ok: false, error: r.error }, on ? 'Скрыт из рейтинга' : 'Возвращён в рейтинг')) V.rating(); return;
+      }
+      if (a === 'rdel') {
+        const v = await dialog({ title: 'Удалить запись ' + d.id, text: 'Запись исчезнет из таблицы. Если игрок снова отправит результат, она появится заново — чтобы этого не случилось, используйте «Скрыть».', fields: [{ id: 'note', label: 'Заметка (необязательно)', max: 120 }], ok: 'Удалить', danger: 1 });
+        if (!v) return; const r = await rcall('admin_delete', { id: d.id, note: v.note }); if (notify(r.ok ? r : { ok: false, error: r.error }, 'Запись удалена')) V.rating(); return;
+      }
       if (a === 'pban') { const v = await dialog({ title: 'Бан игрока ' + d.id, fields: [{ id: 'hours', label: 'Часов (0 — навсегда)', value: '0', type: 'number' }, reasonF], ok: 'Далее', danger: 1 }); if (v && notify(await call('ban', { uid: d.id, hours: +v.hours || 0, reason: v.reason }), 'Игрок заблокирован')) profile(d.id); return; }
       if (a === 'pmute') { const v = await dialog({ title: 'Мут игрока ' + d.id, fields: [{ id: 'minutes', label: 'Минут', value: '60', type: 'number' }, reasonF], ok: 'Выдать мут' }); if (v && notify(await call('mute', { uid: d.id, minutes: +v.minutes || 60, reason: v.reason }), 'Мут выдан')) profile(d.id); return; }
       if (a === 'pdelall') { const v = await dialog({ title: 'Удалить все сообщения ' + d.id, fields: [reasonF], ok: 'Далее', danger: 1 }); if (v && notify(await call('chat_delete_user', { uid: d.id, reason: v.reason }), 'Сообщения удалены')) profile(d.id); return; }
