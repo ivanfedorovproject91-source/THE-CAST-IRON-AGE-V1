@@ -58,7 +58,13 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .card h3 { margin: 0 0 6px; font-family: var(--f-head); font-size: 14px; letter-spacing: .6px; text-transform: uppercase; color: var(--haz); }
 .grp { margin: 12px 10px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .note { font-size: 13px; color: var(--dim); }
-.chips { display: flex; gap: 6px; padding: 8px 10px 0; overflow-x: auto; scrollbar-width: none; }
+.chips { display: flex; gap: 6px; padding: 8px 10px 6px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: var(--haz) transparent; }
+.chips::-webkit-scrollbar { height: 6px; }
+.chips::-webkit-scrollbar-thumb { background: var(--haz); border-radius: 3px; }
+.chips::-webkit-scrollbar-track { background: transparent; }
+/* ПК: ряды прокручиваются колёсиком и перетаскиванием мышью */
+.chips, .ppl, .rl-chips, .adm-tabs { cursor: grab; }
+.hs-drag, .hs-drag * { cursor: grabbing !important; -webkit-user-select: none; user-select: none; }
 .chip { flex: none; background: var(--panel2); border: 1px solid var(--line); border-radius: 18px; padding: 6px 12px; font-size: 13px; }
 .chip.on { background: var(--haz); color: #111; border-color: var(--haz); font-weight: 700; }
 .ppl { display: flex; gap: 8px; padding: 8px 10px 0; overflow-x: auto; }

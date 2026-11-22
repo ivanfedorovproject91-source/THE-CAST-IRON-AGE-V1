@@ -58,6 +58,7 @@
     const el = $('screen'), s = G.s;
     const top = $('top'), nav = $('nav');
     const keep = el.scrollTop;
+    const oldChips = el.querySelector('.chips'), keepChipsX = oldChips ? oldChips.scrollLeft : 0;
     let html = '', game = false;
     if (s && s.end) html = ending();
     else if (s && s.phase !== 'new') { game = true; html = gameScreen(); }
@@ -68,6 +69,20 @@
     if (game) { top.innerHTML = topbar(); nav.innerHTML = navHTML(); nav.classList.toggle('n7', !!(G.ceo && G.ceo.is())); }
     el.innerHTML = html;
     if (UI.keepScroll) el.scrollTop = keep; else el.scrollTop = 0;
+    // ряд локаций: сохраняем позицию, а если активная кнопка не видна — показываем её
+    try {
+      const ch = el.querySelector('.chips');
+      if (ch) {
+        ch.style.scrollBehavior = 'auto';
+        ch.scrollLeft = keepChipsX;
+        const on = ch.querySelector('.chip.on');
+        if (on) {
+          const l = on.offsetLeft - ch.offsetLeft, r = l + on.offsetWidth;
+          if (l < ch.scrollLeft + 10) ch.scrollLeft = Math.max(0, l - 20);
+          else if (r > ch.scrollLeft + ch.clientWidth - 10) ch.scrollLeft = r - ch.clientWidth + 20;
+        }
+      }
+    } catch (e) {}
     UI.keepScroll = false;
   };
 
