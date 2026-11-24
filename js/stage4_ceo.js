@@ -199,7 +199,7 @@
   // (правка самого условия — в company_events.js: доверие ≤ 8 четыре недели подряд = снятие даже без предупреждения)
 
   // ---------- 8. Свободная игра после финала
-  const FREE = ['head', 'puppet', 'prosper', 'legend_board', 'union_leader', 'business', 'blogger', 'married', 'moscow', 'ceo_legend', 'ceo_holding'];
+  const FREE = ['head', 'prosper', 'legend_board', 'union_leader', 'business', 'blogger', 'married', 'moscow', 'ceo_legend', 'ceo_holding'];
   G.canContinueFree = function () { const s = G.s; return !!(s && s.end && FREE.indexOf(s.end.id) >= 0); };
   const _end = G.end;
   G.end = function (id, data) {

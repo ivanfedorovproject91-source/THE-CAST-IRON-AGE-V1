@@ -62,6 +62,31 @@ with sync_playwright() as p:
     for i in range(12): ev("G.s.debt=150000; G.s.st.habit=10; G.s.money=0; G.weeklyTick()")
     check('без зависимости долг сам по себе не ведёт к бездомности', ev("!G.s.end"), ev("G.s.end"))
 
+    # --- 4. Закрытие завода: 4 недели на спасение
+    setup(rank=3, shifts=80); ev("G.s.world.plant=40; G.s.t.day=70; G.career.closing()")
+    check('закрытие: игра не заканчивается сразу, идёт отсчёт', ev("!G.s.end && G.s.world.closing>0"), ev("[G.s.end,G.s.world.closing]"))
+    ev("G.mq.length=0;G.cur=null;G.busy=false;G.s.money=50000"); ev("G.addMoney(-20000); G.s.world.closing=0; G.s.flags.closeCool=G.week()+26")
+    ev("G.career.closing()"); check('после спасения 26 недель угроза не повторяется', ev("G.s.world.closing===0"), ev("G.s.world.closing"))
+    setup(rank=3, shifts=80); ev("G.s.world.plant=40; G.career.closing()")
+    for i in range(6):
+        ev("G.mq.length=0;G.cur=null;G.busy=false;G.s.world.plant=40;G.s.t.day+=7;G.weeklyTick()")
+        if ev("!!G.s.end"): break
+    check('ничего не делать: завод закрывается ровно через 4 недели', ev("G.s.end&&G.s.end.id")=='closed' and i==3, (i, ev("G.s.end")))
+    setup(rank=3, shifts=80); ev("G.s.world.plant=40; G.s.money=50000; G.career.closing()")
+    pr=ev("G.cur?G.cur.opts.map(o=>o.t):null")
+    ev("G.cur.opts[0].fn()")
+    check('взятка комиссии спасает завод и стоит 20 000', ev("G.s.world.closing===0 && !G.s.end") and ev("G.s.money")<=30000, (pr, ev("G.s.money")))
+    setup(rank=3, shifts=80); ev("G.s.world.plant=40; G.s.money=100; G.career.closing()")
+    dis=ev("G.cur&&G.cur.opts[0].dis")
+    check('без денег взятка недоступна', bool(dis), dis)
+    setup(rank=3, shifts=80); ev("G.s.world.plant=80; G.career.closing()")
+    saved=False
+    for i in range(60):
+        ev("G.mq.length=0;G.cur=null;G.busy=false;G.s.world.closing=G.week()+3;G.s.world.plant=80;G.weeklyTick()")
+        if ev("G.s.world.closing===0"): saved=True; break
+    check('при хороших показателях завод может спастись сам', saved, i)
+    check('puppet удалена, jail/homeless/closed на месте', ev("!G.D.ENDINGS.puppet && !!G.D.ENDINGS.jail && !!G.D.ENDINGS.homeless && !!G.D.ENDINGS.closed"))
+
     check('нет ошибок страницы', not errs, errs)
 print('ИТОГ: ' + ('ВСЁ ПРОШЛО' if not fails else 'ПРОВАЛЕНО: ' + ', '.join(fails)))
 raise SystemExit(1 if fails else 0)
