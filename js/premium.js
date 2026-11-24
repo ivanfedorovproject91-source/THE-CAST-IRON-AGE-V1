@@ -9,7 +9,7 @@
   const esc = t => String(t == null ? '' : t).replace(/[&<>"{}]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '{': '&#123;', '}': '&#125;' }[c]));
   const nk = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const url = () => (G.CONFIG && G.CONFIG.CHAT_URL) || '';
-  const okUid = u => /^tg:\d{1,20}$/.test(String(u || ''));
+  const okUid = u => /^(tg|vk):\d{1,20}$/.test(String(u || ''));
   const rub = v => (G.rub ? G.rub(v) : v + ' ₽');
   const fmtDate = t => { try { const d = new Date(+t), p = n => ('0' + n).slice(-2); return +t ? p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear() : '—'; } catch (e) { return '—'; } };
   const myUid = () => (G.lb && G.lb.uid ? G.lb.uid() : '');

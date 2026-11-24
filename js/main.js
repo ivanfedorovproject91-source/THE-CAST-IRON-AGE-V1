@@ -1,18 +1,8 @@
-/* ===== Точка входа: Telegram Mini App, загрузка сохранения ===== */
+/* ===== Точка входа: Telegram / ВКонтакте Mini App, загрузка сохранения ===== */
 (function () {
   'use strict';
   const G = window.G;
-  function tgInit() {
-    try {
-      const tg = window.Telegram && window.Telegram.WebApp;
-      if (tg) {
-        tg.ready(); tg.expand();
-        try { tg.setHeaderColor('#121110'); tg.setBackgroundColor('#121110'); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {}
-        try { tg.onEvent && tg.onEvent('viewportChanged', fit); } catch (e) {}
-      }
-    } catch (e) {}
-  }
-  window.__tgInit = tgInit; tgInit();
+  G.platform.init(); // оболочка платформы (Telegram или VK): см. js/platform.js
   // высота приложения: в некоторых WebView 100% даёт ноль — задаём явно
   function fit() { try { const h = window.innerHeight || document.documentElement.clientHeight; if (h > 200) document.documentElement.style.setProperty('--app-h', h + 'px'); } catch (e) {} }
   fit(); window.addEventListener('resize', fit); window.addEventListener('orientationchange', function () { setTimeout(fit, 200); });
@@ -27,7 +17,7 @@
       document.body.appendChild(d);
     } catch (e) {}
   }, 3000);
-  // ПК-версия Telegram: горизонтальные ряды (локации, люди, вкладки) листаются колёсиком и мышью.
+  // ПК-версия (Telegram Desktop, web VK на компьютере): горизонтальные ряды (локации, люди, вкладки) листаются колёсиком и мышью.
   // Делегирование на document — работает и после перерисовки экрана.
   (function hScroll() {
     const SEL = '.chips, .ppl, .rl-chips, .adm-tabs';

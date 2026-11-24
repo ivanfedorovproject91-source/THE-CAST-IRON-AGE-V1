@@ -6,8 +6,7 @@
   const CFG = G.CONFIG;
   const S = (G.srv = { role: '', perms: [], ban: null, mute: null, cfg: null, last: 0, seenAnn: '', premium: null });
   const KEY = 'cv_srv_cfg';
-  const tg = () => { try { return window.Telegram && window.Telegram.WebApp; } catch (e) { return null; } };
-  S.initData = () => { const t = tg(); return (t && t.initData) || ''; };
+  S.initData = () => G.platform.initData();
   S.url = () => CFG.CHAT_URL || '';
   S.available = () => !!(S.url() && S.initData());
   S.post = function (body) {
@@ -38,13 +37,13 @@
   }
   S.status = '';
   S.ping = function () {
-    if (!S.available()) { S.status = !S.url() ? 'адрес сервера не задан' : 'нет данных Telegram (откройте игру из Telegram)'; return; }
+    if (!S.available()) { S.status = !S.url() ? 'адрес сервера не задан' : 'нет данных платформы (откройте игру из Telegram или ВКонтакте)'; return; }
     if (!G.s || G.s.phase === 'new') return;
     S.last = Date.now();
     let p = {};
     try { p = { name: G.s.name, job: G.jobTitle(), rank: G.s.car.rank, shifts: G.s.car.shifts, oj: G.ojScore(), money: Math.round(G.s.money), days: G.s.t.day, v: CFG.VERSION }; if (G.premium && S.premium) p.ach = G.premium.achList(); } catch (e) {}
     S.post(Object.assign({ action: 'ping' }, p)).then(j => {
-      if (!j || !j.ok) { S.status = !j ? 'пустой ответ' : j.error === 'auth' ? 'сервер не принял подпись Telegram (проверьте BOT_TOKEN и что игра открыта через того же бота)' : j.error === 'unknown action' ? 'на сервере старая версия скрипта (нужна новая версия развёртывания)' : 'ошибка сервера: ' + j.error; return; }
+      if (!j || !j.ok) { S.status = !j ? 'пустой ответ' : j.error === 'auth' ? 'сервер не принял подпись ' + G.platform.label() + (G.platform.isVk() ? ' (проверьте VK_SECRET и VK_APP_ID в свойствах скрипта)' : ' (проверьте BOT_TOKEN и что игра открыта через того же бота)') : j.error === 'unknown action' ? 'на сервере старая версия скрипта (нужна новая версия развёртывания)' : 'ошибка сервера: ' + j.error; return; }
       S.status = j.role ? 'связь есть, роль: ' + (j.role === 'owner' ? 'владелец' : 'администратор') : 'связь есть, вы не администратор (проверьте OWNER_ID)';
       const previousRole = S.role;
       S.role = j.role || ''; S.perms = j.perms || []; S.ban = j.ban || null; S.mute = j.mute || null; S.premium = j.premium || null; if (G.premium) G.premium.onPing(S.premium);

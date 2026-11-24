@@ -30,7 +30,7 @@
 
   const empty = () => ({ v: 1, owner: 'local', rev: 0, items: [], grants: {}, offers: {}, seen: {} });
   function tgOwner() {
-    try { const u = window.Telegram.WebApp.initDataUnsafe.user; if (u && u.id) return 'tg:' + u.id; } catch (e) {}
+    try { const id = window.G && G.platform && G.platform.userId(); if (id) return id; } catch (e) {}
     return null;
   }
   function norm(d) {
