@@ -117,10 +117,17 @@
   ];
   // Сколько верных ответов из 5 нужно: выше ступень — строже; репутация у начальства сдвигает порог.
   const standing = () => { try { return G.bossStanding ? G.bossStanding() : null; } catch (e) { return null; } };
+  // Корочка из D.REQ[ступень].certs не обязательна, но на «главном» шаге ступени (разряд или новая должность) даёт −1 к порогу экзамена.
+  const certIds = target => {
+    if (!target || (target.nextStage != null && target.nextStage > 1)) return [];
+    const r = D.REQ && D.REQ[target.nextRank]; return (r && r.certs) || [];
+  };
+  const certBonus = target => { const ids = certIds(target); return ids.length > 0 && ids.every(id => G.hasCert(id)); };
   const passNeed = target => {
     let n = (target.kind === 'worker' && target.nextRank <= 2) ? 3 : 4;
     const st = standing();
     if (st && target.nextRank >= 2) { if (st.lvl >= 2) n += 1; else if (st.lvl === 0) n -= 1; }
+    if (certBonus(target)) n -= 1;   // корочка на эту ступень облегчает экзамен на 1 верный ответ
     return Math.max(2, Math.min(5, n));
   };
   const shuffle = a => { const x = a.slice(); for (let i=x.length-1;i>0;i--) { const j=Math.floor(G.rnd()*(i+1)); [x[i],x[j]]=[x[j],x[i]]; } return x; };
@@ -232,7 +239,8 @@
     const have=c.shifts-(t.since||0);
     return [
       {t:'Стаж на текущей ступени: '+Math.max(0,have)+' / '+t.need+' смен',ok:have>=t.need},
-      {t:'Экзамен: 5 вопросов, нужно '+passNeed(t)+' правильных',ok:have>=t.need},
+      {t:'Экзамен: 5 вопросов, нужно '+passNeed(t)+' правильных'+(certBonus(t)?' (корочка уже учтена: −1)':''),ok:have>=t.need},
+      ...(certIds(t).length && !certBonus(t) ? [{t:'Необязательно: корочка «'+certIds(t).filter(id=>!G.hasCert(id)).map(id=>D.COURSES[id].name).join('», «')+'» — на экзамене нужно на 1 верный ответ меньше',ok:true}] : []),
       {t:'Репутация у начальства: допуск закрыт при «плохой» (сейчас: '+(standing()?standing().label:'—')+')',ok:!standing()||t.nextRank<2||standing().lvl<3},
       {t:'Попытки: '+(c.ladderAttempts||0)+' / 4',ok:true},
       {t:c.ladderRetryAt&&c.shifts<c.ladderRetryAt?'Новая серия попыток через '+(c.ladderRetryAt-c.shifts)+' смен':'Экзамен доступен после набора стажа',ok:!c.ladderRetryAt||c.shifts>=c.ladderRetryAt}

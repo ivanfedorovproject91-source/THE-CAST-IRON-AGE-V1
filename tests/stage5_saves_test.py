@@ -40,7 +40,7 @@ with sync_playwright() as pw:
     r = p.evaluate("""() => ({ pre: localStorage.getItem(G.SAVEKEYS.pre), meta: JSON.parse(localStorage.getItem(G.SAVEKEYS.preMeta) || 'null'), inv: G.loadInfo.invariants, money: G.s.money, loans: G.s.loans.map(l => [l.id, l.left]), flat: !!G.s.own.flat, rank: G.s.car.rank, ver: G.s.gameVer, mm: !!G.migrationMismatch })""")
     check('перед миграцией создана копия, идентичная исходному сохранению', r['pre'] == old and r['meta'] and r['meta']['from'] == '3.13.0', (r['meta'], r['pre'] == old))
     check('после миграции деньги, ранг, квартира и кредиты не изменились', r['inv'] is True and r['money'] == 123456 and r['rank'] == 8 and r['flat'] and r['loans'] == [['L1', 50000], ['L2', 2000000]] and not r['mm'], r)
-    check('версия сохранения обновилась', r['ver'] == '3.15.0', r)
+    check('версия сохранения обновилась', r['ver'] == '3.17.0', r)
     # повторная загрузка: копия «до обновления» не перезаписывается новым состоянием
     p.evaluate("() => { G.headless = false; G.s.money += 777; G.save(); }")
     p.reload(); p.wait_for_timeout(700)
