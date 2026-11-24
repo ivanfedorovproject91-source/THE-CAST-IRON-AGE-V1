@@ -109,6 +109,7 @@
     G.fx({ cons: -2, boss: -3 });
     G.toast('Заметили! ' + what + ': ' + it.n + '.', 'bad');
     G.punish({ risk: 100, what: 'Попытка хищения: ' + it.n, fine: [300, 900], sev: it.sz >= 3 ? 2 : 1 });
+    if (G.lootBust) G.lootBust();
   }
   function lootTake(o, it) {
     const s = G.s, watchers = (G.peopleAt(s.loc) || []).length;
@@ -163,6 +164,7 @@
     G.toast(line, 'bad');
     const b = s.day.viol;
     G.punish({ risk: 100, what: what + ' (' + rub(v) + ')', fine: [500, 2000], sev });
+    if (G.lootBust && !s.end) G.lootBust();
     // Общее «пронесло» здесь не работает: пойманного с добычей на выходе наказывают всегда
     if (!s.end && s.day.viol === b) {
       const fine = G.ri(500, 1500);

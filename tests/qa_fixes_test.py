@@ -39,6 +39,29 @@ with sync_playwright() as p:
     txt=ev("G.cur?G.cur.text:''")
     check('меню курсов не врёт, что корочка обязательна', 'не обязательна' in txt and 'нужна корочка' not in txt, txt)
 
+    # --- 2. «Тюрьма»: третья поимка с добычей за 120 дней
+    setup(rank=3, shifts=80); ev("G.s.t.day=50")
+    ev("G.lootBust()"); r1=ev("G.s.end?G.s.end.id:null"); ev("G.s.t.day=60; G.lootBust()")
+    r2=ev("G.s.end?G.s.end.id:null"); w2=ev("(G.cur&&G.cur.title)||(G.mq.length?'queued':'')")
+    check('две поимки: игра идёт, предупреждение показано', r1 is None and r2 is None and ('папку' in str(w2) or w2=='queued'), (r1,r2,w2))
+    ev("G.s.t.day=70; G.lootBust()")
+    check('третья поимка: концовка jail', ev("G.s.end&&G.s.end.id")=='jail', ev("G.s.end"))
+    setup(rank=3, shifts=80); ev("G.s.t.day=50; G.lootBust(); G.s.t.day=200; G.lootBust(); G.s.t.day=400; G.lootBust()")
+    check('поимки реже окна 120 дней не ведут к тюрьме', ev("!G.s.end"), ev("G.s.end"))
+    # --- 3. «Бездомный»: долг + зависимость + пустой кошелёк 8 недель подряд
+    setup(rank=1, shifts=40); ev("G.s.debt=150000; G.s.st.habit=80; G.s.money=0")
+    ids=[]
+    for i in range(8):
+        ev("G.s.debt=150000; G.s.st.habit=80; G.s.money=0; G.weeklyTick()"); ids.append(ev("G.s.end?G.s.end.id:null"))
+        if ids[-1]: break
+    check('8 недель на дне: концовка homeless не раньше 8-й недели', ids[-1]=='homeless' and len(ids)==8 and all(x is None for x in ids[:-1]), ids)
+    setup(rank=1, shifts=40)
+    for i in range(12): ev("G.s.debt=150000; G.s.st.habit=80; G.s.money=0; if(%d%%3===2){G.s.money=5000}; G.weeklyTick()" % i)
+    check('если деньги появляются, бездомным не становишься', ev("!G.s.end"), ev("G.s.end"))
+    setup(rank=1, shifts=40)
+    for i in range(12): ev("G.s.debt=150000; G.s.st.habit=10; G.s.money=0; G.weeklyTick()")
+    check('без зависимости долг сам по себе не ведёт к бездомности', ev("!G.s.end"), ev("G.s.end"))
+
     check('нет ошибок страницы', not errs, errs)
 print('ИТОГ: ' + ('ВСЁ ПРОШЛО' if not fails else 'ПРОВАЛЕНО: ' + ', '.join(fails)))
 raise SystemExit(1 if fails else 0)
