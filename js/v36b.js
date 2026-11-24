@@ -142,7 +142,7 @@
     inp.value = '';
     if (!url()) { const a = localGet(); a.push(m); localSet(a); CH.msgs = a; CH.draw(); return; }
     CH.msgs = CH.msgs.concat([m]); CH.draw();
-    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chat_post', initData: (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) || '', name: m.name, job: m.job, text: m.text, vip: m.vip }) })
+    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chat_post', initData: G.platform.initData(), name: m.name, job: m.job, text: m.text, vip: m.vip }) })
       .then(r => r.json()).then(j => { if (!j || !j.ok) throw new Error((j && j.error) || '?'); if (m.vip) { const b = document.getElementById('chatVip'); if (b) b.checked = false; } CH.load(); })
       .catch(e => { CH.msgs = CH.msgs.filter(x => x !== m); CH.err = 'не отправлено: ' + (e.message || e); CH.draw(); });
   };

@@ -6,11 +6,16 @@
  * 2) «Настройки проекта (шестерёнка) → Свойства скрипта» — добавьте два свойства:
  *      BOT_TOKEN  — токен вашего бота из @BotFather (нужен для проверки подписи Telegram; нигде в игре не хранится)
  *      OWNER_ID   — ваш числовой Telegram ID (узнать: написать боту @userinfobot). Это единственный владелец игры.
+ *    Для игроков ВКонтакте (необязательно, если игра запускается только в Telegram) добавьте ещё:
+ *      VK_SECRET  — «Защищённый ключ» приложения VK (dev.vk.com → Мои приложения → Настройки). Нигде в игре не хранится.
+ *      VK_APP_ID  — ID вашего мини-приложения VK (защита от подписей чужих приложений).
+ *    Владелец и администраторы определяются только по Telegram ID: из VK стать админом нельзя.
  * 3) «Развернуть → Управление развёртываниями → ✎ → Версия: Новая версия → Развернуть».
  *    URL остаётся прежним (CHAT_URL в js/config.js менять не нужно).
  *
  * БЕЗОПАСНОСТЬ:
- *  - Личность игрока определяется ТОЛЬКО по подписанным данным Telegram (initData, HMAC-SHA256 с токеном бота).
+ *  - Личность игрока определяется ТОЛЬКО по подписанным данным платформы: Telegram (initData, HMAC-SHA256 с токеном бота)
+ *    или ВКонтакте (параметры запуска, подпись sign, HMAC-SHA256 с защищённым ключом приложения).
  *    Всё, что клиент пишет про «себя» (uid, роль), игнорируется.
  *  - Владелец задан свойством OWNER_ID, администраторы хранятся на листе «admins», который меняет только этот код
  *    (операции доступны только владельцу). Из игры стать админом невозможно.
@@ -59,7 +64,10 @@ function S_(name) {
 }
 function rows_(name) { var s = S_(name), n = s.getLastRow(); return n < 2 ? [] : s.getRange(2, 1, n - 1, HEAD[name].length).getValues(); }
 function withLock_(fn) { var l = LockService.getScriptLock(); l.waitLock(15000); try { return fn(); } finally { l.releaseLock(); } }
-function digits_(v) { v = String(v == null ? '' : v).replace(/^tg:/, '').trim(); return /^\d{1,15}$/.test(v) ? v : ''; }
+// ID игрока внутри кода: «123» — Telegram, «vk123» — ВКонтакте. В таблицах хранится как uid: «tg:123» / «vk:123».
+function digits_(v) { v = String(v == null ? '' : v).trim().replace(/^tg:/, '').replace(/^vk:/, 'vk'); return /^(vk)?\d{1,15}$/.test(v) ? v : ''; }
+function uidOf_(id) { id = String(id); return id.indexOf('vk') === 0 ? 'vk:' + id.slice(2) : 'tg:' + id; }
+function idOf_(uid) { return String(uid).replace(/^tg:/, '').replace(/^vk:/, 'vk'); }
 function bytes_(str) { return Utilities.newBlob(String(str)).getBytes(); }
 function hex_(bytes) { return bytes.map(function (b) { return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join(''); }
 function safeEq_(a, b) { if (a.length !== b.length) return false; var d = 0; for (var i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
@@ -72,7 +80,9 @@ function stable_(o) { // детерминированный JSON (для при�
 
 /* ---------- подлинность: подпись Telegram ---------- */
 function verify_(raw, maxAge) {
-  var token = prop_('BOT_TOKEN'); raw = String(raw || '');
+  raw = String(raw || '');
+  if (raw.indexOf('vk:') === 0) return verifyVk_(raw, maxAge); // ВКонтакте: параметры запуска мини-приложения
+  var token = prop_('BOT_TOKEN');
   if (!token || !raw) return null;
   var o = {};
   raw.split('&').forEach(function (p) {
@@ -89,7 +99,36 @@ function verify_(raw, maxAge) {
   if (!ad || now_() / 1000 - ad > maxAge || ad > now_() / 1000 + 300) return null;
   var u; try { u = JSON.parse(o.user); } catch (e) { return null; }
   var id = digits_(u && u.id); if (!id) return null;
-  return { id: id, uid: 'tg:' + id, name: clean_((u.first_name || '') + (u.last_name ? ' ' + u.last_name : '') || u.username || id, 40) };
+  return { id: id, uid: uidOf_(id), name: clean_((u.first_name || '') + (u.last_name ? ' ' + u.last_name : '') || u.username || id, 40) };
+}
+
+/* ---------- подлинность: подпись параметров запуска VK Mini Apps ----------
+   Клиент присылает 'vk:' + адресную строку запуска. Берём параметры vk_*, сортируем по имени, склеиваем в строку
+   key=value&…, считаем HMAC-SHA256 с защищённым ключом приложения (свойство VK_SECRET) и сравниваем с sign
+   (base64url без «=»). VK_APP_ID (необязательно, но желательно) защищает от подписей чужого приложения.
+   У VK нет имени в параметрах запуска — игровое имя берётся из того, что прислал клиент. */
+function verifyVk_(raw, maxAge) {
+  var secret = prop_('VK_SECRET'), appId = prop_('VK_APP_ID');
+  raw = String(raw || '').replace(/^vk:/, '').replace(/^\?/, '');
+  if (!secret || !raw) return null;
+  var o = {}, orig = {};
+  raw.split('&').forEach(function (p) {
+    var i = p.indexOf('='); if (i < 0) return;
+    try { var k = decodeURIComponent(p.slice(0, i).replace(/\+/g, ' ')); o[k] = decodeURIComponent(p.slice(i + 1).replace(/\+/g, ' ')); orig[k] = p; } catch (e) {}
+  });
+  var got = o.sign; if (!got) return null;
+  var keys = Object.keys(o).filter(function (k) { return k.indexOf('vk_') === 0; }).sort();
+  if (!keys.length) return null;
+  var key = bytes_(secret);
+  var sign = function (str) { return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(bytes_(str), key)).replace(/=+$/, ''); };
+  var a = sign(keys.map(function (k) { return k + '=' + encodeURIComponent(o[k]); }).join('&'));
+  var b = sign(keys.map(function (k) { return orig[k]; }).join('&')); // на случай иного кодирования в адресе
+  if (!safeEq_(a, String(got)) && !safeEq_(b, String(got))) return null;
+  if (appId && o.vk_app_id !== appId) return null;
+  var ts = +o.vk_ts || 0, t = now_() / 1000;
+  if (!ts || t - ts > maxAge || ts > t + 300) return null;
+  var id = String(o.vk_user_id || ''); if (!/^\d{1,15}$/.test(id) || id === '0') return null;
+  return { id: 'vk' + id, uid: 'vk:' + id, name: 'Игрок VK ' + id };
 }
 
 /* ---------- настройки (параметры игры, радио, объявление) ---------- */
@@ -159,7 +198,7 @@ function premiumMap_() { // {uid: {since, note, title, ach}} — только д
   var m = {};
   rows_('premium').forEach(function (r) {
     var id = digits_(r[0]); if (!id || +r[5] !== 1) return;
-    m['tg:' + id] = { since: +r[1] || 0, note: String(r[2] || ''), title: PREMIUM_TITLES.indexOf(String(r[6])) >= 0 ? String(r[6]) : '', ach: achParse_(r[9]) };
+    m[uidOf_(id)] = { since: +r[1] || 0, note: String(r[2] || ''), title: PREMIUM_TITLES.indexOf(String(r[6])) >= 0 ? String(r[6]) : '', ach: achParse_(r[9]) };
   });
   cache.put('prem', JSON.stringify(m), 120); return m;
 }
@@ -266,7 +305,7 @@ function upsertPlayer_(u, b) {
   });
 }
 function chatPost_(b) {
-  var u = verify_(b.initData, AUTH_MAX); if (!u) return { ok: false, error: 'Чат доступен только внутри Telegram' };
+  var u = verify_(b.initData, AUTH_MAX); if (!u) return { ok: false, error: 'Чат доступен только внутри Telegram и ВКонтакте' };
   var role = roleOf_(u.id), cfg = cfg_();
   if (cfg.chatLocked && !role.role) return { ok: false, error: 'Чат временно закрыт администрацией' };
   var ban = sanction_(u.uid, 'ban'); if (ban) return { ok: false, error: 'Вы заблокированы: ' + ban.reason };
@@ -316,8 +355,8 @@ function admin_(b) {
 }
 /** Можно ли применять санкции к цели: не себе, не владельцу, администраторам — только владелец. */
 function targetOk_(u, r, id) {
-  if (!id) return 'Некорректный Telegram ID';
-  if ('tg:' + id === u.uid) return 'Нельзя применять к себе';
+  if (!id) return 'Некорректный ID (Telegram: 123456, VK: vk123456)';
+  if (uidOf_(id) === u.uid) return 'Нельзя применять к себе';
   var tr = roleOf_(id);
   if (tr.role === 'owner') return 'Нельзя применять к владельцу';
   if (tr.role === 'admin' && r.role !== 'owner') return 'Администраторов может наказывать только владелец';
@@ -326,16 +365,16 @@ function targetOk_(u, r, id) {
 function fail_(m) { return { ok: false, error: m }; }
 function playerRow_(r, sn, pm) {
   var uid = r[0];
-  return { uid: uid, id: uid.replace('tg:', ''), tg: r[1], name: r[2], job: r[3], rank: r[4], shifts: r[5], oj: r[6], money: r[7], days: r[8], ver: r[9], first: r[10], last: r[11],
+  return { uid: uid, id: idOf_(uid), tg: r[1], name: r[2], job: r[3], rank: r[4], shifts: r[5], oj: r[6], money: r[7], days: r[8], ver: r[9], first: r[10], last: r[11],
     banned: !!(sn && sn.ban[uid]), muted: !!(sn && sn.mute[uid]), premium: !!(pm && pm[uid]) };
 }
 function setSanction_(u, type, id, until, reason) {
-  var uid = 'tg:' + id, s = S_('sanctions'), n = s.getLastRow();
+  var uid = uidOf_(id), s = S_('sanctions'), n = s.getLastRow();
   rows_('sanctions').forEach(function (r, i) { if (r[0] === uid && r[1] === type && +r[7] === 1) s.getRange(i + 2, 8).setValue(0); });
   s.appendRow([uid, type, until, reason, u.uid, u.name, now_(), 1]); dropSanctionCache_(uid);
 }
 function clearSanction_(type, id) {
-  var uid = 'tg:' + id, s = S_('sanctions'), c = 0;
+  var uid = uidOf_(id), s = S_('sanctions'), c = 0;
   rows_('sanctions').forEach(function (r, i) { if (r[0] === uid && r[1] === type && +r[7] === 1) { s.getRange(i + 2, 8).setValue(0); c++; } });
   dropSanctionCache_(uid); return c;
 }
@@ -369,12 +408,12 @@ var OPS = {
   } },
   players_search: { perm: 'players', fn: function (u, r, a) {
     var q = clean_(a.q, 40).toLowerCase(), sn = activeSanctions_(), pm = premiumMap_();
-    var list = rows_('players').filter(function (x) { if (!q) return true; var d = digits_(q); if (d && x[0] === 'tg:' + d) return true; return String(x[2]).toLowerCase().indexOf(q) >= 0 || String(x[1]).toLowerCase().indexOf(q) >= 0; })
+    var list = rows_('players').filter(function (x) { if (!q) return true; var d = digits_(q); if (d && x[0] === uidOf_(d)) return true; return String(x[2]).toLowerCase().indexOf(q) >= 0 || String(x[1]).toLowerCase().indexOf(q) >= 0; })
       .sort(function (a, b) { return +b[11] - +a[11]; }).slice(0, 30).map(function (x) { return playerRow_(x, sn, pm); });
     return { ok: true, players: list };
   } },
   player_get: { perm: 'players', fn: function (u, r, a) {
-    var id = digits_(a.uid), uid = 'tg:' + id; if (!id) return fail_('Некорректный Telegram ID');
+    var id = digits_(a.uid), uid = uidOf_(id); if (!id) return fail_('Некорректный ID (Telegram: 123456, VK: vk123456)');
     var sn = activeSanctions_(), row = rows_('players').filter(function (x) { return x[0] === uid; })[0];
     var role = roleOf_(id).role;
     var msgs = chatRows_(600).filter(function (m) { return m.uid === uid; }).slice(-10).reverse();
@@ -386,27 +425,27 @@ var OPS = {
     fn: function (u, r, a) {
       var id = digits_(a.uid), bad = targetOk_(u, r, id); if (bad) return fail_(bad);
       var nm = clean_(a.name, 18); if (nm.length < 2) return fail_('Имя слишком короткое');
-      var c = cfg_(); c.forced = c.forced || {}; c.forced['tg:' + id] = nm; saveCfg_(c);
-      audit_(u, 'tg:' + id, 'Смена игрового имени', a.reason, 'новое имя: ' + nm); return { ok: true };
+      var c = cfg_(); c.forced = c.forced || {}; c.forced[uidOf_(id)] = nm; saveCfg_(c);
+      audit_(u, uidOf_(id), 'Смена игрового имени', a.reason, 'новое имя: ' + nm); return { ok: true };
     } },
   sanctions_list: { perm: 'bans', fn: function () {
     var sn = activeSanctions_(), out = [];
-    ['ban', 'mute'].forEach(function (t) { Object.keys(sn[t]).forEach(function (uid) { var x = sn[t][uid]; out.push({ type: t, uid: uid, id: uid.replace('tg:', ''), name: playerName_(uid), until: x.until, reason: x.reason, by: x.by, at: x.at }); }); });
+    ['ban', 'mute'].forEach(function (t) { Object.keys(sn[t]).forEach(function (uid) { var x = sn[t][uid]; out.push({ type: t, uid: uid, id: idOf_(uid), name: playerName_(uid), until: x.until, reason: x.reason, by: x.by, at: x.at }); }); });
     out.sort(function (a, b) { return b.at - a.at; }); return { ok: true, list: out };
   } },
   ban: { perm: 'bans', reason: 1, write: 1, title: function (a) { return 'ЗАБЛОКИРОВАТЬ игрока ' + clean_(a.uid, 20) + (+a.hours ? ' на ' + num_(a.hours, 1, 8760) + ' ч.' : ' НАВСЕГДА') + '. Причина: ' + clean_(a.reason, 80); },
     fn: function (u, r, a) {
       var id = digits_(a.uid), bad = targetOk_(u, r, id); if (bad) return fail_(bad);
       var h = +a.hours > 0 ? num_(a.hours, 1, 8760) : 0, until = h ? now_() + h * 3600000 : 0;
-      setSanction_(u, 'ban', id, until, a.reason); audit_(u, 'tg:' + id, 'БАН', a.reason, h ? h + ' ч.' : 'навсегда'); return { ok: true };
+      setSanction_(u, 'ban', id, until, a.reason); audit_(u, uidOf_(id), 'БАН', a.reason, h ? h + ' ч.' : 'навсегда'); return { ok: true };
     } },
-  unban: { perm: 'bans', reason: 1, write: 1, fn: function (u, r, a) { var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID'); clearSanction_('ban', id); audit_(u, 'tg:' + id, 'Разбан', a.reason, ''); return { ok: true }; } },
+  unban: { perm: 'bans', reason: 1, write: 1, fn: function (u, r, a) { var id = digits_(a.uid); if (!id) return fail_('Некорректный ID (Telegram: 123456, VK: vk123456)'); clearSanction_('ban', id); audit_(u, uidOf_(id), 'Разбан', a.reason, ''); return { ok: true }; } },
   mute: { perm: 'bans', reason: 1, write: 1, fn: function (u, r, a) {
     var id = digits_(a.uid), bad = targetOk_(u, r, id); if (bad) return fail_(bad);
     var m = num_(a.minutes, 1, 525600), until = now_() + m * 60000;
-    setSanction_(u, 'mute', id, until, a.reason); audit_(u, 'tg:' + id, 'МУТ', a.reason, m + ' мин.'); return { ok: true };
+    setSanction_(u, 'mute', id, until, a.reason); audit_(u, uidOf_(id), 'МУТ', a.reason, m + ' мин.'); return { ok: true };
   } },
-  unmute: { perm: 'bans', reason: 1, write: 1, fn: function (u, r, a) { var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID'); clearSanction_('mute', id); audit_(u, 'tg:' + id, 'Снятие мута', a.reason, ''); return { ok: true }; } },
+  unmute: { perm: 'bans', reason: 1, write: 1, fn: function (u, r, a) { var id = digits_(a.uid); if (!id) return fail_('Некорректный ID (Telegram: 123456, VK: vk123456)'); clearSanction_('mute', id); audit_(u, uidOf_(id), 'Снятие мута', a.reason, ''); return { ok: true }; } },
   chat_recent: { perm: 'chat', fn: function (u, r, a) { return { ok: true, msgs: chatRows_(num_(a.limit || 60, 1, 150)).reverse(), locked: !!cfg_().chatLocked, announce: cfg_().announce || '' }; } },
   chat_delete: { perm: 'chat', reason: 1, write: 1, fn: function (u, r, a) {
     var s = S_('chat'), id = num_(a.id, 0, 1e7); if (id < 2 || id > s.getLastRow()) return fail_('Сообщение не найдено');
@@ -415,9 +454,9 @@ var OPS = {
   } },
   chat_delete_user: { perm: 'chat', reason: 1, write: 1, title: function (a) { return 'Удалить ВСЕ сообщения игрока ' + clean_(a.uid, 20) + '. Причина: ' + clean_(a.reason, 80); },
     fn: function (u, r, a) {
-      var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID');
-      var s = S_('chat'), cnt = 0; rows_('chat').forEach(function (x, i) { if (x[0] !== undefined && x[1] === 'tg:' + id && +x[5] !== 1) { s.getRange(i + 2, 6, 1, 3).setValues([[1, u.uid, a.reason]]); cnt++; } });
-      audit_(u, 'tg:' + id, 'Удаление всех сообщений', a.reason, 'удалено: ' + cnt); return { ok: true, count: cnt };
+      var id = digits_(a.uid); if (!id) return fail_('Некорректный ID (Telegram: 123456, VK: vk123456)');
+      var s = S_('chat'), cnt = 0; rows_('chat').forEach(function (x, i) { if (x[0] !== undefined && x[1] === uidOf_(id) && +x[5] !== 1) { s.getRange(i + 2, 6, 1, 3).setValues([[1, u.uid, a.reason]]); cnt++; } });
+      audit_(u, uidOf_(id), 'Удаление всех сообщений', a.reason, 'удалено: ' + cnt); return { ok: true, count: cnt };
     } },
   chat_lock: { perm: 'chat', reason: 1, write: 1, title: function (a) { return a.locked ? 'ЗАКРЫТЬ общий чат для всех игроков' : 'Открыть общий чат'; },
     fn: function (u, r, a) { var c = cfg_(); c.chatLocked = !!a.locked; saveCfg_(c); audit_(u, '', a.locked ? 'Чат закрыт' : 'Чат открыт', a.reason, ''); return { ok: true }; } },
@@ -434,7 +473,7 @@ var OPS = {
     fn: function (u, r, a) { var c = cfg_(); c.params = {}; saveCfg_(c); audit_(u, '', 'Сброс всех параметров', a.reason, ''); return { ok: true }; } },
   audit: { perm: 'audit', fn: function (u, r, a) {
     var q = clean_(a.q, 40).toLowerCase(), list = rows_('audit').filter(function (x) { return !q || x.join(' ').toLowerCase().indexOf(q) >= 0; }).slice(-num_(a.limit || 100, 1, 300)).reverse()
-      .map(function (x) { return { t: x[0], actor: x[2], actorId: String(x[1]).replace('tg:', ''), target: String(x[3]).replace('tg:', ''), targetName: x[4], action: x[5], reason: x[6], details: x[7] }; });
+      .map(function (x) { return { t: x[0], actor: x[2], actorId: idOf_(String(x[1])), target: idOf_(String(x[3])), targetName: x[4], action: x[5], reason: x[6], details: x[7] }; });
     return { ok: true, list: list };
   } },
   /* --- только владелец --- */
@@ -442,7 +481,7 @@ var OPS = {
     var names = playerNames_(), out = [];
     rows_('premium').forEach(function (r) {
       var id = digits_(r[0]); if (!id) return;
-      out.push({ id: id, name: names['tg:' + id] || '', active: +r[5] === 1, since: +r[1] || 0, note: String(r[2] || ''), by: String(r[4] || ''), title: String(r[6] || ''), lastPayout: +r[7] || 0, payoutTotal: +r[8] || 0 });
+      out.push({ id: id, name: names[uidOf_(id)] || '', active: +r[5] === 1, since: +r[1] || 0, note: String(r[2] || ''), by: String(r[4] || ''), title: String(r[6] || ''), lastPayout: +r[7] || 0, payoutTotal: +r[8] || 0 });
     });
     out.sort(function (a, b) { return (b.active - a.active) || (b.since - a.since); });
     return { ok: true, list: out, payout: PREMIUM_PAYOUT, titles: PREMIUM_TITLES };
@@ -450,8 +489,8 @@ var OPS = {
   /* Выдать премиум или изменить запись для игрока (поле reason — это и есть «запись от администратора», её видит игрок) */
   premium_grant: { owner: 1, reason: 1, write: 1,
     fn: function (u, r, a) {
-      var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID');
-      var uid = 'tg:' + id, note = clean_(a.reason, 120), s = S_('premium'), pr = premiumRow_(uid);
+      var id = digits_(a.uid); if (!id) return fail_('Некорректный ID (Telegram: 123456, VK: vk123456)');
+      var uid = uidOf_(id), note = clean_(a.reason, 120), s = S_('premium'), pr = premiumRow_(uid);
       if (!pr) {
         s.appendRow([uid, now_(), note, u.uid, u.name, 1, '', 0, 0, '[]']); dropPremiumCache_();
         audit_(u, uid, 'Премиум выдан', note, ''); return { ok: true, granted: true };
@@ -465,34 +504,34 @@ var OPS = {
     } },
   premium_revoke: { owner: 1, reason: 1, write: 1, title: function (a) { return 'СНЯТЬ премиум-аккаунт у игрока ' + clean_(a.uid, 20) + '. Причина: ' + clean_(a.reason, 80); },
     fn: function (u, r, a) {
-      var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID');
-      var pr = premiumRow_('tg:' + id); if (!pr || +pr.vals[5] !== 1) return fail_('У игрока нет действующего премиума');
+      var id = digits_(a.uid); if (!id) return fail_('Некорректный ID (Telegram: 123456, VK: vk123456)');
+      var pr = premiumRow_(uidOf_(id)); if (!pr || +pr.vals[5] !== 1) return fail_('У игрока нет действующего премиума');
       S_('premium').getRange(pr.row, 6).setValue(0); dropPremiumCache_();
-      audit_(u, 'tg:' + id, 'Премиум снят', a.reason, ''); return { ok: true };
+      audit_(u, uidOf_(id), 'Премиум снят', a.reason, ''); return { ok: true };
     } },
   admins_list: { owner: 1, fn: function () { var m = admins_(); return { ok: true, perms: PERMS, list: Object.keys(m).map(function (id) { return { id: id, name: m[id].name, perms: m[id].perms }; }) }; } },
   admin_add: { owner: 1, reason: 1, write: 1, title: function (a) { return 'НАЗНАЧИТЬ администратором игрока ' + clean_(a.uid, 20) + ' с правами: ' + ((a.perms || []).join(', ') || 'нет'); },
     fn: function (u, r, a) {
-      var id = digits_(a.uid); if (!id) return fail_('Некорректный Telegram ID');
+      var id = digits_(a.uid); if (!id) return fail_('Некорректный ID (Telegram: 123456, VK: vk123456)');
       if (id === digits_(prop_('OWNER_ID'))) return fail_('Это владелец');
       if (admins_()[id]) return fail_('Уже администратор');
       var perms = (Array.isArray(a.perms) ? a.perms : []).filter(function (p) { return PERMS.indexOf(p) >= 0; });
-      S_('admins').appendRow(['tg:' + id, clean_(a.name, 30) || playerName_('tg:' + id) || id, perms.join(','), u.uid, now_()]); CacheService.getScriptCache().remove('adm');
-      audit_(u, 'tg:' + id, 'Назначен администратор', a.reason, 'права: ' + perms.join(',')); return { ok: true };
+      S_('admins').appendRow([uidOf_(id), clean_(a.name, 30) || playerName_(uidOf_(id)) || id, perms.join(','), u.uid, now_()]); CacheService.getScriptCache().remove('adm');
+      audit_(u, uidOf_(id), 'Назначен администратор', a.reason, 'права: ' + perms.join(',')); return { ok: true };
     } },
   admin_perms: { owner: 1, reason: 1, write: 1, title: function (a) { return 'ИЗМЕНИТЬ права администратора ' + clean_(a.uid, 20) + ' на: ' + ((a.perms || []).join(', ') || 'нет'); },
     fn: function (u, r, a) {
       var id = digits_(a.uid), s = S_('admins'), perms = (Array.isArray(a.perms) ? a.perms : []).filter(function (p) { return PERMS.indexOf(p) >= 0; }), ok = false;
-      rows_('admins').forEach(function (x, i) { if (x[0] === 'tg:' + id) { s.getRange(i + 2, 3).setValue(perms.join(',')); ok = true; } });
+      rows_('admins').forEach(function (x, i) { if (x[0] === uidOf_(id)) { s.getRange(i + 2, 3).setValue(perms.join(',')); ok = true; } });
       if (!ok) return fail_('Администратор не найден'); CacheService.getScriptCache().remove('adm');
-      audit_(u, 'tg:' + id, 'Изменены права администратора', a.reason, 'права: ' + perms.join(',')); return { ok: true };
+      audit_(u, uidOf_(id), 'Изменены права администратора', a.reason, 'права: ' + perms.join(',')); return { ok: true };
     } },
   admin_remove: { owner: 1, reason: 1, write: 1, title: function (a) { return 'СНЯТЬ администратора ' + clean_(a.uid, 20); },
     fn: function (u, r, a) {
       var id = digits_(a.uid), s = S_('admins'), row = 0;
-      rows_('admins').forEach(function (x, i) { if (x[0] === 'tg:' + id) row = i + 2; });
+      rows_('admins').forEach(function (x, i) { if (x[0] === uidOf_(id)) row = i + 2; });
       if (!row) return fail_('Администратор не найден'); s.deleteRow(row); CacheService.getScriptCache().remove('adm');
-      audit_(u, 'tg:' + id, 'Снят администратор', a.reason, ''); return { ok: true };
+      audit_(u, uidOf_(id), 'Снят администратор', a.reason, ''); return { ok: true };
     } },
   radio_get: { owner: 1, fn: function () { return { ok: true, radio: cfg_().radio }; } },
   radio_set: { owner: 1, reason: 1, write: 1, title: function (a) { return 'ИЗМЕНИТЬ радиопотоки и настройки радиостанции для ВСЕХ игроков'; },

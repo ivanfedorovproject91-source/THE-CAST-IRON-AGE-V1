@@ -267,9 +267,14 @@
   UI.setSec = function (x) { const L = G.lb; L.sec = x; L.by = x === 'me' ? 'oj' : x === 'co' ? 'profit' : 'brig'; UI.render(); };
   UI.setBy = function (b) { G.lb.by = b; UI.render(); };
   UI.reloadLb = function () { G.lb.load(G.lb.by, true); G.lb.err = null; UI.render(); };
-  UI.brigCreate = function () { const n = window.prompt('Название бригады (3–20 символов):', ''); if (n && n.trim()) G.lb.brig('brigade_create', n.trim()); };
+  // Свои окна вместо window.prompt/confirm: в мобильных оболочках (Telegram, VK) системные диалоги работают не везде.
+  UI.brigCreate = function () {
+    UI.brigDraft = '';
+    G.modal({ title: 'Новая бригада', text: 'Название бригады (3–20 символов):<br><input id="brigName" type="text" maxlength="20" autocomplete="off" oninput="G.ui.brigDraft=this.value" style="width:100%;margin-top:8px;padding:10px;font-size:16px;background:#0c0b0a;color:#e9e4d8;border:2px solid #3a3530;border-radius:4px">',
+      opts: [{ t: 'Создать', cls: 'hazard', fn: () => { const n = String(UI.brigDraft || '').trim(); UI.brigDraft = ''; if (n.length >= 3) G.lb.brig('brigade_create', n); else G.toast && G.toast('Название — от 3 до 20 знаков.', 'warn'); } }, { t: 'Отмена', fn: () => {} }] });
+  };
   UI.brigJoin = function (n) { G.lb.brig('brigade_join', n); };
-  UI.brigLeave = function () { if (window.confirm('Выйти из бригады?')) G.lb.brig('brigade_leave'); };
+  UI.brigLeave = function () { G.modal({ title: 'Выйти из бригады?', text: 'Очки недели у бригады останутся, но ты в списке больше не числишься.', opts: [{ t: 'Выйти', fn: () => G.lb.brig('brigade_leave') }, { t: 'Остаться', fn: () => {} }] }); };
 
   // ---------- Дело (досье)
   function fileTab() {
@@ -337,7 +342,7 @@
     if (G.hasSave() && !UI.confirmed) { G.modal({ title: 'Новая игра', text: 'Сохранение будет перезаписано при начале новой смены.', opts: [{ t: 'Начать', fn: () => { UI.confirmed = true; UI.newGame(); UI.confirmed = false; } }, { t: 'Отмена', fn: () => {} }] }); return; }
     G.s = null;
     let nm = '';
-    try { const u = window.Telegram.WebApp.initDataUnsafe.user; if (u && u.first_name) nm = u.first_name; } catch (e) {}
+    try { nm = G.platform.userName() || ''; } catch (e) {}
     UI.draft = { name: nm, av: G.defaultAv(), edu: 'chpu' }; UI.step = 0; UI.mode = 'create'; UI.render();
   };
 
@@ -431,7 +436,7 @@
     G.modal({ title: '🛠 Меню разработчика', wide: true, text: 'Диагностика, копии и облако — безопасны. «Читы» навсегда отключают это прохождение от общего рейтинга.', opts: [
       { t: 'ℹ Диагностика загрузки', fn: () => G.diag.show() },
       { t: '💾 Сохранение: копии и перенос', fn: () => UI.debugSave() },
-      { t: '☁ Облако Telegram', fn: () => UI.debugCloud() },
+      { t: '☁ Облако (Telegram / VK)', fn: () => UI.debugCloud() },
       { t: '🎮 Читы (отключат рейтинг)', fn: () => UI.debugCheats() },
       { t: 'Закрыть', fn: () => {} }] });
   };
@@ -452,7 +457,7 @@
   };
   UI.debugCloud = function () {
     const C = G.cloud, d = C.lastDecision;
-    G.modal({ title: '☁ Облако Telegram', wide: true, text: '<div class="kv"><span>Доступно</span><b>' + (C.available() ? 'да' : 'нет (нужен Telegram)') + '</b></div><div class="kv"><span>Статус</span><b>' + (C.status || '—') + '</b></div>' + (d ? '<div class="kv"><span>Последняя сверка</span><b>' + d.act + ': ' + d.why + '</b></div>' : ''), opts: [
+    G.modal({ title: '☁ Облако ' + G.platform.label(), wide: true, text: '<div class="kv"><span>Доступно</span><b>' + (C.available() ? 'да' : 'нет (нужен Telegram или ВКонтакте)') + '</b></div><div class="kv"><span>Статус</span><b>' + (C.status || '—') + '</b></div>' + (d ? '<div class="kv"><span>Последняя сверка</span><b>' + d.act + ': ' + d.why + '</b></div>' : ''), opts: [
       { t: '🔄 Сверить с облаком', dis: C.available() ? null : 'Нет облака', fn: () => { C.synced = false; C.sync(); } },
       { t: '⬆ Принудительно записать в облако', dis: C.available() ? null : 'Нет облака', fn: () => G.modal({ title: 'Перезаписать облако?', text: 'Облачное сохранение будет заменено текущим.', opts: [{ t: 'Да', fn: () => { C.synced = true; C.allowOverwrite = true; C.push(); } }, { t: 'Отмена', fn: () => {} }] }) },
       { t: 'Назад', fn: () => UI.debug() }] });

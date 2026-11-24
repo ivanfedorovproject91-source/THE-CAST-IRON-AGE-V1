@@ -175,7 +175,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 
 /* ===== V1 (3.6.0) ===== */
 :root { --app-h: 100%; }
-#app { height: var(--app-h, 100%); }
+#app { height: calc(var(--app-h, 100%) - var(--safe-t)); } /* body уже отступает на --safe-t сверху */
 .tb-face { width: 56px; height: 56px; }
 .tb-info { flex: 1; min-width: 0; }
 .tb-name { font-size: 14px; }

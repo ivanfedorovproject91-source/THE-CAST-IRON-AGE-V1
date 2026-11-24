@@ -9,8 +9,7 @@
   function devId() {
     try { let d = localStorage.getItem('cv_dev_id'); if (!d) { d = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem('cv_dev_id', d); } return d; } catch (e) { return 'nodev'; }
   }
-  function tg() { try { return window.Telegram && window.Telegram.WebApp; } catch (e) { return null; } }
-  LB.uid = function () { const t = tg(), u = t && t.initDataUnsafe && t.initDataUnsafe.user; return u && u.id ? 'tg:' + u.id : 'dev:' + devId(); };
+  LB.uid = function () { return G.platform.userId() || 'dev:' + devId(); };
   const seasonId = () => new Date().toISOString().slice(0, 7);
   function weekId() { // ISO-неделя (UTC), как на сервере
     const d = new Date(), t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())), dn = t.getUTCDay() || 7;
@@ -24,9 +23,9 @@
     return Math.max(0, (s.car.shifts - f.wkBase.shifts) * 100 + (made - f.wkBase.made));
   };
   LB.payload = function () {
-    const s = G.s, t = tg(), f = s.flags, e = f.eco || {}, st = f.staff || [], made = e.made || 0;
+    const s = G.s, f = s.flags, e = f.eco || {}, st = f.staff || [], made = e.made || 0;
     return { action: 'score', v: CFG.VERSION, name: s.name, oj: G.ojScore(), shifts: s.car.shifts, rank: s.car.rank, days: s.t.day, money: Math.round(s.money), job: G.jobTitle(), end: s.end ? s.end.id : null, hidden: G.settings.lbOn === false,
-      season: seasonId(), seasonBest: G.seasonBest ? G.seasonBest() : 0, dev: devId(), initData: t && t.initData ? t.initData : '',
+      season: seasonId(), seasonBest: G.seasonBest ? G.seasonBest() : 0, dev: devId(), initData: G.platform.initData(),
       pay: G.monthlyPay ? G.monthlyPay() : 0, profit: Math.round((e.rev || 0) - (e.exp || 0)), made: made, staff: st.length, quality: made ? Math.round((1 - (e.rej || 0) / made) * 100) : 0,
       shop: 'Цех «' + s.name + '»', week: weekId(), wkPts: G.weekPts() };
   };
@@ -59,7 +58,7 @@
     LB.brigMsg = 'Подожди…';
     LB.submit(true);
     setTimeout(() => {
-      post({ action: action, name: name || '', dev: devId(), initData: (tg() && tg().initData) || '' }).then(j => {
+      post({ action: action, name: name || '', dev: devId(), initData: G.platform.initData() }).then(j => {
         LB.brigMsg = j && j.ok ? (action === 'brigade_leave' ? 'Ты вышел из бригады.' : 'Готово: бригада «' + j.name + '».') : ((j && j.error) || 'Не удалось');
         if (j && j.ok) { G.s.flags.brigade = action === 'brigade_leave' ? '' : j.name; LB.cache = {}; G.save && G.save(); }
       }).catch(e => { LB.brigMsg = 'Нет связи: ' + String(e.message || e); }).then(() => { if (G.ui) { G.ui.keepScroll = true; G.ui.render(); } });

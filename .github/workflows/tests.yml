@@ -11,8 +11,11 @@ jobs:
         with: { python-version: '3.12' }
       - name: Синтаксис JS
         run: for f in js/*.js; do node --check "$f"; done
-      - name: Тест серверной логики (Apps Script)
-        run: node tests/admin_gas_test.js
+      - name: Тесты серверной логики (Apps Script)
+        run: |
+          node tests/admin_gas_test.js
+          node tests/rating_gas_test.js
+          node tests/vk_gas_test.js
       - name: Браузерные тесты
         run: |
           pip install playwright

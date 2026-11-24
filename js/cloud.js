@@ -1,18 +1,24 @@
-/* ===== Облачное сохранение через Telegram CloudStorage (v3.14) =====
-   Зачем: прогресс в localStorage теряется при очистке кэша Telegram и не переносится на другое устройство.
-   Как: копия сохранения режется на куски (лимит значения — 4096 символов) и лежит в CloudStorage пользователя.
+/* ===== Облачное сохранение: Telegram CloudStorage или VK Storage (v3.14, VK — v3.18) =====
+   Зачем: прогресс в localStorage теряется при очистке кэша и не переносится на другое устройство.
+   Как: копия сохранения режется на куски и лежит в облачном хранилище платформы пользователя (G.platform.cloud).
+   Размер куска, сжатие и частота записи зависят от платформы: у Telegram лимит значения 4096 символов,
+   у VK — 4096 байт и 1000 запросов в час, поэтому там сохранение сжимается и пишутся только изменившиеся куски.
    При запуске: если локального сохранения нет, а в облаке есть — восстанавливаем; если облако новее локального — спрашиваем.
-   Без Telegram (обычный браузер) модуль молча ничего не делает. */
+   Без Telegram и VK (обычный браузер) модуль молча ничего не делает. */
 (function () {
   'use strict';
   const G = (window.G = window.G || {});
   const CL = (G.cloud = { status: '', lastPush: 0 });
-  const CHUNK = 3500, MAX_CHUNKS = 400, TS_KEY = 'cv_local_ts', PUSH_EVERY = 25000;
-  const tg = () => { try { return window.Telegram && window.Telegram.WebApp; } catch (e) { return null; } };
-  const store = () => { const t = tg(); return t && t.CloudStorage && (!t.isVersionAtLeast || t.isVersionAtLeast('6.9')) ? t.CloudStorage : null; };
+  const MAX_CHUNKS = 400, TS_KEY = 'cv_local_ts';
+  const store = () => { try { const c = G.platform && G.platform.cloud; return c && c.available() ? c : null; } catch (e) { return null; } };
+  const pushEvery = () => { const c = store(); return (c && c.pushEvery) || 25000; };
   CL.available = () => !!store();
 
-  const call = (fn, ...args) => new Promise((res, rej) => { try { store()[fn](...args, (err, val) => (err ? rej(err) : res(val))); } catch (e) { rej(e); } });
+  // Единые вызовы к хранилищу платформы: getItem / setItem / removeItems (как у Telegram CloudStorage)
+  const call = (fn, ...args) => new Promise((res, rej) => {
+    try { const c = store(); if (!c) throw new Error('no cloud'); res(fn === 'getItem' ? c.get(args[0]) : fn === 'setItem' ? c.set(args[0], args[1]) : c.remove(args[0])); } catch (e) { rej(e); }
+  });
+  let written = {}; // что уже лежит в облаке (по номеру куска): у платформ с лимитом запросов повторно не пишем неизменённое
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
@@ -28,15 +34,18 @@
     const raw = lsGet(G.SAVE_KEY); if (!raw) return false;
     busy = true; dirty = false;
     try {
-      const n = Math.ceil(raw.length / CHUNK);
+      const st = store(), pk = await st.pack(raw), data = pk.data, CHUNK = st.chunk; // размер куска читаем после pack: без сжатия он меньше
+      const n = Math.ceil(data.length / CHUNK);
       if (n > MAX_CHUNKS) { CL.status = 'сохранение слишком большое для облака'; return false; }
       const ts = Date.now();
-      let old = 0; try { old = (JSON.parse(await call('getItem', 'cv_meta') || '{}').n) || 0; } catch (e) {}
-      for (let i = 0; i < n; i++) await call('setItem', 'cv_' + i, raw.slice(i * CHUNK, (i + 1) * CHUNK));
-      await call('setItem', 'cv_meta', JSON.stringify({ n, ts, len: raw.length, v: (G.CONFIG && G.CONFIG.VERSION) || '', run: CL.runOf(G.s), shifts: CL.progOf(G.s), day: G.s && G.s.t && G.s.t.day })); // метка — последней: неполная запись не принимается
-      if (old > n) { const ks = []; for (let i = n; i < old; i++) ks.push('cv_' + i); await call('removeItems', ks); }
+      let oldMeta = {}; try { oldMeta = JSON.parse(await call('getItem', 'cv_meta') || '{}') || {}; } catch (e) {}
+      const old = oldMeta.n || 0;
+      if (!st.diff || !CL.lastPush || oldMeta.ts !== CL.lastPush) written = {}; // в облаке побывало другое устройство или это первая запись — пишем всё
+      for (let i = 0; i < n; i++) { const part = data.slice(i * CHUNK, (i + 1) * CHUNK); if (st.diff && written[i] === part) continue; await call('setItem', 'cv_' + i, part); written[i] = part; }
+      await call('setItem', 'cv_meta', JSON.stringify({ n, ts, len: data.length, enc: pk.enc || '', v: (G.CONFIG && G.CONFIG.VERSION) || '', run: CL.runOf(G.s), shifts: CL.progOf(G.s), day: G.s && G.s.t && G.s.t.day })); // метка — последней: неполная запись не принимается
+      if (old > n) { const ks = []; for (let i = n; i < old; i++) { ks.push('cv_' + i); delete written[i]; } await call('removeItems', ks); }
       lsSet(TS_KEY, String(ts)); CL.lastPush = ts; CL.known = { run: CL.runOf(G.s), shifts: CL.progOf(G.s) }; CL.status = 'сохранено в облако'; return true;
-    } catch (e) { CL.status = 'облако недоступно'; return false; }
+    } catch (e) { written = {}; CL.status = 'облако недоступно'; return false; }
     finally { busy = false; if (dirty) schedule(); }
   };
 
@@ -44,8 +53,9 @@
     if (!store()) return null;
     try {
       const meta = JSON.parse(await call('getItem', 'cv_meta') || 'null'); if (!meta || !meta.n) return null;
-      let raw = ''; for (let i = 0; i < meta.n; i++) { const part = await call('getItem', 'cv_' + i); if (!part) return null; raw += part; }
-      if (meta.len && raw.length !== meta.len) return null; // повреждена или записывается прямо сейчас
+      let data = ''; for (let i = 0; i < meta.n; i++) { const part = await call('getItem', 'cv_' + i); if (!part) return null; data += part; }
+      if (meta.len && data.length !== meta.len) return null; // повреждена или записывается прямо сейчас
+      const raw = await store().unpack(data, meta.enc || '');
       const d = JSON.parse(raw); if (!d || !d.s || !d.s.st || !d.s.t) return null;
       CL.known = { run: CL.runOf(d.s), shifts: CL.progOf(d.s) };
       return { meta, raw, d };
@@ -75,7 +85,7 @@
   };
 
   CL.sync = async function () {
-    if (!store()) { CL.status = 'облако недоступно (откройте игру из Telegram)'; return; }
+    if (!store()) { CL.status = 'облако недоступно (откройте игру из Telegram или ВКонтакте)'; return; }
     const c = await CL.pull();
     if (!c) { CL.synced = true; if (lsGet(G.SAVE_KEY)) CL.push(); return; }
     const local = lsGet(G.SAVE_KEY), localTs = +lsGet(TS_KEY) || 0;
@@ -94,7 +104,7 @@
         { t: 'Решу позже (облако не трогаем)', fn: () => { CL.status = 'облако не изменено: выбор отложен'; } }] });
   };
 
-  function schedule() { if (timer) return; timer = setTimeout(() => { timer = null; CL.push(); }, PUSH_EVERY); }
+  function schedule() { if (timer) return; timer = setTimeout(() => { timer = null; CL.push(); }, pushEvery()); }
   const saveOrig = G.save;
   G.save = function () { const r = saveOrig.apply(this, arguments); try { if (!G.headless && G.s) { lsSet(TS_KEY, String(Date.now())); if (store()) schedule(); } } catch (e) {} return r; };
   document.addEventListener('visibilitychange', () => { if (document.hidden && store()) CL.push(); });

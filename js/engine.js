@@ -98,7 +98,7 @@
     return String(t).replace(/\{name\}/g, s.name).replace(/\{tn\}/g, () => G.pick(D.TRUH_NAMES)).replace(/\{boss\}/g, 'Труханов');
   };
   G.buzz = function (kind) {
-    try { if (!G.settings.haptic) return; const h = window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback; if (!h) return; if (kind === 'light') h.impactOccurred('light'); else h.notificationOccurred(kind); } catch (e) {}
+    try { if (!G.settings.haptic) return; G.platform.haptic(kind); } catch (e) {}
   };
 
   // ---------- Модальные окна (очередь)

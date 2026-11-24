@@ -9,6 +9,8 @@
  * URL веб-приложения при этом не меняется.
  *
  * Свойства скрипта (необязательно): BOT_TOKEN, REQUIRE_TELEGRAM=1 (подробности — в инструкции).
+ * Для игроков ВКонтакте: VK_SECRET (защищённый ключ приложения VK) и VK_APP_ID (ID приложения). REQUIRE_TELEGRAM=1 требует
+ * подписанную личность — Telegram или VK, — безымянных веб-игроков тогда не принимаем.
  * Для управления рейтингом из игры (Админ-кабинет → «Рейтинг») нужны оба свойства: BOT_TOKEN и OWNER_ID (ваш Telegram ID).
  * Управлять рейтингом может только владелец: подпись Telegram проверяется здесь, поле «владелец» от клиента игнорируется.
  */
@@ -73,9 +75,27 @@ function verifyTelegram_(initData, token, maxAge) {
   if (kv.auth_date && (Date.now() / 1000 - Number(kv.auth_date)) > (maxAge || 7 * 86400)) return null;
   try { return JSON.parse(kv.user); } catch (e) { return null; }
 }
+// Подпись параметров запуска VK Mini Apps: vk_* по алфавиту → «k=v&…» → HMAC-SHA256 защищённым ключом → base64url без «=» (поле sign).
+function verifyVk_(initData, secret, appId, maxAge) {
+  const raw = String(initData || '').replace(/^vk:/, '').replace(/^\?/, ''), o = {}, orig = {};
+  raw.split('&').forEach(s => { const i = s.indexOf('='); if (i < 0) return; try { const k = decodeURIComponent(s.slice(0, i).replace(/\+/g, ' ')); o[k] = decodeURIComponent(s.slice(i + 1).replace(/\+/g, ' ')); orig[k] = s; } catch (e) {} });
+  if (!o.sign || !secret) return null;
+  const keys = Object.keys(o).filter(k => k.indexOf('vk_') === 0).sort(); if (!keys.length) return null;
+  const b = x => Utilities.newBlob(String(x)).getBytes(), key = b(secret);
+  const sign = str => Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(b(str), key)).replace(/=+$/, '');
+  const eq = (x, y) => { if (x.length !== y.length) return false; let d = 0; for (let i = 0; i < x.length; i++) d |= x.charCodeAt(i) ^ y.charCodeAt(i); return d === 0; };
+  const got = String(o.sign);
+  if (!eq(sign(keys.map(k => k + '=' + encodeURIComponent(o[k])).join('&')), got) && !eq(sign(keys.map(k => orig[k]).join('&')), got)) return null;
+  if (appId && o.vk_app_id !== String(appId)) return null;
+  const ts = Number(o.vk_ts) || 0, now = Date.now() / 1000;
+  if (!ts || now - ts > (maxAge || 7 * 86400) || ts > now + 300) return null;
+  if (!/^\d{1,15}$/.test(String(o.vk_user_id || '')) || o.vk_user_id === '0') return null;
+  return { id: o.vk_user_id };
+}
 function identity_(p) {
-  const token = props_().getProperty('BOT_TOKEN'), strict = props_().getProperty('REQUIRE_TELEGRAM') === '1';
-  if (p.initData && token) { const u = verifyTelegram_(p.initData, token); if (u && u.id) return { id: 'tg:' + u.id, src: 'tg' }; throw new Error('bad telegram signature'); }
+  const token = props_().getProperty('BOT_TOKEN'), strict = props_().getProperty('REQUIRE_TELEGRAM') === '1', vkSecret = props_().getProperty('VK_SECRET');
+  if (String(p.initData || '').indexOf('vk:') === 0 && vkSecret) { const u = verifyVk_(p.initData, vkSecret, props_().getProperty('VK_APP_ID')); if (u && u.id) return { id: 'vk:' + u.id, src: 'vk' }; throw new Error('bad vk signature'); }
+  if (p.initData && token && String(p.initData).indexOf('vk:') !== 0) { const u = verifyTelegram_(p.initData, token); if (u && u.id) return { id: 'tg:' + u.id, src: 'tg' }; throw new Error('bad telegram signature'); }
   if (strict) throw new Error('telegram required');
   const dev = String(p.dev || '').replace(/[^\w-]/g, '').slice(0, 40);
   if (!dev) throw new Error('no id');
@@ -118,7 +138,7 @@ function save_(p) {
     rollWeek_();
     const sh = sheet_(), last = sh.getLastRow(), ids = last > 1 ? sh.getRange(2, 1, last - 1, 1).getValues().map(r => r[0]) : [];
     let idx = ids.indexOf(who.id);
-    if (idx < 0 && who.src === 'tg') idx = adoptDev_(ids, who.id, p.dev); // после включения BOT_TOKEN запись игрока переезжает с dev:… на tg:…, без дублей
+    if (idx < 0 && (who.src === 'tg' || who.src === 'vk')) idx = adoptDev_(ids, who.id, p.dev); // после включения BOT_TOKEN запись игрока переезжает с dev:… на tg:…, без дублей
     const row = idx >= 0 ? sh.getRange(idx + 2, 1, 1, HEAD.length).getValues()[0] : new Array(HEAD.length).fill('');
     const old = { oj: Number(row[COL.oj]) || -1000, shifts: Number(row[COL.shifts]) || 0, rank: Number(row[COL.rank]) || 0, season: row[COL.season], sb: Number(row[COL.seasonBest]) || 0, week: row[COL.week], wk: Number(row[COL.wkPts]) || 0 };
     const sb = old.season === season ? Math.max(old.sb, sbIn) : sbIn, wkPts = old.week === week ? Math.max(old.wk, wk) : wk;
@@ -177,8 +197,8 @@ function top_(q) {
   const rows = allRows_().filter(r => !isBlocked_(r)), vis = rows.filter(r => r[COL.hidden] !== true && String(r[COL.hidden]).toLowerCase() !== 'true');
   const num = (r, k) => Number(r[COL[k]]) || 0;
   const person = (r, i) => ({ pos: i + 1, name: r[COL.name], job: r[COL.job], shifts: num(r, 'shifts'), rank: num(r, 'rank'), oj: num(r, 'oj'), sb: num(r, 'seasonBest'), money: num(r, 'money'), pay: num(r, 'pay'), shop: r[COL.shop] || '', profit: num(r, 'profit'), made: num(r, 'made'), staff: num(r, 'staff'), quality: num(r, 'quality'), brigade: r[COL.brigade] || '', end: r[COL.end] || null, me: r[COL.id] === uid,
-    // uid отдаём только для игроков из Telegram (по нему игра отмечает премиум). Технические ID устройств (dev:…) — это «пароль» веб-игрока, их не раскрываем.
-    uid: String(r[COL.id]).indexOf('tg:') === 0 ? r[COL.id] : '' });
+    // uid отдаём только для игроков из Telegram и ВКонтакте (по нему игра отмечает премиум). Технические ID устройств (dev:…) — это «пароль» веб-игрока, их не раскрываем.
+    uid: /^(tg|vk):/.test(String(r[COL.id])) ? r[COL.id] : '' });
   if (by === 'brig') {
     const wk = weekNow_(), agg = brigAgg_(rows, wk), mine = rows.find(r => r[COL.id] === uid), myName = mine ? String(mine[COL.brigade] || '') : '';
     const bs = brigSheet_(), bl = bs.getLastRow(), brs = bl > 1 ? bs.getRange(2, 1, bl - 1, 3).getValues() : [];
