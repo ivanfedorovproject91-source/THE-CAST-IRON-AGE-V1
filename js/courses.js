@@ -15,7 +15,7 @@
   const needFor = id => {
     const out = [];
     Object.keys(D.JOBS).forEach(j => { if (D.JOBS[j].cert === id) out.push('допуск к профессии «' + D.JOBS[j].name + '»'); });
-    Object.keys(D.REQ).forEach(to => { if ((D.REQ[to].certs || []).indexOf(id) >= 0) out.push('аттестация на «' + D.RANKS[to] + '»'); });
+    Object.keys(D.REQ).forEach(to => { if ((D.REQ[to].certs || []).indexOf(id) >= 0) out.push('необязательно: экзамен на «' + D.RANKS[to] + '» — на 1 верный ответ меньше'); });
     if (id === 'pogr') out.push('подработка «Разгрузка фур»: оплата ×1.5 и меньше усталость');
     if (id === 'gaz') out.push('травмы от поломок станка вдвое легче');
     if (id === 'c_vo') out.push('путь главного инженера');
@@ -93,7 +93,7 @@
     const goal = D.REQ[next] && (D.REQ[next].certs || []).filter(id => !G.hasCert(id)).map(id => D.COURSES[id].name);
     G.modal({
       title: '🎓 Учёба и курсы', wide: true,
-      text: 'Корочки: ' + have + '<br>' + (cur ? 'Сейчас идёт курс: <b>' + D.COURSES[cur.id].name + '</b> (' + (cur.done || 0) + ' из ' + D.COURSES[cur.id].slots + ' ч).<br>' : '') + (goal && goal.length ? '🎯 Для следующей ступени нужна корочка: ' + goal.join('; ') + '.<br>' : '') + '<i>Курс — это занятия вечером и экзамен. Одновременно можно учиться только на одном.</i>',
+      text: 'Корочки: ' + have + '<br>' + (cur ? 'Сейчас идёт курс: <b>' + D.COURSES[cur.id].name + '</b> (' + (cur.done || 0) + ' из ' + D.COURSES[cur.id].slots + ' ч).<br>' : '') + (goal && goal.length ? '🎯 Корочка не обязательна, но облегчит экзамен на следующую ступень (−1 верный ответ): ' + goal.join('; ') + '.<br>' : '') + '<i>Курс — это занятия вечером и экзамен. Одновременно можно учиться только на одном.</i>',
       opts
     });
   };
