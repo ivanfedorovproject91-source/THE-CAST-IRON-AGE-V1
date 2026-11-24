@@ -100,6 +100,39 @@
   };
   window.__tgInit = P.init; // вызывается из index.html после загрузки telegram-web-app.js
 
+  // ---------- сеть: запросы к серверам Google Apps Script
+  // Внутри мобильных оболочек запрос может «зависнуть» без ответа и без ошибки (экран «Загрузка…» навсегда).
+  // Поэтому у каждого запроса есть тайм-аут; для чтения (GET) при неудаче есть запасной путь через <script> (JSONP),
+  // который не зависит от правил CORS/fetch в оболочке. Сервер понимает параметр callback (см. out_ в server/*.gs).
+  P.netTimeout = 15000; // мс; в тестах уменьшается
+  let jsonpN = 0;
+  P.jsonp = function (url, ms) {
+    return new Promise(function (res, rej) {
+      const name = '__cvjp' + (++jsonpN) + '_' + Date.now().toString(36), sc = document.createElement('script');
+      let done = false;
+      const fin = function (fn, v) { if (done) return; done = true; clearTimeout(t); try { delete window[name]; } catch (e) { window[name] = undefined; } try { sc.remove(); } catch (e) {} fn(v); };
+      const t = setTimeout(function () { fin(rej, new Error('таймаут')); }, ms || P.netTimeout);
+      window[name] = function (j) { fin(res, j); };
+      sc.onerror = function () { fin(rej, new Error('нет связи')); };
+      sc.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + name + '&_=' + Date.now().toString(36);
+      document.head.appendChild(sc);
+    });
+  };
+  // http(url) — GET; http(url, { method: 'POST', body }) — POST. Возвращает разобранный JSON.
+  P.http = function (url, init, ms) {
+    ms = ms || P.netTimeout;
+    const post = !!(init && init.body);
+    const viaFetch = new Promise(function (res, rej) {
+      let ctl = null, timer = null;
+      try { ctl = typeof AbortController === 'function' ? new AbortController() : null; } catch (e) {}
+      timer = setTimeout(function () { try { ctl && ctl.abort(); } catch (e) {} rej(new Error('таймаут')); }, ms);
+      fetch(url, Object.assign({}, init || {}, ctl ? { signal: ctl.signal } : {}))
+        .then(function (r) { if (r.ok === false) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (j) { clearTimeout(timer); res(j); }, function (e) { clearTimeout(timer); rej(e); });
+    });
+    return post ? viaFetch : viaFetch.catch(function () { return P.jsonp(url, ms); });
+  };
+
   // ---------- облачное хранилище платформы
   // Единый интерфейс для cloud.js: get/set/remove возвращают Promise; chunk — безопасная длина одного значения;
   // pack/unpack — необязательное сжатие целого сохранения; pushEvery — как часто можно писать (мс); diff — писать только изменившиеся куски.

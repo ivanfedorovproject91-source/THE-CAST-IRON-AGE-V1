@@ -30,7 +30,7 @@
       shop: 'Цех «' + s.name + '»', week: weekId(), wkPts: G.weekPts() };
   };
   function post(body) {
-    return fetch(CFG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }).then(r => r.json());
+    return G.platform.http(CFG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
   }
   // Отправка результата. Не чаще раза в 45 секунд (кроме force). Читерам (отладочное меню) — не отправляем.
   LB.submit = function (force) {
@@ -46,8 +46,7 @@
     const c = LB.cache[by];
     if (c && !force && Date.now() - c.t < 60000) return;
     LB.loading = true; LB.err = null;
-    fetch(CFG.API_URL + (CFG.API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=top&by=' + encodeURIComponent(by) + '&limit=50&uid=' + encodeURIComponent(LB.uid()))
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    G.platform.http(CFG.API_URL + (CFG.API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=top&by=' + encodeURIComponent(by) + '&limit=50&uid=' + encodeURIComponent(LB.uid()) + '&dev=' + encodeURIComponent(devId()))
       .then(j => { if (!j || j.ok === false) throw new Error((j && j.error) || 'ошибка сервера'); LB.cache[by] = { t: Date.now(), data: j }; if (by === 'brig') LB.checkPrize(j); })
       .catch(e => { LB.err = String(e.message || e); })
       .then(() => { LB.loading = false; if (G.ui && G.ui.tab === 'rating' && !G.cur) { G.ui.keepScroll = true; G.ui.render(); } });

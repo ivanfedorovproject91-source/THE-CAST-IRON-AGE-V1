@@ -238,6 +238,7 @@
     if (s.flags.dbg) h += '<div class="card note">⚠ Ты пользовался отладкой — твои результаты в рейтинг не отправляются.</div>';
     if (by === 'season' && G.seasonText) h += '<div class="card note">' + G.seasonText() + '</div>';
     if (G.settings.lbOn === false) h += '<div class="card note">Ты скрыт из рейтинга (настройка в «Деле»).</div>';
+    if (/^(ошибка|нет связи)/.test(LB.status || '') && G.platform.name() !== 'web') h += '<div class="card note">⚠ Результат не отправился на сервер рейтинга: ' + esc(LB.status) + '</div>';
     const c = LB.cache[by];
     if (!c || Date.now() - c.t > 60000) LB.load(by);
     if (!c) return h + '<div class="card note">' + (LB.err ? 'Не удалось загрузить рейтинг (' + esc(LB.err) + '). <button class="chip" onclick="G.ui.reloadLb()">Повторить</button>' : 'Загрузка…') + '</div>';

@@ -31,8 +31,7 @@
     if (P.loading || !url()) return;
     if (!force && Date.now() - P.loaded < 120000) return;
     P.loading = true; P.loaded = Date.now(); // метка ставится сразу: при ошибке повтор не раньше чем через 2 минуты
-    fetch(url() + (url().indexOf('?') >= 0 ? '&' : '?') + 'action=premium_list')
-      .then(r => r.json())
+    G.platform.http(url() + (url().indexOf('?') >= 0 ? '&' : '?') + 'action=premium_list')
       .then(j => { if (!j || !j.ok) throw new Error('premium'); rebuild(j.list); if (j.titles && j.titles.length) P.titles = j.titles; if (j.payout) P.payout = j.payout; })
       .catch(() => {})
       .then(() => { P.loading = false; P.redraw(); });

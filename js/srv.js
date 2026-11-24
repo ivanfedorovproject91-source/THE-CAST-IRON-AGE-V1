@@ -10,7 +10,7 @@
   S.url = () => CFG.CHAT_URL || '';
   S.available = () => !!(S.url() && S.initData());
   S.post = function (body) {
-    return fetch(S.url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ initData: S.initData() }, body)) }).then(r => r.json());
+    return G.platform.http(S.url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ initData: S.initData() }, body)) });
   };
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -55,6 +55,15 @@
       if (a && a !== S.seenAnn) { S.seenAnn = a; let seen = ''; try { seen = localStorage.getItem('cv_ann') || ''; } catch (e) {} if (seen !== a) { try { localStorage.setItem('cv_ann', a); } catch (e) {} G.toast && G.toast('📢 Объявление администрации: ' + esc(a)); } }
     }).catch(() => { S.status = 'нет связи с сервером'; });
   };
+  // Публичные настройки (радио, параметры, объявление) берём и без подписи: иначе при любой проблеме с проверкой
+  // личности игрок не получает адреса радиопотоков и радио пишет «нет сигнала». Роль и бан сюда не входят.
+  S.loadPublic = function () {
+    if (!S.url()) return;
+    G.platform.http(S.url() + (S.url().indexOf('?') >= 0 ? '&' : '?') + 'action=config').then(j => {
+      if (j && j.ok && j.cfg) { applyCfg(j.cfg); try { localStorage.setItem(KEY, JSON.stringify(j.cfg)); } catch (e) {} }
+    }).catch(() => {});
+  };
+  S.loadPublic();
   setTimeout(S.ping, 3000);
   setInterval(() => { if (!document.hidden && Date.now() - S.last > 150000) S.ping(); }, 20000);
 })();

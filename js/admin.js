@@ -81,8 +81,7 @@
   async function rcall(action, args) {
     const url = G.CONFIG && G.CONFIG.API_URL; if (!url) return { ok: false, error: 'не задан адрес сервера рейтинга (API_URL)' };
     try {
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action: action, initData: G.srv.initData() }, args || {})) });
-      return await r.json();
+      return await G.platform.http(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action: action, initData: G.srv.initData() }, args || {})) });
     } catch (e) { return { ok: false, error: 'нет связи с сервером рейтинга' }; }
   }
   const idOf = u => String(u).replace(/^tg:/, '').replace(/^vk:/, 'vk'); // 'tg:123' → '123', 'vk:123' → 'vk123' (так ID вводится в админке)

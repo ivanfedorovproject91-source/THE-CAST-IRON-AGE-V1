@@ -53,7 +53,14 @@ var VIP_COOLDOWN_S = 1800;                 // VIP-объявление в общ
 
 /* ---------- утилиты ---------- */
 function prop_(k) { return PropertiesService.getScriptProperties().getProperty(k) || ''; }
-function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+// Ответ. Для запросов чтения с параметром callback (запасной путь из мобильных оболочек через <script>) — обёртка JSONP.
+var CALLBACK_ = '';
+function out_(o) {
+  var json = JSON.stringify(o);
+  if (CALLBACK_) return ContentService.createTextOutput(CALLBACK_ + '(' + json + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+function setCallback_(q) { var c = String((q && q.callback) || ''); CALLBACK_ = /^[A-Za-z_][\w]{0,60}$/.test(c) ? c : ''; }
 function now_() { return Date.now(); }
 function clean_(s, n) { return String(s == null ? '' : s).replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); }
 function S_(name) {
@@ -248,12 +255,14 @@ function premiumTitle_(b) { // выбор эксклюзивного титул�
 /* ---------- публичные точки входа ---------- */
 function doGet(e) {
   var p = (e && e.parameter) || {};
+  setCallback_(p); // JSONP: только для doGet; POST всегда обычный JSON
   if (p.action === 'chat_list') return out_(chatList_(+p.limit));
   if (p.action === 'config') return out_({ ok: true, cfg: publicCfg_() });
   if (p.action === 'premium_list') return out_({ ok: true, list: premiumPublic_(), titles: PREMIUM_TITLES, payout: PREMIUM_PAYOUT });
   return out_({ ok: false, error: 'unknown action' });
 }
 function doPost(e) {
+  CALLBACK_ = ''; // POST всегда отдаёт обычный JSON
   var b; try { b = JSON.parse(e.postData.contents); } catch (x) { return out_({ ok: false, error: 'bad json' }); }
   try {
     if (b.action === 'ping') return out_(ping_(b));

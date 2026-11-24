@@ -183,6 +183,39 @@ with sync_playwright() as pw:
     check('Браузер: платформа web, без подписи и облака, игра работает', r['name'] == 'web' and r['init'] == '' and r['uid'] is None and not r['cloud'] and r['screen'] > 200 and r['lb'] == 'dev:', r)
     b.close()
 
+    # ---------- 7. «Зависший» сервер в мобильной оболочке: нет вечной загрузки, радио получает станции без подписи
+    b, p = newpage(pw, vk=True, w=390, h=844)
+    p.unroute('**/script.google.com/**')
+    TOP = {"ok": True, "total": 2, "season": "2026-11", "me": {"pos": 2, "name": "Иван", "oj": 100, "shifts": 12, "rank": 0, "job": "Токарь", "money": 1, "pay": 0, "sb": 0}, "rows": [{"pos": 1, "name": "Лидер", "oj": 900, "shifts": 90, "rank": 3, "job": "Мастер", "money": 5, "pay": 0, "sb": 0}, {"pos": 2, "name": "Иван", "oj": 100, "shifts": 12, "rank": 0, "job": "Токарь", "money": 1, "pay": 0, "sb": 0}]}
+    CFGJ = {"ok": True, "cfg": {"params": {}, "chatLocked": False, "announce": "", "radio": {"on": True, "stations": [{"id": "mayak", "name": "Маяк", "url": "https://radio.example/mayak.mp3", "meta": "", "on": True}]}}}
+    def gas(route):
+        req = route.request
+        if req.method == 'POST':
+            return  # ответа нет никогда — как «зависший» запрос в мобильном клиенте
+        u = req.url; import re
+        m = re.search(r'callback=([\w]+)', u)
+        if not m:
+            return  # обычный fetch тоже зависает
+        body = json.dumps(TOP if 'action=top' in u else CFGJ)
+        route.fulfill(status=200, content_type='application/javascript', body=m.group(1) + '(' + body + ');')
+    p.route('**/script.google.com/**', gas)
+    p.add_init_script("window.__fast = 1;")
+    p.goto(vk_url()); p.wait_for_timeout(600)
+    p.evaluate("() => { G.platform.netTimeout = 1500; }")
+    p.evaluate(MAKE); p.wait_for_timeout(100)
+    p.evaluate("() => { G.srv.loadPublic(); }"); p.wait_for_timeout(4200)
+    st = p.evaluate("() => G.radio.st.map(s => s.url)")
+    check('Радио: адреса станций приходят без подписи (публичные настройки), даже если запросы fetch зависают', st[0] == 'https://radio.example/mayak.mp3', st)
+    p.evaluate("() => { G.lb.cache = {}; G.lb.load('oj', true); }"); p.wait_for_timeout(4200)
+    lb = p.evaluate("() => ({ loading: G.lb.loading, err: G.lb.err, me: G.lb.cache.oj && G.lb.cache.oj.data.me && G.lb.cache.oj.data.me.name })")
+    check('Рейтинг: зависший fetch не даёт вечной загрузки — данные пришли запасным путём', lb['loading'] is False and lb['err'] is None and lb['me'] == 'Иван', lb)
+    # полностью недоступный сервер: ошибка с кнопкой «Повторить», а не вечное «Загрузка…»
+    p.unroute('**/script.google.com/**'); p.route('**/script.google.com/**', lambda r: None)
+    p.evaluate("() => { G.lb.cache = {}; G.lb.err = null; G.lb.load('oj', true); }"); p.wait_for_timeout(5200)
+    lb = p.evaluate("() => ({ loading: G.lb.loading, err: G.lb.err })")
+    check('Рейтинг: если сервер недоступен совсем — через несколько секунд ошибка (с кнопкой «Повторить»), а не вечная загрузка', lb['loading'] is False and bool(lb['err']), lb)
+    b.close()
+
     # ---------- 6. Подпись VK не должна «угадываться» из чужого адреса: без sign или без vk_app_id платформа — не VK
     b, p = newpage(pw, vk=True)
     p.goto(BASE + '?vk_user_id=1'); p.wait_for_timeout(600)

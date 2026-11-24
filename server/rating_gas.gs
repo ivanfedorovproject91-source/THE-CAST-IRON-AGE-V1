@@ -20,7 +20,14 @@ const COL = {}; HEAD.forEach((h, i) => { COL[h] = i; });
 const PERSON = { oj: 'oj', season: 'seasonBest', shifts: 'shifts', rank: 'rank', money: 'money', pay: 'pay' };
 const COMPANY = { profit: 'profit', made: 'made', staff: 'staff', quality: 'quality' };
 
-function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+// Ответ. Для запросов чтения с параметром callback (запасной путь из мобильных оболочек через <script>) — обёртка JSONP.
+var CALLBACK_ = '';
+function out_(o) {
+  var json = JSON.stringify(o);
+  if (CALLBACK_) return ContentService.createTextOutput(CALLBACK_ + '(' + json + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+function setCallback_(q) { var c = String((q && q.callback) || ''); CALLBACK_ = /^[A-Za-z_][\w]{0,60}$/.test(c) ? c : ''; }
 function props_() { return PropertiesService.getScriptProperties(); }
 function seasonNow_() { return Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM'); }
 function weekNow_() {
@@ -46,12 +53,14 @@ function allRows_() { const sh = sheet_(), n = sh.getLastRow(); return n > 1 ? s
 
 function doGet(e) {
   const q = (e && e.parameter) || {};
+  setCallback_(q); // JSONP: только для doGet; POST всегда обычный JSON
   try {
     if (q.action === 'top') return out_(top_(q));
     return out_({ ok: true, service: 'chugunny-vek-rating', version: 2, season: seasonNow_(), week: weekNow_() });
   } catch (err) { return out_({ ok: false, error: String(err && err.message || err) }); }
 }
 function doPost(e) {
+  CALLBACK_ = ''; // POST всегда отдаёт обычный JSON
   try {
     const p = JSON.parse(e.postData.contents);
     if (p.action === 'score') return out_(save_(p));
@@ -94,6 +103,7 @@ function verifyVk_(initData, secret, appId, maxAge) {
 }
 function identity_(p) {
   const token = props_().getProperty('BOT_TOKEN'), strict = props_().getProperty('REQUIRE_TELEGRAM') === '1', vkSecret = props_().getProperty('VK_SECRET');
+  if (String(p.initData || '').indexOf('vk:') === 0 && !vkSecret) throw new Error('VK_SECRET не задан в свойствах скрипта рейтинга');
   if (String(p.initData || '').indexOf('vk:') === 0 && vkSecret) { const u = verifyVk_(p.initData, vkSecret, props_().getProperty('VK_APP_ID')); if (u && u.id) return { id: 'vk:' + u.id, src: 'vk' }; throw new Error('bad vk signature'); }
   if (p.initData && token && String(p.initData).indexOf('vk:') !== 0) { const u = verifyTelegram_(p.initData, token); if (u && u.id) return { id: 'tg:' + u.id, src: 'tg' }; throw new Error('bad telegram signature'); }
   if (strict) throw new Error('telegram required');
@@ -220,7 +230,9 @@ function top_(q) {
     list = vis.filter(r => num(r, 'staff') > 0); const key = COMPANY[by];
     list.sort((a, b) => num(b, key) - num(a, key) || num(b, 'profit') - num(a, 'profit'));
   } else throw new Error('bad by');
-  const mi = list.findIndex(r => r[COL.id] === uid);
+  const dev = String(q.dev || '').replace(/[^\w-]/g, '').slice(0, 40);
+  let mi = list.findIndex(r => r[COL.id] === uid);
+  if (mi < 0 && dev) mi = list.findIndex(r => r[COL.id] === 'dev:' + dev); // запись, сделанная до того, как подпись стала проверяться
   return { ok: true, total: list.length, season: cur, me: mi >= 0 ? person(list[mi], mi) : null, rows: list.slice(0, limit).map(person) };
 }
 

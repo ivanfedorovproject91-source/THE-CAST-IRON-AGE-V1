@@ -35,7 +35,7 @@ function makeEnv(file) {
     CacheService: { getScriptCache: () => ({ get: k => (k in cache ? cache[k] : null), put: (k, v) => { cache[k] = v; }, remove: k => { delete cache[k]; } }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = new Sheet(n)) }) },
-    ContentService: { createTextOutput: s => ({ s, setMimeType() { return this; } }), MimeType: { JSON: 1 } },
+    ContentService: { createTextOutput: s => ({ s, setMimeType() { return this; } }), MimeType: { JSON: 1, JAVASCRIPT: 2 } },
     Utilities: {
       computeHmacSha256Signature: (v, k) => {
         if (typeof v !== typeof k) throw new Error('The parameters (' + typeof v + ',' + typeof k + ') don\'t match the method signature for Utilities.computeHmacSha256Signature.');
@@ -80,6 +80,8 @@ let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; console.log('ok -', m); 
   const get = p => JSON.parse(env.doGet({ parameter: p }).s);
   const ping = (init, extra) => post(Object.assign({ action: 'ping', initData: init }, extra || {}));
 
+  const cfgJ = env.doGet({ parameter: { action: 'config', callback: 'cb_2' } }).s;
+  ok(/^cb_2\(\{"ok":true,"cfg":\{.*"radio":/.test(cfgJ), 'чат: публичные настройки (радио) читаются без подписи, в том числе через JSONP');
   ok(ping(vkInit(777001)).ok === true, 'чат: корректная подпись VK принята');
   ok(ping(vkInit(777001, { shuffle: true })).ok === true, 'чат: порядок параметров в адресе не важен');
   ok(ping(vkInit(777001, { extra: { vk_ref: 'a b!x' } })).ok === true, 'чат: параметр со спецсимволами в значении подписывается и проверяется');
@@ -155,9 +157,17 @@ let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; console.log('ok -', m); 
   ok(score('', 'Аноним', 50, { dev: 'abc123' }).ok !== true, 'рейтинг: в строгом режиме без подписи не принимается');
   env.__props.REQUIRE_TELEGRAM = '';
   env.__props.VK_SECRET = '';
-  ok(score(vkInit(8006), 'БезКлюча', 50, { dev: 'dev8006' }).ok === true, 'рейтинг: без VK_SECRET игрок записывается как веб-игрок (по устройству), а не под чужим vk:-ID');
-  const rows2 = (get({ action: 'top', by: 'oj', limit: 50 }).rows || []);
-  ok(!rows2.some(r => r.uid === 'vk:8006'), 'рейтинг: без проверки подписи vk:-ID не выдаётся');
+  ok(/VK_SECRET/.test(score(vkInit(8006), 'БезКлюча', 50, { dev: 'dev8006' }).error || ''), 'рейтинг: без VK_SECRET сервер прямо говорит, чего не хватает (а не молча пишет под чужим ID)');
+  env.__props.VK_SECRET = VK_SECRET;
+  // «я» ищется и по устройству: запись, сделанная когда подпись ещё не проверялась (dev:…), всё равно отмечается
+  score('', 'Старожил', 70, { dev: 'olddev1' });
+  const t2 = get({ action: 'top', by: 'oj', limit: 50, uid: 'vk:9999', dev: 'olddev1' });
+  ok(t2.me && t2.me.name === 'Старожил', 'рейтинг: игрок находит себя по устройству, если записи под vk:-ID ещё нет');
+  // JSONP: запасной путь чтения для мобильных оболочек
+  const jp = env.doGet({ parameter: { action: 'top', by: 'oj', limit: 5, callback: 'cb_1' } }).s;
+  ok(/^cb_1\(\{.*\}\);$/.test(jp), 'рейтинг: чтение с callback отдаётся как JSONP');
+  ok(!/^cb_/.test(env.doGet({ parameter: { action: 'top', by: 'oj', limit: 5, callback: 'a);alert(1);//' } }).s), 'рейтинг: небезопасное имя callback игнорируется (нет инъекции)');
+  ok(!/^cb_/.test(env.doGet({ parameter: { action: 'top', by: 'oj' } }).s), 'рейтинг: без callback — обычный JSON (callback не «залипает» между запросами)');
   const owner = post({ action: 'admin_list', initData: vkInit(1000) });
   ok(owner.ok !== true, 'рейтинг: админ-действия из VK недоступны');
 }
