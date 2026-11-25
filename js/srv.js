@@ -15,7 +15,8 @@
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // Серверные игровые параметры (только числовые, только известные ключи config.js)
-  const LIMITS = { AUTO_PER_WEEK: [0, 14], CANTEEN_LIMIT: [0, 20], DRAIN_ENERGY: [0, 3], DRAIN_MOOD: [0, 3], OP_ENERGY_MULT: [0.1, 3], HEAL_FACTOR: [0.1, 3], SAT_DRAIN_WORK: [0, 15], SAT_DRAIN_REST: [0, 15], REL_TALK_MULT: [0.1, 5], REL_TALK_NEG_MULT: [0.1, 5], REL_DAILY_CAP: [1, 60], FISH_PLAN_DAYS: [1, 14], WALK_LATE: [0, 100], MOOD_CAP_TRAINEE: [10, 100] };
+  const LIMITS = { AUTO_PER_WEEK: [0, 14], CANTEEN_LIMIT: [0, 20], DRAIN_ENERGY: [0, 3], DRAIN_MOOD: [0, 3], OP_ENERGY_MULT: [0.1, 3], HEAL_FACTOR: [0.1, 3], SAT_DRAIN_WORK: [0, 15], SAT_DRAIN_REST: [0, 15], REL_TALK_MULT: [0.1, 5], REL_TALK_NEG_MULT: [0.1, 5], REL_DAILY_CAP: [1, 60], FISH_PLAN_DAYS: [1, 14], WALK_LATE: [0, 100], MOOD_CAP_TRAINEE: [10, 100],
+    MOOD_FED_AT: [1, 100], MOOD_FED_K: [0.1, 2], MOOD_HUNGRY_AT: [1, 100], MOOD_HUNGRY_PEN: [0, 5], MOOD_STARVE_AT: [1, 100], MOOD_STARVE_PEN: [0, 5], MOOD_EAT_BELOW: [1, 100], MOOD_EAT_BONUS: [0, 20], MOOD_SLEEP_BELOW: [1, 100], MOOD_STARVE_CAP: [0, 100], SAT_HP_LOSS: [0, 10], SAT_CAP: [50, 100], HUNGER_H1: [1, 200], HUNGER_H2: [1, 200], HUNGER_H3: [1, 200] };
   const BASE = {}; Object.keys(LIMITS).forEach(k => { BASE[k] = CFG[k]; });
   function applyCfg(c) {
     if (!c) return;
