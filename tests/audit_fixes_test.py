@@ -38,7 +38,7 @@ with sync_playwright() as p:
     check('экзамен можно начать снова', 'Экзамен' in ev("(window.__m[0]||{}).title||''"), ev("window.__m.map(m=>m.title)"))
     # 2. PACE
     ev("G.CONFIG.PACE=2")
-    check('PACE=2 удваивает срок (10 смен до первого экзамена)', ev("(G.career.reqLines()[0].t)").endswith('/ 10 смен'), ev("G.career.reqLines()[0].t"))
+    check('PACE=2 не растягивает стажировку: она всегда 5 смен', ev("(G.career.reqLines()[0].t)").endswith('/ 5 смен'), ev("G.career.reqLines()[0].t"))
     ev("G.CONFIG.PACE=1")
     # 3. репутация: плохая закрывает допуск
     ev(SETUP); ev("G.s.car.rank=2; G.s.car.ladderStepAt=0; G.s.car.shifts=10; Object.assign(G.v38().perf,{late:9,viol:9,safety:9,brak:9,absent:9}); G.s.car.rep=3; G.s.st.boss=0; G.career.checkLadder()")

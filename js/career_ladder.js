@@ -10,7 +10,8 @@
   // следующие шаги идут по текущему PACE. Новые игры paceStep не имеют — действует PACE из config.js.
   const stepPace = () => { const c = G.s && G.s.car; return c && c.paceStep != null ? c.paceStep : pace(); };
   const need = v => Math.max(1, Math.round(v * stepPace()));
-  const WORK_NEED = new Proxy(WORK_BASE, { get: (o, k) => (k in o ? need(o[k]) : undefined) });
+  // Стажировка — всегда ровно неделя (5 смен): PACE на неё не влияет, иначе срок расходится с тем, что написано в игре.
+  const WORK_NEED = new Proxy(WORK_BASE, { get: (o, k) => (k in o ? (String(k) === '0' ? o[k] : need(o[k])) : undefined) });
   const MGMT_NEED = new Proxy(MGMT_BASE, { get: (o, k) => (k in o ? need(o[k]) : undefined) });
   const ROLES = {
     6: { name: 'Мастер участка', duty: 'Распределяет задания, проводит планёрку, следит за взаимопомощью, дисциплиной и передачей смены.', unlock: 'Доступны бригадные поручения, организация работы команды и планёрка участка.' },
@@ -162,7 +163,7 @@
     const ask=()=>{
       if (idx>=questions.length) { finishExam(); return; }
       const q=questions[idx++], opts=shuffle(q[1].map((label,n)=>({label,right:n===q[2]})));
-      G.modal({title:(target.kind==='management'?'Аттестация руководителя':'Квалификационный экзамен')+' · вопрос '+idx+'/5',face:'soplezhuykin',bg:'checkpoint',text:'<i>Соплежуйкин прищуривается:</i> «'+(idx===1?'Ну-с, посмотрим, чему вас жизнь и завод научили.':'Не торопитесь. Ошибка в ответе — не конец света. Хотя для карьеры…')+'»<br><br><b>'+q[0]+'</b>',opts:opts.map(o=>({t:o.label,fn:()=>{if(o.right)correct++;ask();}}))});
+      G.modal({_ladder:1,title:(target.kind==='management'?'Аттестация руководителя':'Квалификационный экзамен')+' · вопрос '+idx+'/5',face:'soplezhuykin',bg:'checkpoint',text:'<i>Соплежуйкин прищуривается:</i> «'+(idx===1?'Ну-с, посмотрим, чему вас жизнь и завод научили.':'Не торопитесь. Ошибка в ответе — не конец света. Хотя для карьеры…')+'»<br><br><b>'+q[0]+'</b>',opts:opts.map(o=>({t:o.label,fn:()=>{if(o.right)correct++;ask();}}))});
     };
     const finishExam=()=>{
       const finalScore=Math.max(0,correct+(target.bribeBonus||0)-(target.bribePenalty||0));
@@ -188,7 +189,7 @@
       }});
     }
     const startQuiz=()=>{ ask(); };
-    G.modal({title:'Экзамен перед повышением',face:'soplezhuykin',bg:'checkpoint',text:'«Пять вопросов. Нужно ответить правильно хотя бы на '+passNeed(target)+'. Попытка '+attempt+' из 4. Вопросы сегодня новые — не надейтесь выучить один и тот же билет».',opts:bribeOpts.concat([{t:'Начать экзамен',fn:startQuiz}])});
+    G.modal({_ladder:1,title:'Экзамен перед повышением',face:'soplezhuykin',bg:'checkpoint',text:'«Пять вопросов. Нужно ответить правильно хотя бы на '+passNeed(target)+'. Попытка '+attempt+' из 4. Вопросы сегодня новые — не надейтесь выучить один и тот же билет».',opts:bribeOpts.concat([{t:'Начать экзамен',fn:startQuiz}])});
   }
   function promote(target) {
     const s=G.s,c=s.car,st=s.st,oldRank=c.rank;
@@ -217,7 +218,8 @@
   K.checkLadder=function(){
     const s=G.s;if(!s||s.end||!s.car.job)return;
     const c=s.car;
-    if(c.ladderPending)return;
+    // флаг «идёт экзамен» без живого окна экзамена — осколок прерванной цепочки окон; иначе он навсегда блокирует переход
+    if(c.ladderPending){ if([G.cur].concat(G.mq).some(m=>m&&m._ladder))return; c.ladderPending=0; }
     const t=currentTarget();if(!t)return;
     resetAttempts(c,t.key);
     const done=c.shifts-(t.since||0);
@@ -246,6 +248,8 @@
       {t:c.ladderRetryAt&&c.shifts<c.ladderRetryAt?'Новая серия попыток через '+(c.ladderRetryAt-c.shifts)+' смен':'Экзамен доступен после набора стажа',ok:!c.ladderRetryAt||c.shifts>=c.ladderRetryAt}
     ];
   };
+  // Прогресс текущей ступени для экранов: сколько отработано, сколько нужно, сколько ждать после провала
+  K.ladderProgress=function(){const c=G.s.car,t=currentTarget();if(!t)return null;const have=Math.max(0,c.shifts-(t.since||0));return {have:have,need:t.need,left:Math.max(0,t.need-have),wait:c.ladderRetryAt&&c.shifts<c.ladderRetryAt?c.ladderRetryAt-c.shifts:0,attempts:c.ladderAttempts||0,label:t.label};};
   K.applyAttest=function(){K.checkLadder();};
   K.nextRankName=function(){const t=currentTarget();return t?t.label:'Высшая должность';};
 
@@ -264,7 +268,7 @@
   G.rankInfo=function(){
     const c=G.s.car;
     if(!c.job)return {stars:0,noStars:true,mgmt:false,line:'Оформление на работу'};
-    if(c.rank===0)return {stars:0,noStars:true,mgmt:false,line:'Стажировка: '+Math.max(0,5-(c.probShifts||0))+' смен до первого экзамена'};
+    if(c.rank===0)return {stars:0,noStars:true,mgmt:false,line:(function(){const p=K.ladderProgress();return !p?'Стажировка':p.left?'Стажировка: '+p.left+' смен до первого экзамена':p.wait?'Стажировка: новая попытка экзамена через '+p.wait+' смен':'Стажировка пройдена — экзамен у Соплежуйкина';})()};
     if(c.rank<6){const t=currentTarget(),left=t?Math.max(0,t.need-(c.shifts-(t.since||0))):0;return {stars:c.rank,mgmt:false,line:left?'До повышения: '+left+' смен':'Стаж набран — экзамен у Соплежуйкина'};}
     const stage=Math.max(1,Math.min(5,c.mgmtStage||1)),t=currentTarget(),left=t?Math.max(0,t.need-(c.shifts-(t.since||0))):0;
     return {stars:stage,mgmt:true,line:c.rank===10&&stage===5?'Высшая управленческая ступень':left?'До следующей ступени/должности: '+left+' смен':'Стаж набран — экзамен и приказ гендиректора'};
