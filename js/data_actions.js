@@ -1778,7 +1778,11 @@
       const sat0 = G.s && G.s.st ? G.s.st.satiety : 0;
       _adv.apply(this, arguments); const s = G.s, st = s.st, work = s.phase === 'work' || s.phase === 'lunch', k = work ? 1 : 0.5;
       const sat = (sat0 + st.satiety) / 2;
-      st.energy = C(st.energy - (CFG.DRAIN_ENERGY === undefined ? 0.7 : CFG.DRAIN_ENERGY) * k * h); st.mood = C(st.mood - G.moodDrainPerHour(sat, k) * h); capMood();
+      st.energy = C(st.energy - (CFG.DRAIN_ENERGY === undefined ? 0.7 : CFG.DRAIN_ENERGY) * k * h); st.mood = C(st.mood - G.moodDrainPerHour(sat, k) * h);
+      // Голод давит на настроение: чем ниже сытость, тем ниже «потолок» (MOOD_STARVE_CAP). Если настроение выше потолка — оно плавно сползает к нему (до 1 очка в час), без обрыва.
+      { const hu = CFG.MOOD_HUNGRY_AT || 35, lo = CFG.MOOD_STARVE_CAP === undefined ? 25 : CFG.MOOD_STARVE_CAP;
+        if (st.satiety < hu && lo < 100) { const cap = lo + (100 - lo) * Math.max(0, st.satiety) / hu; if (st.mood > cap) st.mood = Math.max(cap, st.mood - 1 * h); } }
+      capMood();
     };
     // Нервный срыв вместо мгновенного «ушёл сам»: раз в 8 недель
     const _ce = G.checkEnd; G.checkEnd = function () {

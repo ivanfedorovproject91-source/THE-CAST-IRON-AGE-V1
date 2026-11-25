@@ -289,7 +289,7 @@
     if (ph === 'work') { const j = G.job(); if (j) st.tox = C(st.tox + j.harm * 0.35 * (s.car.rank >= 8 ? 0.2 : 1)); }
     // голод: энергия падает здесь, а потеря настроения от голода считается в G.advance (data_actions.js, G.moodDrainPerHour)
     if (st.satiety < 20) { st.energy = C(st.energy - 1); }
-    if (st.satiety <= 0) st.health = C(st.health - 1.2);
+    if (st.satiety <= 0) st.health = C(st.health - (G.CONFIG.SAT_HP_LOSS === undefined ? 1.2 : G.CONFIG.SAT_HP_LOSS));
     if (st.drunk > 0 && st.drunk < 3) st.drunk = 0;
   }
   G.advance = function (h) {

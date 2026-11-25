@@ -28,12 +28,13 @@ var AUTH_MAX = 24 * 3600, ADMIN_AUTH_MAX = 12 * 3600; // сек: срок год
 var ONLINE_MS = 6 * 60 * 1000;
 var PARAMS = { // допустимые игровые параметры (значения по умолчанию = js/config.js)
   AUTO_PER_WEEK: { def: 2, min: 0, max: 14 }, CANTEEN_LIMIT: { def: 5, min: 0, max: 20 },
-  DRAIN_ENERGY: { def: 0.4, min: 0, max: 3 }, DRAIN_MOOD: { def: 0.75, min: 0, max: 3 },
+  DRAIN_ENERGY: { def: 0.4, min: 0, max: 3 }, DRAIN_MOOD: { def: 1.0, min: 0, max: 3 },
   OP_ENERGY_MULT: { def: 0.65, min: 0.1, max: 3 }, HEAL_FACTOR: { def: 0.5, min: 0.1, max: 3 },
   SAT_DRAIN_WORK: { def: 4.5, min: 0, max: 15 }, SAT_DRAIN_REST: { def: 1.5, min: 0, max: 15 },
   REL_TALK_MULT: { def: 2, min: 0.1, max: 5 }, REL_TALK_NEG_MULT: { def: 1.5, min: 0.1, max: 5 },
   REL_DAILY_CAP: { def: 22, min: 1, max: 60 }, FISH_PLAN_DAYS: { def: 3, min: 1, max: 14 },
-  WALK_LATE: { def: 22, min: 0, max: 100 }, MOOD_CAP_TRAINEE: { def: 90, min: 10, max: 100 }
+  WALK_LATE: { def: 22, min: 0, max: 100 }, MOOD_CAP_TRAINEE: { def: 90, min: 10, max: 100},
+  MOOD_FED_AT: { def: 70, min: 1, max: 100 }, MOOD_FED_K: { def: 0.8, min: 0.1, max: 2 }, MOOD_HUNGRY_AT: { def: 35, min: 1, max: 100 }, MOOD_HUNGRY_PEN: { def: 0.4, min: 0, max: 5 }, MOOD_STARVE_AT: { def: 20, min: 1, max: 100 }, MOOD_STARVE_PEN: { def: 0.9, min: 0, max: 5 }, MOOD_EAT_BELOW: { def: 30, min: 1, max: 100 }, MOOD_EAT_BONUS: { def: 3, min: 0, max: 20 }, MOOD_SLEEP_BELOW: { def: 25, min: 1, max: 100 }, MOOD_STARVE_CAP: { def: 25, min: 0, max: 100 }, SAT_HP_LOSS: { def: 1.2, min: 0, max: 10 }, SAT_CAP: { def: 95, min: 50, max: 100 }, HUNGER_H1: { def: 16, min: 1, max: 200 }, HUNGER_H2: { def: 24, min: 1, max: 200 }, HUNGER_H3: { def: 48, min: 1, max: 200 }
 };
 var HEAD = {
   chat: ['t', 'uid', 'name', 'job', 'text', 'deleted', 'del_by', 'del_reason', 'kind'],
