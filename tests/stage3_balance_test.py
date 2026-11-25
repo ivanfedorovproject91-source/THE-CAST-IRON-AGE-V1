@@ -86,7 +86,7 @@ with sync_playwright() as pw:
       s.car.rank = 1; s.car.shifts = 12; s.car.ladderStepAt = 4; delete s.car.paceSchema; delete s.car.paceStep; G.load && 0;
       s.car.paceSchema = 1; s.car.paceStep = 1; out.oldNeed = G.career.reqLines()[0].t;
       delete s.car.paceStep; out.liveNeed = G.career.reqLines()[0].t; return out; }""")
-    check('PACE по умолчанию 1.5, первый экзамен через 8 смен (было 5)', r['pace'] == 1.5 and r['newNeed'].endswith('/ 8 смен'), r)
+    check('PACE по умолчанию 1.5, но стажировка остаётся неделей: первый экзамен через 5 смен', r['pace'] == 1.5 and r['newNeed'].endswith('/ 5 смен'), r)
     check('старый шаг (разряд 1→2) идёт по прежним 10 сменам, новый — по 15', r['oldNeed'].endswith('/ 10 смен') and r['liveNeed'].endswith('/ 15 смен'), r)
     # 9. образ жизни: по умолчанию 0 ₽, выбор по рангу, расход в расчёте, бонус сна
     r = p.evaluate("""() => { G.headless = true; G.newState('Т', G.defaultAv(), 'chpu'); const s = G.s; s.car.job = 'tokar'; s.car.rank = 8; s.money = 100000;
